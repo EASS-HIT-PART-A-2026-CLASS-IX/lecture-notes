@@ -32,6 +32,12 @@ Learners finish with:
 
 ## Part A – Scaffold the Mini Lakehouse (45 Minutes)
 
+### 0. Verify the CLI is ready
+```bash
+duckdb --version
+```
+If the command prints a version (e.g., `DuckDB 0.10.2`), you are set. Otherwise, install DuckDB before proceeding.
+
 ### 1. Directory structure + environment variables
 From the repo root (or a scratch directory), create the folders and export variables:
 ```bash
@@ -43,7 +49,19 @@ mkdir -p "$(dirname "$DUCK_WH_DB")" "$(dirname "$DUCK_DEV_DB")"/backups \
   "$LAKE_ROOT"/{bronze,silver,gold}
 ```
 
-> Tip: Drop the three `export` commands into `scripts/duckdb.env` so students can `source scripts/duckdb.env` later.
+> Tip: Drop the three `export` commands into `scripts/duckdb.env` so students can `source scripts/duckdb.env` later:
+> ```bash
+> mkdir -p scripts
+> cat <<'EOF' > scripts/duckdb.env
+> export DUCK_WH_DB="$PWD/duck/warehouse/sports_ml_warehouse.duckdb"
+> export DUCK_DEV_DB="$PWD/duck/dev/sports_ml_warehouse.duckdb"
+> export LAKE_ROOT="$PWD/duck/lake"
+> EOF
+> ```
+> Afterwards, activate the variables in any new shell:
+> ```bash
+> source scripts/duckdb.env
+> ```
 
 ### 2. Seed Bronze data with Python (synthetic but realistic)
 ```bash
@@ -51,8 +69,10 @@ uv run python - <<'PY'
 from pathlib import Path
 import random
 import json
+import os
 
-root = Path("$LAKE_ROOT") / "bronze" / "events"
+lake_root = Path(os.environ["LAKE_ROOT"])
+root = lake_root / "bronze" / "events"
 root.mkdir(parents=True, exist_ok=True)
 
 actors = ["student", "instructor", "assistant"]
@@ -146,6 +166,13 @@ duckdb "$DUCK_DEV_DB" -c "
 
 The `UNNEST(string_split(...))` pattern behaves like a classic map/reduce word count: **map** splits each verb/entity pair into tokens, **reduce** aggregates counts. Students can compare with the canonical Hadoop example, but here it runs locally in milliseconds.
 
+Verify the Gold tables exist and contain data:
+```bash
+duckdb "$DUCK_DEV_DB" -c "
+  SHOW TABLES;
+"
+```
+
 ### 2. Explore the results (CLI)
 ```bash
 duckdb "$DUCK_DEV_DB" -c "
@@ -232,6 +259,68 @@ uv run python duck_tools.py top-tokens --limit 5
 - **“No such file or directory” errors**: confirm the three environment variables (`DUCK_WH_DB`, `DUCK_DEV_DB`, `LAKE_ROOT`) point to valid paths; rerun the `mkdir -p …` command.
 - **Queries return zero rows**: re-run the Bronze → Silver load step to regenerate Parquet, then refresh views.
 - **Typer CLI fails**: verify `uv add typer duckdb` succeeded and that you are sourcing the env file before running commands.
+
+---
+
+## Quick Demo – From Empty Folder to Insights
+Paste each block (after sourcing `scripts/duckdb.env`) to go from nothing to a working DuckDB analytics sandbox:
+
+```bash
+# 1. Scaffold folders and environment
+mkdir -p duck && mkdir -p scripts
+cat <<'EOF' > scripts/duckdb.env
+export DUCK_WH_DB="$PWD/duck/warehouse/sports_ml_warehouse.duckdb"
+export DUCK_DEV_DB="$PWD/duck/dev/sports_ml_warehouse.duckdb"
+export LAKE_ROOT="$PWD/duck/lake"
+EOF
+source scripts/duckdb.env
+mkdir -p "$(dirname "$DUCK_WH_DB")" "$(dirname "$DUCK_DEV_DB")"/backups \
+  "$LAKE_ROOT"/{bronze,silver,gold}
+
+# 2. Generate Bronze JSON
+uv run python - <<'PY'
+from pathlib import Path
+import random
+import json
+import os
+
+lake_root = Path(os.environ["LAKE_ROOT"])
+root = lake_root / "bronze" / "events"
+root.mkdir(parents=True, exist_ok=True)
+
+actors = ["student", "instructor", "assistant"]
+verbs = ["viewed", "updated", "deleted", "created"]
+entities = ["movie", "rating", "playlist", "profile"]
+
+records = []
+random.seed(42)
+for event_id in range(1, 10_001):
+    records.append(
+        {
+            "event_id": event_id,
+            "actor": random.choice(actors),
+            "verb": random.choice(verbs),
+            "entity": random.choice(entities),
+            "duration_ms": random.randint(50, 2_500),
+        }
+    )
+
+bronze_file = root / "events.jsonl"
+bronze_file.write_text("\n".join(json.dumps(r) for r in records))
+print(f"Wrote {bronze_file} with {len(records)} events")
+PY
+
+# 3. Load into PROD and build Gold view
+duckdb "$DUCK_WH_DB" -c "CREATE SCHEMA IF NOT EXISTS bronze; CREATE SCHEMA IF NOT EXISTS silver;"
+duckdb "$DUCK_WH_DB" -c "COPY (SELECT event_id, lower(actor) AS actor, lower(verb) AS verb, lower(entity) AS entity, duration_ms FROM read_json('$LAKE_ROOT/bronze/events/events.jsonl')) TO '$LAKE_ROOT/silver/events/events.parquet' (FORMAT 'parquet', COMPRESSION 'zstd');"
+duckdb "$DUCK_WH_DB" -c "CREATE OR REPLACE TABLE bronze.events AS SELECT * FROM read_json('$LAKE_ROOT/bronze/events/events.jsonl'); CREATE OR REPLACE TABLE silver.events AS SELECT * FROM read_parquet('$LAKE_ROOT/silver/events/events.parquet'); CREATE VIEW IF NOT EXISTS gold.event_summary AS SELECT actor, verb, COUNT(*) AS event_count, AVG(duration_ms)::INTEGER AS avg_duration_ms FROM silver.events GROUP BY actor, verb ORDER BY event_count DESC;"
+
+# 4. Refresh DEV views and run map/reduce
+duckdb "$DUCK_DEV_DB" -c "ATTACH '$DUCK_WH_DB' AS prod (READ_ONLY); CREATE SCHEMA IF NOT EXISTS bronze_views; CREATE OR REPLACE VIEW bronze_views.events AS SELECT * FROM prod.bronze.events; CREATE SCHEMA IF NOT EXISTS gold_labs; CREATE OR REPLACE TABLE gold_labs.event_word_counts AS SELECT lower(token) AS token, COUNT(*) AS hits FROM prod.silver.events, UNNEST(string_split(verb || ' ' || entity, ' ')) AS token GROUP BY lower(token) ORDER BY hits DESC;"
+duckdb "$DUCK_DEV_DB" -c "SELECT * FROM gold_labs.event_word_counts LIMIT 5;"
+```
+
+Replace the `uv run python` line with the inline script from Part A, Step 2 if you prefer not to store a separate helper file.
 
 ---
 
