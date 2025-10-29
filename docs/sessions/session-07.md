@@ -1,41 +1,57 @@
 # Session 07 – Testing, Logging, and Profiling Foundations
 
 - **Date:** Monday, Dec 15, 2025
-- **Theme:** Deepen reliability by expanding the test suite, capturing structured telemetry (Logfire + trace IDs), and measuring performance.
+- **Theme:** Deepen reliability by expanding the test suite, capturing structured telemetry (Logfire + trace identifiers (IDs)), and measuring performance.
 
 ## Learning Objectives
 - Use pytest fixtures and Hypothesis to cover happy, sad, and edge cases with minimal duplication.
-- Instrument FastAPI with Pydantic Logfire to capture timings, errors, and trace IDs without drowning in logs.
-- Generate coverage reports (`pytest --cov`), snapshot JSON responses, and gate pull requests on quality metrics.
-- Run quick performance probes (`timeit`, `cProfile`) to catch regressions before EX2 demos.
+- Instrument FastAPI with Pydantic Logfire to capture timings, errors, and trace identifiers (IDs) without drowning in logs.
+- Generate coverage reports (`pytest --cov`), snapshot JavaScript Object Notation (JSON) responses, and gate pull requests on quality metrics.
+- Run quick performance probes (`timeit`, `cProfile`) to catch regressions before Exercise 2 (EX2) demos.
 
-## Before Class – Quality Preflight (JiTT)
+## Before Class – Quality Preflight (Just-in-Time Teaching, JiTT)
 - Install testing/observability tools:
   ```bash
   uv add "pytest-cov==5.*" "hypothesis==6.*" "logfire==0.*"
   ```
 - Ensure `pytest` succeeds locally (`uv run pytest -q`) before class so we focus on improvements, not broken baselines.
-- Skim the Logfire quickstart (link in LMS) and note one question about dashboards or retention.
-- Finish the **AWS Storage** module by **Tue Dec 9, 2025**; remind everyone we collect certificates on **Tue Dec 16, 2025**.
+- Skim the Logfire quickstart (link in the Learning Management System (LMS)) and note one question about dashboards or retention.
+- Verify Exercise 1 (EX1) test suite still passes after your latest refactor (`uv run pytest -q`).
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Warm-up & bug stories | 8 min | Discussion | Share one bug caught by tests since Session 05; logfire expectations. |
+| Warm-up & bug stories | 8 min | Discussion | Share one bug caught by tests since Session 05; Logfire expectations. |
 | Testing depth tour | 17 min | Talk + whiteboard | Fixtures, parametrization, Hypothesis, snapshot testing strategy. |
 | Micro demo: Logfire in 60s | 3 min | Live demo (≤120 s) | Capture one FastAPI request in Logfire dashboard. |
-| Observability patterns | 17 min | Talk + code walkthrough | Structured logs, trace IDs, error capture, log levels. |
+| Observability patterns | 17 min | Talk + code walkthrough | Structured logs, trace identifiers (IDs), error capture, log levels. |
 | **Part B – Lab 1** | **45 min** | **Guided testing** | **Fixtures, parametrized tests, Hypothesis property checks.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided observability** | **Logfire integration, coverage reports, lightweight profiling.** |
-| Wrap-up & EX2 sprint | 10 min | Q&A | Game plan for EX2 demos, coverage gates, open office hours.
+| Wrap-up & EX2 sprint | 10 min | Questions and Answers (Q&A) | Game plan for Exercise 2 (EX2) demos, coverage gates, open office hours.
 
 ## Part A – Theory Highlights
 1. **Pytest architecture:** fixtures (function vs session scope), parametrization (`@pytest.mark.parametrize`), factories for realistic payloads.
 2. **Property-based testing:** use Hypothesis to generate inputs for validators and ensure invariants hold.
-3. **Snapshot testing:** capture JSON responses (store under `tests/snapshots/`) and enforce stable contracts.
-4. **Observability levels:** application logs (FastAPI + Logfire), metrics later (Session 09/10), tracing with trace IDs.
+3. **Snapshot testing:** capture JavaScript Object Notation (JSON) responses (store under `tests/snapshots/`) and enforce stable contracts.
+4. **Observability levels:** application logs (FastAPI + Logfire—Pydantic’s structured logging and tracing service), metrics later (Session 09/10), tracing with trace identifiers (IDs).
 5. **Performance probes:** run `time.perf_counter()` or `uv run python -m cProfile` as a quick sanity check; mention `py-spy` for offline analysis.
+
+```mermaid
+flowchart LR
+    Change["Code change\n(pull request (PR) or commit)"]
+    Tests["pytest suite\nparametrize + Hypothesis"]
+    Snapshots["Snapshot baselines\n(JSON diff)"]
+    Coverage["Coverage report\npytest --cov"]
+    Observability["Logfire traces\nX-Trace-Id"]
+    Profiling["Quick profiling\n(timeit & cProfile)"]
+    Gate["Quality gate\n(ready for merge)"]
+
+    Change --> Tests --> Coverage --> Gate
+    Tests --> Snapshots
+    Tests --> Observability
+    Observability --> Profiling --> Gate
+```
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 

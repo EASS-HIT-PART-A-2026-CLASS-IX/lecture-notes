@@ -1,39 +1,64 @@
 # Session 09 – Async Recommendation Refresh
 
 - **Date:** Monday, Jan 5, 2026
-- **Theme:** Move the recommendation refresh pipeline to async, add retries/backoff, and guard against duplicate work with idempotency keys.
+- **Theme:** Move the recommendation refresh pipeline to asynchronous execution, add retries/backoff, and guard against duplicate work with idempotency keys.
 
 ## Learning Objectives
-- Call FastAPI endpoints with `httpx.AsyncClient` using `ASGITransport` for in-process tests.
+- Call FastAPI endpoints with `httpx.AsyncClient` using Asynchronous Server Gateway Interface (ASGI) transport for in-process tests.
 - Introduce bounded concurrency with `asyncio.Semaphore` and implement retry/backoff policies (`anyio`, `tenacity`).
 - Add idempotency keys to POST requests to avoid double-processing and design resilience tests around them.
-- Instrument async flows with trace IDs and metrics hooks for future observability.
+- Instrument async flows with trace identifiers (IDs) and metrics hooks for future observability.
 
-## Before Class – Async Preflight (JiTT)
+## Before Class – Async Preflight (Just-in-Time Teaching, JiTT)
 - Install async tooling:
   ```bash
   uv add "httpx==0.*" "anyio==4.*" "tenacity==9.*"
   ```
-- Review Python’s `asyncio` basics (LMS primer) and jot one question about concurrency hazards.
-- Ensure EX3 repository is cloned and `docker compose up` works locally; we will extend it next week.
+- Review Python’s `asyncio` basics (Learning Management System (LMS) primer) and jot one question about concurrency hazards.
+- Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you're exploring the optional Compose stretch, verify `docker compose up` succeeds before class.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Check-in & EX3 kickoff | 10 min | Discussion | Share project scope and reliability concerns. |
+| Check-in & EX3 kickoff | 10 min | Discussion | Share Exercise 3 (EX3) project scope and reliability concerns. |
 | Async primer | 18 min | Talk + whiteboard | Event loop, async/await, cooperative multitasking, pitfalls. |
-| Micro demo: AsyncClient + ASGITransport | 5 min | Live demo | Call FastAPI without network via `httpx.ASGITransport`. |
+| Micro demo: AsyncClient + ASGI transport | 5 min | Live demo | Call FastAPI without network via `httpx.ASGITransport`. |
 | Reliability patterns | 12 min | Talk | Retries, circuit breakers, idempotency keys, tracing. |
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Async recommendation job with bounded concurrency + retries.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Async tests, idempotency guarantees, instrumentation.** |
-| Wrap-up | 10 min | Discussion | Next steps for EX3 milestone, logging TODOs, Redis preview.
+| Wrap-up | 10 min | Discussion | Next steps for Exercise 3 (EX3) milestone, logging TODOs, Redis preview.
 
 ## Part A – Theory Highlights
-1. **Event loop refresher:** tasks share a thread, await I/O, avoid CPU-heavy work. Mention `asyncio.create_task`, `gather`, `Semaphore`.
+1. **Event loop refresher:** tasks share a thread, await input/output (I/O), avoid CPU-heavy work. Show `asyncio.create_task` (schedule work without blocking), `asyncio.gather` (wait for many coroutines at once), and `asyncio.Semaphore` (cap concurrency) so every student knows the building blocks.
 2. **Retry/backoff:** exponential vs. jitter, idempotent vs. non-idempotent operations, using `tenacity` decorators.
 3. **Idempotency keys:** Accept `Idempotency-Key` header, store processed keys (in-memory or Redis), and short-circuit duplicates.
 4. **Instrumentation:** Keep `X-Trace-Id` consistent; plan to emit metrics (Session 10) using Prometheus/Redis.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as Typer command-line interface (CLI)
+    participant Refresher as RecommendationRefresher
+    participant API as FastAPI /recommendations
+    participant Cache as Redis
+    participant DB as Movies database (DB)
+
+    CLI->>Refresher: enqueue jobs\n(limit N)
+    Refresher->>Refresher: semaphore guards concurrency
+    loop for each retry
+        Refresher->>API: POST /refresh\n(Idempotency-Key, X-Trace-Id)
+        alt successful response
+            API->>Cache: invalidate cached recommendations
+            API->>DB: update recommendation rows
+            API-->>Refresher: 202 Accepted + task id
+        else transient failure
+            API-->>Refresher: 5xx/timeout
+            Refresher->>Refresher: backoff & retry via tenacity
+        end
+    end
+    Refresher-->>CLI: emit metrics + success summary
+```
 
 ## Part B – Lab 1 (45 Minutes)
 
@@ -201,7 +226,7 @@ async def recommend(user_id: int) -> dict[str, object]:
     cache_recommendations(user_id, recs)
     return {"source": "fresh", "recommendations": recs}
 ```
-Discuss TTL strategy (one hour here) and note how Session 10’s Redis deployment makes this production-ready.
+Discuss time to live (TTL) strategy (one hour here) and note how Session 10’s Redis deployment makes this production-ready.
 
 ## Wrap-up & Next Steps
 - ✅ Async refresher, retries with jitter, idempotency keys, async tests.

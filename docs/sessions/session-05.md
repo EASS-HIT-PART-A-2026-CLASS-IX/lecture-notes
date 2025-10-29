@@ -6,36 +6,36 @@
 ## Learning Objectives
 - Model movies and ratings with SQLModel, including relationships and uniqueness constraints.
 - Run Alembic migrations to manage schema changes and seed baseline data.
-- Implement repository functions that use dependency-injected sessions, respecting trace IDs and validation rules.
+- Implement repository functions that use dependency-injected sessions, respecting trace identifiers (IDs) and validation rules.
 - Write tests that spin up a temporary SQLite database per test (fixtures preview for Session 07).
 
-## Before Class – Persistence Preflight (JiTT)
+## Before Class – Persistence Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
   ```bash
   uv add "sqlmodel==0.0.22" "alembic==1.*" "typer==0.*"
   ```
 - Create `alembic.ini` with `uv run alembic init migrations` if you want to peek ahead; note blockers for class.
-- Review SQLite basics (3-minute cheat sheet linked in LMS) and write down one question about indexes or foreign keys.
+- Review SQLite basics (3-minute cheat sheet linked in the Learning Management System (LMS)) and write down one question about indexes or foreign keys.
 - Optional: run the micro demo “SQLModel in-memory insert/select (5 lines)” from the quick-demos list so students arrive warmed up.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Recap & intent | 7 min | Discussion | What worked when adding pagination or feature flags to EX1? Any SQLite fears? |
+| Recap & intent | 7 min | Discussion | What worked when adding pagination or feature flags to Exercise 1 (EX1)? Any SQLite fears? |
 | SQLModel primer | 20 min | Talk + notebook | Tables, models, relationships, ordering, uniqueness. |
 | Micro demo: SQLModel insert/select | 3 min | Live demo (≤120 s) | `Session.add`, `Session.exec`, `.all()` in 5 lines. |
 | Alembic workflow | 15 min | Talk + whiteboard | `env.py`, autogenerate, upgrade/downgrade, seeding. |
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Wire SQLModel engine, models, migrations.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Repository + FastAPI integration tests, fixtures preview.** |
-| Wrap-up & EX1 milestone | 10 min | Q&A | Next steps: indexes, seeding CLI, Alembic discipline. |
+| Wrap-up & EX1 milestone | 10 min | Questions and Answers (Q&A) | Next steps: indexes, seeding CLI, Alembic discipline. |
 
 ## Part A – Theory Highlights
 1. **Zoom on `sqlmodel.SQLModel`:** inherits from `pydantic.BaseModel` for validation and `DeclarativeMeta` for SQLAlchemy features. Highlight `table=True` for tables vs. plain models for payloads.
 2. **Relationships:** `Relationship(back_populates=...)`, `Field(foreign_key="ratings.movie_id")`. Stress lazy vs eager loading and why we’ll use `selectinload` later.
 3. **Uniqueness/indexes:** `Field(index=True, unique=True)` for movie titles or slug fields.
-4. **Alembic autogenerate:** show the flow `alembic revision --autogenerate -m "create tables"` → inspect diff → `alembic upgrade head`. Emphasize manual review of migrations.
-5. **Trace IDs & logging:** reuse request-level `X-Trace-Id` when logging DB actions to keep observability consistent.
+4. **Alembic autogenerate:** show the flow `alembic revision --autogenerate -m "create tables"` → inspect diff → `alembic upgrade head`. Reinforce that Alembic is SQLAlchemy’s migration tool and still requires manual review of generated scripts.
+5. **Trace identifiers (IDs) & logging:** reuse request-level `X-Trace-Id` when logging database (DB) actions to keep observability consistent.
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
@@ -64,9 +64,27 @@ def get_session() -> Iterator[Session]:
     with Session(engine) as session:
         yield session
 ```
-Call `init_db()` once from a CLI (below) or during startup for development.
+Call `init_db()` once from a command-line interface (CLI) (below) or during startup for development.
 
 ### 2. Define models (`app/models.py`)
+```mermaid
+erDiagram
+    MOVIE ||--o{ RATING : "has many"
+    MOVIE {
+        int id PK
+        string title UNIQUE
+        int year
+        string genre
+    }
+    RATING {
+        int id PK
+        int movie_id FK
+        int score
+    }
+```
+
+`PK` denotes a primary key and `FK` denotes a foreign key in the entity diagram above.
+
 ```python
 from __future__ import annotations
 
@@ -281,7 +299,7 @@ Add a unique constraint check and raise HTTP 409 in the FastAPI route; note this
 - ✅ SQLModel models, Alembic migrations, FastAPI integration, and test coverage across the DB boundary.
 - Next: integrate metrics/logging (Session 07), add richer queries (`selectinload`), add seeded data via CLI, and explore read/write splitting as a thought experiment.
 - Encourage updating documentation (`docs/contracts/data-model.md`) with ER diagrams and constraints.
-- Point students to [docs/exercises.md](../exercises.md#ex2--frontend-choices) so they can plan the data requirements their UI (EX2) must satisfy.
+- Point students to [docs/exercises.md](../exercises.md#ex2--friendly-interface) so they can plan the data requirements their user interface (UI) deliverable for Exercise 2 (EX2) must satisfy.
 
 ## Troubleshooting
 - **`sqlite3.OperationalError: no such table`** → ensure migrations ran (`uv run alembic upgrade head`).

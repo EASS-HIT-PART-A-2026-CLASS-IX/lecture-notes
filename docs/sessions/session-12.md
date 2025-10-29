@@ -1,16 +1,16 @@
 # Session 12 – Tool-Friendly APIs and Final Prep
 
 - **Date:** Monday, Jan 26, 2026
-- **Theme:** Polish the API for external tools (MCP-friendly), lock in documentation/testing pipelines, and prep EX3 final presentations.
+- **Theme:** Polish the application programming interface (API) for external tools—make it Model Context Protocol (MCP)-friendly (MCP is the open standard that lets tools talk to language models), lock in documentation/testing pipelines, and prep Exercise 3 (EX3) final presentations.
 
 ## Learning Objectives
 - Expose tool-friendly endpoints with deterministic request/response models and OpenAPI examples (happy + sad paths).
-- Add finishing touches: ETag/`If-None-Match`, pagination, feature flags, CSV export endpoint.
-- Automate docs + quality gates (MkDocs/pdocs, Ruff, mypy, pre-commit, changelog).
-- Plan release checklist for EX3, including deployment commands and verification steps.
+- Add finishing touches: entity tag (ETag)/`If-None-Match`, pagination, feature flags, comma-separated values (CSV) export endpoint.
+- Automate documentation + quality gates (MkDocs/pdocs, Ruff, mypy, pre-commit, changelog).
+- Plan a release checklist for Exercise 3 (EX3), including deployment commands and verification steps.
 
-## Before Class – Final Prep (JiTT)
-- Ensure EX3 repos are up to date, Docker Compose stack runs cleanly, and tests pass with coverage + Schemathesis.
+## Before Class – Final Prep (Just-in-Time Teaching, JiTT)
+- Ensure Exercise 3 (EX3) repos are up to date, local run scripts succeed end to end, and tests pass with coverage + Schemathesis. (If you are exploring optional Compose/Redis extensions, double-check that stack too.)
 - Install doc tooling if not already:
   ```bash
   uv add "mkdocs-material==9.*" "pdocs==1.*" "ruff==0.*" "mypy==1.*" "pre-commit==3.*"
@@ -20,8 +20,8 @@
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| EX3 dry run | 20 min | Student demos | Show the Compose stack + tool endpoint + observability dashboards. |
-| Tool-friendly design | 15 min | Talk | Deterministic schemas, pagination strategy, ETags, versioning. |
+| EX3 dry run | 20 min | Student demos | Show the local run script/interface, tool-friendly endpoint, and any optional observability dashboards. |
+| Tool-friendly design | 15 min | Talk | Deterministic schemas, pagination strategy, entity tags (ETags), versioning. |
 | Micro demo: ETag handshake | 5 min | Live demo | `curl` with `If-None-Match` to show 304 responses. |
 | Release hygiene | 15 min | Talk | Pre-commit, Ruff, mypy, docs generation, changelog management. |
 | **Part B – Lab 1** | **45 min** | **Guided polish** | **Add pagination, ETags, CSV export, OpenAPI examples.** |
@@ -30,11 +30,25 @@
 | Closing circle | 10 min | Discussion | Reflect on growth, commit to next steps, celebrate wins.
 
 ## Part A – Theory Highlights
-1. **Tool readiness:** consistent schema, explicit examples, stable ids (ULIDs vs ints). For now keep ints but document transition plan.
+1. **Tool readiness:** consistent schema, explicit examples, stable identifiers (IDs) (Universally Unique Lexicographically Sortable Identifiers (ULIDs) vs ints). For now keep ints but document transition plan.
 2. **Pagination + filtering conventions:** `?page=1&page_size=20`, `X-Total-Count` header, link relations.
 3. **ETag caching:** Return `ETag` for list endpoints, support conditional GET to reduce load.
 4. **Docs automation:** MkDocs or pdocs to publish API docs; pre-commit ensures formatting/lint before commits; changelog via Conventional Commits.
-5. **Release checklist:** version bump, `uv sync --frozen`, `docker compose build`, smoke tests, tag release, update docs.
+5. **Release checklist:** version bump, `uv sync --frozen`, run the documented local demo, capture smoke evidence, tag release, update docs.
+
+```mermaid
+flowchart LR
+    Backlog["Backlog review\n(feature flags + scope)"]
+    Feature["Implement polish\n(pagination + ETag + CSV)"]
+    Tests["pytest + schemathesis\ncoverage"]
+    Quality["pre-commit hooks\nruff + mypy"]
+    Docs["Docs build\nMkDocs + pdocs"]
+    Package["Package prep\nuv sync --frozen"]
+    Release["Release checklist\n(tag + changelog + demo)"]
+    Tooling["Tool clients\n(MCP + HTTP)"]
+
+    Backlog --> Feature --> Tests --> Quality --> Docs --> Package --> Release --> Tooling
+```
 
 ## Part B – Lab 1 (45 Minutes)
 
@@ -212,11 +226,11 @@ Add `uv run ruff check .` and `uv run mypy app` to CI.
 - Adopt Conventional Commits (`feat:`, `fix:`, `docs:`) or equivalent; generate changelog with `git cliff` or manual notes.
 - Final release checklist example:
   1. Run `uv run pytest --cov` + `schemathesis` + `ruff` + `mypy`.
-  2. Build Docker images (`docker compose build`).
-  3. Run smoke tests (`docker compose run api uv run pytest tests/smoketests`).
+  2. Execute the documented local demo script (`uv run python -m app.demo` or the command listed in `docs/EX3-notes.md`) to prove the interface and API work together.
+  3. Capture smoke evidence (screenshots, short clip, or CLI transcript) that graders can reference alongside the README.
   4. Tag release (`git tag -a v0.3.0 -m "EASS EX3"`).
   5. Publish docs (`uv run mkdocs build && netlify deploy` or similar).
-- Map each checklist line to the [EX3 requirements](../exercises.md#ex3--advanced-backend--compose) so teams know which artifacts to submit.
+- Map each checklist line to the [EX3 requirements](../exercises.md#ex3--capstone-polish-kiss) so teams know which artifacts to submit.
 
 ### 4. MCP teaser
 Preview how today’s deterministic responses feed directly into the optional MCP workshop (tool endpoints for agents). Encourage teams to read `sessions/optional/mcp.md` before elective session.

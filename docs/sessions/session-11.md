@@ -1,41 +1,67 @@
 # Session 11 – Security Foundations
 
 - **Date:** Monday, Jan 19, 2026
-- **Theme:** Secure the movie service with proper auth, secrets hygiene, and threat modeling.
+- **Theme:** Secure the movie service with proper authentication (auth), secrets hygiene, and threat modeling.
 
 ## Learning Objectives
-- Hash passwords with `passlib[bcrypt]`, issue JWTs (`pyjwt`) with expiration, issuer, and audience claims.
-- Apply OWASP API Top 3 mitigations: authentication, input validation, secret management.
+- Hash passwords with `passlib[bcrypt]`, issue JSON Web Tokens (JWTs) (`pyjwt`) with expiration, issuer, and audience claims.
+- Apply Open Worldwide Application Security Project (OWASP) API Top 3 mitigations: authentication, input validation, secret management.
 - Audit `.env.example`, rotate keys, and document secure defaults for Docker/Compose.
 - Write security-focused tests (401/403 paths, JWT expiry, secret exposure checks).
 
-## Before Class – Security Preflight (JiTT)
+## Before Class – Security Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
   ```bash
   uv add "passlib[bcrypt]" "pyjwt==2.*"
   ```
 - Rotate any hard-coded secrets in your repo; ensure `.env` is gitignored and `.env.example` is up to date.
-- Review OWASP API Security Top 10 summary (LMS) and bring one question.
+- Review OWASP API Security Top 10 summary (Learning Management System (LMS)) and bring one question.
 - Optional: scan your repo with `trufflehog filesystem --exclude .git` to confirm secrets hygiene.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
 | Threat model warm-up | 10 min | Discussion | Identify assets, attackers, entry points. |
-| AuthN/AuthZ walkthrough | 18 min | Talk + code | Password hashing, JWT issuance, role-based access. |
+| Authentication (AuthN)/authorization (AuthZ) walkthrough | 18 min | Talk + code | Password hashing, JWT issuance, role-based access. |
 | Micro demo: JWT decode | 5 min | Live demo | `uv run python -m jwt decode` and explain claims. |
 | Secrets hygiene & OWASP | 12 min | Talk | .env discipline, least privilege, input validation, logging redaction. |
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Add password hashing, login endpoint, JWT tokens.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided hardening** | **Role-based guards, security tests, secret scanning.** |
-| Wrap-up | 10 min | Q&A | Prep for Session 12 (tool-friendly APIs), confirm EX3 security tasks.
+| Wrap-up | 10 min | Questions and Answers (Q&A) | Prep for Session 12 (tool-friendly APIs), confirm Exercise 3 (EX3) security tasks.
 
 ## Part A – Theory Highlights
 1. **Threat modeling:** assets (user data, movie catalog), adversaries (students, bots), attack surface (login, recommendations, admin endpoints).
-2. **Password storage:** never store plaintext; use `passlib.hash.bcrypt`. Mention pepper vs salt, password policies.
-3. **JWT anatomy:** header, payload, signature; include `exp`, `iat`, `iss`, `aud`, `roles`. Keep tokens short-lived.
+2. **Password storage:** never store plaintext; use `passlib.hash.bcrypt`. Clarify that a **salt** is a unique random string stored alongside each password hash to stop rainbow-table attacks, while a **pepper** is a separate secret kept outside the database so a stolen dump is still unusable. Close the loop with password policies students can adopt immediately.
+3. **JSON Web Token (JWT) anatomy:** header, payload, signature; include `exp`, `iat`, `iss`, `aud`, `roles`. Keep tokens short-lived.
 4. **Secrets hygiene:** `.env` vs `.env.example`, `docker compose` secrets, GitHub Actions secrets, never log tokens.
 5. **OWASP highlights:** Broken auth, excessive data exposure, lack of rate limiting (already addressed). Tie back to previous sessions.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client as Client App\n(Streamlit/Typer CLI)
+    participant API as FastAPI Auth Router
+    participant Bcrypt as Passlib bcrypt
+    participant JWT as JSON Web Token (JWT) Issuer
+    participant Guard as Protected Endpoint
+
+    User->>Client: Provide username + password
+    Client->>API: POST /token
+    API->>Bcrypt: verify_password()
+    Bcrypt-->>API: valid?
+    alt credentials valid
+        API->>JWT: create_access_token(subject, roles)
+        JWT-->>API: signed JWT
+        API-->>Client: 200 {"access_token": "..."}
+        Client->>Guard: GET /movies (Authorization: Bearer)
+        Guard->>JWT: decode + verify claims
+        JWT-->>Guard: roles + expiry ok
+        Guard-->>Client: 200 data
+    else invalid credentials
+        API-->>Client: 401 Unauthorized
+    end
+```
 
 ## Part B – Lab 1 (45 Minutes)
 

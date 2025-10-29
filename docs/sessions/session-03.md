@@ -4,12 +4,12 @@
 - **Theme:** Stand up the first FastAPI version of the movie service with dependency injection, validation, and reproducible tests.
 
 ## Learning Objectives
-- Map HTTP verbs to FastAPI path operations and enforce validation with Pydantic v2 (`model_validate`, `model_dump`, validators).
+- Map Hypertext Transfer Protocol (HTTP) verbs to FastAPI path operations and enforce validation with Pydantic v2 (`model_validate`, `model_dump`, validators).
 - Use FastAPI dependency injection to share settings and in-memory repositories safely between requests.
-- Propagate `X-Trace-Id` headers from clients (Session 02) through responses and logs to pave the way for observability.
+- Propagate `X-Trace-Id` trace identifier (ID) headers from clients (Session 02) through responses and logs to pave the way for observability.
 - Practice red→green testing with `pytest` and `TestClient`, covering both happy-path and error responses.
 
-## Before Class – FastAPI Preflight (JiTT)
+## Before Class – FastAPI Preflight (Just-in-Time Teaching, JiTT)
 - In `hello-uv`, install the core stack:
   ```bash
   uv add "fastapi==0.115.*" "uvicorn==0.*" "pydantic==2.*" "pydantic-settings==2.*" "httpx==0.*" "pytest==8.*"
@@ -27,13 +27,13 @@
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
 | Recap & intent setting | 7 min | Discussion | Share wins from the Session 02 Typer probe; surface `.env` questions. |
-| FastAPI anatomy & DI | 18 min | Talk + live coding | Path operations, dependency injection (`Depends`), settings, repositories. |
+| FastAPI anatomy & dependency injection (DI) | 18 min | Talk + live coding | Path operations, dependency injection (`Depends`), settings, repositories. |
 | Micro demo: pytest red→green | 3 min | Live demo (≤120 s) | Start from a failing test, make it pass, rerun the suite. |
 | Validation & trace propagation | 17 min | Talk + whiteboard | Pydantic v2 features, 422 errors, `X-Trace-Id` middleware, OpenAPI docs. |
-| **Part B – Lab 1** | **45 min** | **Guided coding** | **Scaffold FastAPI app with settings + repository DI.** |
+| **Part B – Lab 1** | **45 min** | **Guided coding** | **Scaffold FastAPI app with settings + repository dependency injection (DI).** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **TestClient suite, red→green workflow, contract assertions.** |
-| Wrap-up & EX1 checklist | 10 min | Q&A | Reinforce deliverables + backlog (pagination, OpenAPI examples, feature flags). |
+| Wrap-up & Exercise 1 (EX1) checklist | 10 min | Questions and Answers (Q&A) | Reinforce deliverables + backlog (pagination, OpenAPI examples, feature flags). |
 
 ## Part A – Theory Highlights
 1. **Request flow sketch:** Client (Typer CLI) → FastAPI router → dependency graph → repository → response. Highlight where validation triggers and where trace IDs enter logs.
@@ -45,7 +45,23 @@
    uv run pytest -q                                                     # turn it green
    ```
    Call out how quick feedback guides implementation.
-5. **Trace propagation:** If the client sends `X-Trace-Id`, echo it back. Otherwise generate and log it. Mention Logfire (Session 07) will hook into the same context.
+5. **Trace propagation:** If the client sends `X-Trace-Id`, echo it back. Otherwise generate and log it. Preview how Logfire—a hosted structured-logging service from the Pydantic team—will hook into the same context in Session 07 so every request has searchable metadata.
+
+```mermaid
+flowchart LR
+    Env[".env configuration"]
+    Config["config.py\nSettings"]
+    Repo["repository.py\nIn-memory CRUD"]
+    Deps["dependencies.py\nDepends wiring"]
+    App["main.py\nFastAPI routes"]
+    Tests["tests/\nTestClient suites"]
+
+    Env --> Config
+    Config --> Deps
+    Repo --> Deps
+    Deps --> App
+    App --> Tests
+```
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
@@ -53,7 +69,7 @@
 - **Minutes 0–10** – Create `Settings` and repository scaffolding.
 - **Minutes 10–25** – Wire FastAPI routes with dependency injection.
 - **Minutes 25–35** – Add trace-ID middleware and logging.
-- **Minutes 35–45** – Smoke-test endpoints via Swagger UI and curl.
+- **Minutes 35–45** – Smoke-test endpoints via Swagger user interface (UI) and `curl`.
 ### 1. Create `app/config.py`
 ```python
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -323,7 +339,7 @@ Share that Schemathesis (Session 02 stretch) can now target the real schema.
 - ✅ FastAPI CRUD skeleton with DI, settings, trace propagation, and tests.
 - Add before next week: `PUT /movies/{id}`, pagination parameters (`skip`, `limit` defaults from `Settings`), error normalization matching Session 02 spec, and README updates.
 - Remind students to log AI usage, keep `.env.example` updated, and push often.
-- Point everyone to the full brief in [docs/exercises.md](../exercises.md#ex1--backend-foundations) to double-check rubric expectations.
+- Point everyone to the full brief in [docs/exercises.md](../exercises.md#ex1--fastapi-foundations) to double-check rubric expectations.
 
 ## Troubleshooting
 - **ImportError for `BaseSettings`:** verify `pydantic-settings==2.*` is installed; rerun `uv add` if needed.

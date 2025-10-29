@@ -1,15 +1,15 @@
 # Session 04 – Docker Basics and Reverse Proxy Demo
 
 - **Date:** Monday, Nov 24, 2025
-- **Theme:** Package the FastAPI app into a production-friendly Docker image (multi-stage, non-root) and route traffic through `nginx` like production setups.
+- **Theme:** Package the FastAPI app into a production-friendly Docker image (multi-stage, non-root) and route traffic through NGINX like production setups.
 
 ## Learning Objectives
 - Explain containers vs. images and when to choose multi-stage builds.
 - Write a Dockerfile that installs dependencies with `uv`, runs as a non-root user, and exposes a healthcheck.
-- Create a `.dockerignore` to keep images lean and wire `nginx` as a reverse proxy.
-- Use Docker networks and logs to verify both services share trace IDs from Sessions 02–03.
+- Create a `.dockerignore` to keep images lean and wire NGINX as a reverse proxy.
+- Use Docker networks and logs to verify both services share trace identifiers (IDs) from Sessions 02–03.
 
-## Before Class – Container Preflight (JiTT)
+## Before Class – Container Preflight (Just-in-Time Teaching, JiTT)
 - Run `docker --version` and `docker compose version`; reinstall or start Docker Desktop if commands fail.
 - In `hello-uv`, create `.dockerignore` (if missing):
   ```ignore
@@ -21,7 +21,7 @@
   *.pyc
   docs/contracts/
   ```
-- Pull the latest `nginx:alpine` image: `docker pull nginx:alpine`. Saves time in class.
+- Pull the latest `nginx:alpine` image for NGINX: `docker pull nginx:alpine`. Saves time in class.
 - Skim GitHub’s article “Best practices for containers” (shared in LMS) and note one question about multi-stage builds or non-root users.
 
 ## Agenda
@@ -30,18 +30,28 @@
 | Recap & intent | 7 min | Discussion | Share FastAPI progress + any Docker install blockers. |
 | Docker mental model | 15 min | Talk + sketches | Images, layers, copy-on-write, registries, `docker history`. |
 | Micro demo: image size diff | 3 min | Live demo (≤120 s) | Compare single-stage vs multi-stage sizes with `docker image ls`. |
-| Reverse proxy concepts | 20 min | Talk + diagram | Why we use `nginx`, mapped ports, healthcheck endpoints, observing trace IDs. |
+| Reverse proxy concepts | 20 min | Talk + diagram | Why we use NGINX, mapped ports, healthcheck endpoints, observing trace identifiers (IDs). |
 | **Part B – Lab 1** | **45 min** | **Guided build** | **Write multi-stage Dockerfile, build image, run healthcheck.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
-| **Part C – Lab 2** | **45 min** | **Guided integration** | **Add `nginx` reverse proxy, inspect logs, prep for Compose.** |
-| EX1 help clinic | 10 min | Q&A | Checklist review, backlog (healthcheck, coverage, CI cache). |
+| **Part C – Lab 2** | **45 min** | **Guided integration** | **Add NGINX reverse proxy, inspect logs, prep for Compose.** |
+| Exercise 1 (EX1) help clinic | 10 min | Questions and Answers (Q&A) | Checklist review, backlog (healthcheck, coverage, CI cache). |
 
 ## Part A – Theory Highlights
 1. **Whiteboard layers:** Base image → system deps (curl) → `uv` install → project files → runtime command. Stress deterministic builds (`uv sync --frozen`).
 2. **Multi-stage rationale:** Build stage with compilers, runtime stage slim; smaller attack surface, faster pulls.
-3. **Non-root containers:** Use `useradd` to create `app` user and run `uvicorn` without root. Mention security tie-in for Session 11.
-4. **Healthcheck endpoint:** Map `/health` (built in Session 03) to Docker `HEALTHCHECK`. Explain CI/CD gating on it.
-5. **Reverse proxy preview:** `nginx` handles TLS, compression, static caching; our app stays simple.
+3. **Non-root containers:** Use `useradd` to create an `app` user and run `uvicorn` without root so a compromised process cannot rewrite the whole filesystem. Flag how this least-privilege habit connects to Session 11’s security checklists.
+4. **Healthcheck endpoint:** Map `/health` (built in Session 03) to Docker `HEALTHCHECK`. Explain continuous integration/continuous delivery (CI/CD) gating on it.
+5. **Reverse proxy preview:** NGINX handles Transport Layer Security (TLS), compression, static caching; our app stays simple.
+
+```mermaid
+flowchart LR
+    Client[Browser or REST Client] -->|HTTPS 443| Nginx
+    Nginx -->|Proxy: /api| FastAPI
+    FastAPI -->|SQLModel session| SQLite[(SQLite database)]
+    FastAPI -->|Future cache hit| Redis[(Redis)]
+    Nginx -->|Static assets (optional)| Frontend[Streamlit/React]
+    FastAPI -->|/health| Healthcheck[Docker Healthcheck]
+```
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
@@ -51,7 +61,7 @@
 - **Minutes 25–35** – Build the image, run the container, inspect logs.
 - **Minutes 35–45** – Analyze layer sizes and discuss optimization.
 ### 1. Update FastAPI app for readiness probe (optional but recommended)
-In `app/main.py`, ensure `/health` returns `{"status": "ok"}` quickly—no DB calls yet. This keeps Docker healthchecks fast.
+In `app/main.py`, ensure `/health` returns `{"status": "ok"}` quickly—no database (DB) calls yet. This keeps Docker healthchecks fast.
 
 ### 2. Create `Dockerfile`
 ```dockerfile
@@ -120,7 +130,7 @@ Compare against a quick single-stage build (for teaching only) and note the size
 ## Part C – Hands-on Lab 2 (45 Minutes)
 
 ### Lab timeline
-- **Minutes 0–10** – Author nginx config and discuss headers.
+- **Minutes 0–10** – Author NGINX config and discuss headers.
 - **Minutes 10–25** – Launch API + proxy containers on shared network.
 - **Minutes 25–35** – Verify proxy requests and inspect logs.
 - **Minutes 35–45** – Clean up containers and brainstorm Compose extensions.
@@ -160,16 +170,16 @@ Double-check end-to-end routing:
 # Direct API
 curl -i http://localhost:8000/health
 
-# Through nginx proxy
+# Through NGINX proxy
 curl -i http://localhost:8080/health
 
 # Compare headers to verify proxy involvement
 curl -I http://localhost:8000/health
 curl -I http://localhost:8080/health
 ```
-Point out any additional headers (e.g., `Server: nginx/…`) to confirm the proxy path.
+Point out any additional headers (e.g., `Server: nginx/…`) to confirm the NGINX proxy path.
 
-> 🎉 **Quick win:** When both curls return `200 OK` (and nginx headers appear), you’ve successfully mimicked a production-ready reverse proxy.
+> 🎉 **Quick win:** When both curls return `200 OK` (and NGINX headers appear), you’ve successfully mimicked a production-ready reverse proxy.
 
 ### 3. Cleanup
 ```bash
@@ -201,7 +211,7 @@ services:
 - **Due Tue Dec 2, 23:59.**
 - Minimum checklist: CRUD endpoints, tests, Docker image (`movies-api:multi-stage`), README instructions, AI usage notes.
 - **Stretch/backlog ideas:** add `HEALTHCHECK` to Dockerfile (done), produce `docker compose` override, prebuild GitHub Actions job using cache (`uv sync --frozen`), and document `X-Trace-Id` behavior in README.
-- Reference the complete rubric in [docs/exercises.md](../exercises.md#ex1--backend-foundations) so teams know which Docker deliverables are required.
+- Reference the complete rubric in [docs/exercises.md](../exercises.md#ex1--fastapi-foundations) so teams know which Docker deliverables are required.
 
 ## Troubleshooting
 - **Permission denied binding ports** → ensure Docker Desktop is running and port 8000/8080 free (`lsof -i :8000`).
@@ -211,7 +221,7 @@ services:
 ### Common pitfalls
 - **`uv` missing inside container** – confirm `ENV PATH` includes `/root/.local/bin` in builder stage and `/home/app/.local/bin` in runtime.
 - **Permission denied writing logs** – ensure `chown -R app:app /app` before switching to `USER app`.
-- **Proxy loop (502)** – verify nginx `proxy_pass` uses the container name (`movies-api`) and both containers share the same Docker network.
+- **Proxy loop (502)** – verify NGINX `proxy_pass` uses the container name (`movies-api`) and both containers share the same Docker network.
 
 ## Student Success Criteria
 
@@ -219,11 +229,11 @@ By the end of Session 04, every student should be able to:
 
 - [ ] Build and run a non-root multi-stage Docker image for the FastAPI service.
 - [ ] Validate the container via `/health` and inspect logs that show propagated trace IDs.
-- [ ] Stand up an nginx reverse proxy that serves traffic through `http://localhost:8080`.
+- [ ] Stand up an NGINX reverse proxy that serves traffic through `http://localhost:8080`.
 
 **Missing a checkbox? Queue up an office hour before Session 05.**
 
 ## AI Prompt Seeds
 - “Write a multi-stage Dockerfile that installs dependencies with uv and runs FastAPI as a non-root user.”
-- “Draft an nginx config that forwards `X-Trace-Id` headers to an upstream FastAPI service.”
+- “Draft an NGINX config that forwards `X-Trace-Id` headers to an upstream FastAPI service.”
 - “Explain how Docker healthchecks integrate with GitHub Actions deploy pipelines.”

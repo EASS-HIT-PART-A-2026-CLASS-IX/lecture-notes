@@ -1,7 +1,7 @@
 # Session 01 – Kickoff and Environment Setup
 
 - **Date:** Monday, Nov 3, 2025
-- **Theme:** Welcome everyone, set expectations, and make sure every student can create and run a Python project using uv, Git, and VS Code.
+- **Theme:** Welcome everyone, set expectations, and make sure every student can create and run a Python project using uv, Git, and Visual Studio Code (VS Code).
 
 ## Learning Objectives
 - Understand course structure, grading, and support channels.
@@ -10,9 +10,9 @@
 
 **Guiding principles:** keep everything **KISS** (Keep It Simple, Students) and share questions using the **PARD** format (Problem → Action → Result → Desired) so we can move fast together. All commands assume macOS, Linux, or Windows Subsystem for Linux (WSL); no native Windows PowerShell steps are covered.
 
-You are how you act: forget Rousseau's inner goodness—Franklin reminds us that habits win and you become what you repeatedly do. Even with "vibe coding" and AI helpers at your side, your job is to own the repo, keep the tests green, and make sure the code stays explainable and scalable.
+You are how you act: forget Rousseau's inner goodness—Franklin reminds us that habits win and you become what you repeatedly do. Even with "vibe coding" and artificial intelligence (AI) helpers at your side, your job is to own the repo, keep the tests green, and make sure the code stays explainable and scalable.
 
-## Before Class – Equipment Check (JiTT)
+## Before Class – Equipment Check (Just-in-Time Teaching, JiTT)
 Ask students to complete this 5-minute checklist the night before:
 - Run `python3 --version` (or `py --version` on Windows), `uv --version`, `git --version`, and `code --version`. Paste the commands _and_ outputs in Discord `#helpdesk` using the **Problem → Action → Result → Desired** template (see below).
 - Note any failures or missing commands so we can triage on arrival; do **not** spend hours debugging alone.
@@ -24,8 +24,8 @@ Ask students to complete this 5-minute checklist the night before:
 | --- | --- | --- | --- |
 | **PART A – Theory & Motivation** | **45 min** | **Talk + Discussion** | **Course overview, tools landscape, mindset** |
 | Warm welcome | 5 min | Discussion | Zoom breakouts: one-sentence intros + goals |
-| Course overview | 15 min | Talk | Syllabus, grading (3 exercises), single monorepo + EX3 Azure deployment (Azure for Students), expectations for collaboration and AI usage |
-| Tool belt briefing | 25 min | Talk + quick demos | Why uv, how Git will be used, VS Code essentials, FastAPI for backends, Docker for deployment, LLMs as coding assistants and in projects |
+| Course overview | 15 min | Talk | Syllabus, grading (3 exercises), single monorepo (recommended) + Exercise 3 (EX3) local capstone scope, expectations for collaboration and AI usage |
+| Tool belt briefing | 25 min | Talk + quick demos | Why uv, how Git will be used, Visual Studio Code (VS Code) essentials, FastAPI for backends, Docker for deployment, large language models (LLMs) as coding assistants and in projects |
 | **Break** | **10 min** | **—** | **Encourage movement – launch [10-minute timer](https://e.ggtimer.com/10minutes)** |
 | **PART B – Hands-on Lab 1** | **45 min** | **Guided coding** | **Scaffold the starter project, run first test** |
 | Environment setup | 10 min | Guided | Install verification, create project directory |
@@ -46,6 +46,18 @@ Ask students to complete this 5-minute checklist the night before:
 3. **Break – 10 Minutes:** Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes) and reset.
 4. **Part C – Hands-on Lab 2:** VS Code workflow, terminal practice, documentation, and Git basics.
 5. **Wrap-up:** Recap key wins and outline homework.
+
+```mermaid
+flowchart LR
+    JiTT["Just-in-Time Teaching (JiTT): Tool Check"]
+    PartA["Part A: Theory & Mindset"]
+    Lab1["Part B: Lab 1 – Project Bootstrap"]
+    Break1(["10-min Break"])
+    Lab2["Part C: Lab 2 – VS Code & Git"]
+    Wrap["Wrap-up & Homework"]
+
+    JiTT --> PartA --> Lab1 --> Break1 --> Lab2 --> Wrap
+```
 
 ## Lab Quick Reference (Printable)
 
@@ -145,12 +157,12 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 
 ## Talking Script – Course Overview (First 45 Minutes)
 1. **Introduce yourself and the course tone.** "This class is about learning by doing. You will see me live-code and you will copy/paste freely. Questions are always welcome. Trust the process—even if things feel unfamiliar at first, by the end you'll be building real web applications with modern tools."
-2. **Set expectations for participation.** "We use Discord for day-to-day help. Post what you tried before asking. Pair up during labs so nobody gets stuck. Join using the LMS link (backup: https://go.eass.dev/discord) and use the `#helpdesk` channel for all technical questions."
+2. **Set expectations for participation.** "We use Discord for day-to-day help. Post what you tried before asking. Pair up during labs so nobody gets stuck. Join using the Learning Management System (LMS) link (backup: https://go.eass.dev/discord) and use the `#helpdesk` channel for all technical questions."
 3. **Explain grading.** “We have three large exercises. Each one is assigned on a Monday and due on a Tuesday three weeks later. There are no surprise quizzes. Show up, code along, and you will earn the grade.”
-4. **Call out the monorepo + cloud deployment plan.** "You’ll keep all three exercises in the same Git repo so EX2 builds on EX1 and EX3 ships the whole stack. Only EX3 goes online: claim your [Azure for Students](https://azure.microsoft.com/en-us/free/students) account tonight so you have the \$100 credit (no card). Deploy the final Docker Compose stack to a single Azure compute instance and watch your balance so nothing bills past the grant."
+4. **Call out the monorepo + KISS pledge.** "You’re welcome to keep all three exercises in one Git repo so EX2 naturally builds on EX1 and EX3 pulls everything together—but it’s not mandatory. What *is* required: keep every deliverable simple, local, and easy to demo on your laptop. No cloud accounts, no security audits, just clean FastAPI + SQLModel fundamentals."
 5. **Clarify AI policy.** "You may use AI tools like ChatGPT, Claude, Gemini, Cursor, Copilot, LM Studio, or Ollama. You must understand every line you submit, keep a lightweight spec (spec.md or a tessl.io export) in your repo, and when you ask for help share Problem → Action → Result → Desired."
 6. **Outline the tool belt.** "Today we confirm Python 3.11+, uv for environments, Git for version control, VS Code for editing, and Docker Desktop for later sessions. Soon we'll add FastAPI for building web APIs and learn to use LLMs both as coding assistants (to help you write code faster) and as components inside your applications (like calling a local LLM endpoint)."
-7. **Preview AWS Academy requirement.** "You also complete three AWS Academy Cloud Foundations modules—Compute, Storage, and Databases. All three modules are due **Tuesday, Dec 16, 2025**. This gives you plenty of time, but don't wait until the last minute. Start early and pace yourself."
+7. **Preview the three KISS exercises.** "You’ll ship three small deliverables: EX1 is a FastAPI + SQLModel CRUD API, EX2 is a friendly Streamlit dashboard or Typer CLI, and EX3 stitches them together with one thoughtful improvement. Everything runs locally—no cloud or security gauntlets."
 8. **Transition to Part B.** "Let's make sure every laptop can create a project. Follow along exactly; copy/paste saves time."
 
 ---
@@ -173,18 +185,17 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 1. **Course structure:**
    - 12 meetings (Mondays), each with theory + two hands-on labs.
    - Three major exercises (EX1, EX2, EX3) with Tuesday deadlines.
-   - AWS Academy Cloud Foundations: three modules (Compute, Storage, Databases) due **Tue Dec 16, 2025**.
+   - KISS focus: every deliverable runs locally on Linux/WSL/macOS—no cloud hoops or security audits.
 
 2. **Grading breakdown:**
-   - EX1 (Backend API): 25%
-   - EX2 (Frontend UI): 25%
-   - EX3 (Multi-service with Docker Compose): 25%
-   - AWS Academy (3 modules): 25%
+   - EX1 (FastAPI foundations): 30%
+   - EX2 (Friendly interface): 30%
+   - EX3 (Capstone polish): 40%
    - All components must be completed to pass the course.
 
 3. **Collaboration & support:**
    - Discord server: see the LMS announcement for the latest invite (backup short link: https://go.eass.dev/discord).
-   - Use the `#helpdesk` channel for all technical questions, AWS Academy help, and general support.
+   - Use the `#helpdesk` channel for all technical questions and general support.
    - When asking for help, follow the **Problem → Action → Result → Desired** pattern: “I tried X, saw result R, and I’m aiming for Y.” Screenshots alone are not enough—share the exact command and output.
    - Pair programming during labs is encouraged—nobody should be stuck alone.
    - Once you join Discord, share your GitHub username and email so I can send you the GitHub Classroom invitations.
@@ -766,10 +777,9 @@ Treat these as teasers—you’ll master them in later sessions.
      - Join Discord (LMS link or https://go.eass.dev/discord)
      - Share your GitHub username and email in `#helpdesk` so I can send you invitations
    - **This week:** 
-     - Wait for the AWS Academy invitation link (I'll send it after you share your email)
-     - Once you get it, enroll in AWS Academy Cloud Foundations immediately
-     - Start the Compute module early—all three modules are due **Tuesday, Dec 16, 2025**
-     - (Optional) Push your `hello-uv` project to GitHub once you get the GitHub Classroom link
+     - Keep your `hello-uv` repo handy and re-run `uv run pytest -q` to stay sharp.
+     - Jot down one improvement you want to add to the movie API once we build it next week.
+     - (Optional) Push your `hello-uv` project to GitHub once you get the GitHub Classroom link.
    - **Before next class:**
      - Make sure Docker Desktop is installed and running
      - Run `docker run --rm hello-world` to verify Docker works
@@ -779,7 +789,7 @@ Treat these as teasers—you’ll master them in later sessions.
    "Next Monday we dive into HTTP and REST APIs. You'll learn how browsers and servers talk, and you'll build your first HTTP client using httpx. Bring your laptops charged and your `hello-uv` project ready."
 
 5. **Q&A:**
-   "Any questions about today's material, the exercises, grading, or AWS Academy?"
+   "Any questions about today's material, the exercises, or expectations?"
 
 6. **Final reminder:**
    "Remember: trust the process. If something doesn't make sense today, it will make sense by Meeting 4. Keep coding, keep asking questions in `#helpdesk`, and help each other out on Discord."
@@ -816,24 +826,12 @@ Post in Discord `#helpdesk`:
 ### After Class:
 - [ ] Post session recording (if recorded) to Canvas
 - [ ] Share troubleshooting notes in Discord
-- [ ] Send AWS Academy invitation links to students who shared their emails
 - [ ] Send GitHub Classroom invitation links to students who shared their GitHub usernames
 - [ ] Prepare starter code for Meeting 2 (HTTP client examples with httpx)
 
 ---
 
 ## Support Blocks (Run as Needed)
-
-### AWS Academy Onboarding (15 Minutes)
-*Assign during class only if many students still need access; otherwise set as homework.*
-
-**Instructor prompts:**
-1. Highlight the three required Cloud Foundations modules: **Compute**, **Storage**, **Databases**.
-2. Point students to [https://www.awsacademy.com](https://www.awsacademy.com) → **Student** sign-in and remind them to share their GitHub username + email in `#helpdesk` so you can issue invites.
-3. Restate the single deadline: **Tuesday, Dec 16, 2025** for all modules. Encourage pacing (e.g., one module per two weeks).
-4. Demonstrate how to capture the completion certificate for Canvas submission and where to ask questions (always `#helpdesk`, using PARD format).
-
-**Student follow-up:** enroll, confirm module access, schedule time to finish Compute (target: Nov 25) and the other two by Dec 16.
 
 ### Windows WSL Setup Guide (Self-Contained)
 *Share with Windows participants who are still on PowerShell-only environments.*

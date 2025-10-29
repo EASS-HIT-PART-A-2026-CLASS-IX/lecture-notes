@@ -1,21 +1,21 @@
 # Session 08 – Working with AI Coding Assistants (LM Studio or vLLM)
 
 - **Date:** Monday, Dec 22, 2025
-- **Theme:** Pair program with AI safely—prompt with intent, review outputs critically, and wire agents to your FastAPI backend using Pydantic AI.
+- **Theme:** Pair program with artificial intelligence (AI) safely—prompt with intent, review outputs critically, and wire agents to your FastAPI backend using Pydantic AI (a typed agent framework built by the Pydantic team).
 
 ## Learning Objectives
 - Apply spec-first and tests-first prompting patterns to extend the movie service while keeping humans in charge.
-- Wrap the FastAPI API behind a Pydantic AI tool-call function that validates inputs/outputs and emits Logfire telemetry.
-- Call a local LLM endpoint (LM Studio or vLLM) and evaluate responses automatically with tests.
-- Document AI assistance and toggle telemetry/privacy settings responsibly.
+- Wrap the FastAPI application programming interface (API) behind a Pydantic AI tool-call function that validates inputs/outputs and emits Logfire telemetry.
+- Call a local large language model (LLM) endpoint (LM Studio or vLLM) and evaluate responses automatically with tests.
+- Document artificial intelligence (AI) assistance and toggle telemetry/privacy settings responsibly.
 
-## Before Class – AI Preflight (JiTT)
+## Before Class – AI Preflight (Just-in-Time Teaching, JiTT)
 - Install agent tooling:
   ```bash
   uv add "pydantic-ai==0.*" "httpx==0.*"
   ```
-- Ensure LM Studio or vLLM is running locally (or know how to start the Docker image shared in LMS). Note the base URL.
-- Prefer vLLM? Pull and run TinyLlama ahead of time:
+- Ensure LM Studio (desktop app for hosting local models) or vLLM (open-source high-performance inference server) is running locally—or know how to start the Docker image shared in the Learning Management System (LMS). Note the base URL.
+- Prefer vLLM (Versatile Large Language Model)? Pull and run TinyLlama ahead of time:
   ```bash
   docker run --rm -p 8000:8000 \
     -v ~/.cache/huggingface:/root/.cache/huggingface \
@@ -24,30 +24,47 @@
 
   curl http://localhost:8000/v1/models  # confirm the endpoint is live
   ```
-- Update your EX2 README with AI usage to date; bring one prompt you felt proud of and one that failed.
-- Optional: skim the MCP primer to prepare for Session 12’s tool-friendly APIs.
+- Update your Exercise 2 (EX2) README with AI usage to date; bring one prompt you felt proud of and one that failed.
+- Optional: skim the Model Context Protocol (MCP) primer to prepare for Session 12’s tool-friendly APIs.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| EX2 gallery walk | 15 min | Student demos | Quick UI walkthroughs + trace ID check. |
+| EX2 gallery walk | 15 min | Student demos | Quick UI walkthroughs + trace identifier (ID) check. |
 | Policy & prompting refresh | 15 min | Talk | Course policy, attribution, spec/tests-first prompts. |
 | Micro demo: prompt → test | 5 min | Live demo | Ask AI for tests first, implement after verifying. |
-| Pydantic AI tool-calling | 20 min | Talk + live coding | Define schema, validate I/O, send telemetry, guardrails. |
+| Pydantic AI tool-calling | 20 min | Talk + live coding | Define schema, validate input/output (I/O), send telemetry, guardrails. |
 | **Part B – Lab 1** | **45 min** | **Guided pairing** | **Extend API with AI help, evaluate via pytest.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided agent** | **Connect LM Studio/vLLM through Pydantic AI + automated evaluation.** |
 | Retrospective & next steps | 10 min | Discussion | Share effective prompts, log outstanding risks.
 
 ## Part A – Guardrails & Patterns
-1. **Policy recap:** You may use AI but must understand every line, document assistance, and keep specs/tests in repo. Never paste confidential data.
+1. **Policy recap:** You may use artificial intelligence (AI) but must understand every line, document assistance, and keep specs/tests in repo. Never paste confidential data.
 2. **Prompting templates:**
    - Spec-first (“Given this spec, draft code”)
    - Tests-first (“Write pytest for ... before implementation”)
    - Refactor (“Here is existing code; keep behavior, improve structure”)
 3. **Micro demo:** Use ChatGPT/Claude to generate pytest cases for a new `/movies/{id}/ratings` endpoint, implement manually, rerun tests.
 4. **Telemetry toggles:** Show how to run Pydantic AI with `logfire` instrumentation turned on/off (privacy) and how to scrub tokens before logging.
-5. **Attribution:** Update README changelog or PR template with “AI-assisted sections” including prompt summary.
+5. **Attribution:** Update README changelog or pull request (PR) template with “AI-assisted sections” including prompt summary.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as FastAPI API
+    participant Agent as Pydantic AI Agent
+    participant LLM as Local large language model (LLM) (LM Studio/vLLM)
+    participant Logfire
+
+    User->>API: POST /movies/{id}/pitch
+    API->>Agent: Build prompt + context
+    Agent->>LLM: Invoke with tool schema
+    LLM-->>Agent: Structured suggestion
+    Agent-->>API: Validated reply
+    API-->>User: JSON response + trace identifier (trace_id)
+    Agent->>Logfire: Telemetry (if enabled)
+```
 
 ## Part B – Lab 1 (45 Minutes)
 

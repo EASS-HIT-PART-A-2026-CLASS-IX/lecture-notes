@@ -4,17 +4,17 @@
 - **Theme:** Run the movie API with Redis and worker services via Docker Compose, enforce service contracts, and introduce rate limiting/background jobs.
 
 ## Learning Objectives
-- Model multi-service environments with Docker Compose (API, Redis, worker, proxy).
+- Model multi-service environments with Docker Compose (application programming interface (API), Redis, worker, proxy).
 - Use Redis for caching and rate limiting (`slowapi`) and discuss background jobs (Celery or Arq) for async tasks.
 - Harden API contracts with Schemathesis (from Session 02 stretch) and document expectations in `docs/service-contract.md`.
-- Wire coverage + contract tests into GitHub Actions for CI confidence.
+- Wire coverage + contract tests into GitHub Actions for continuous integration (CI) confidence.
 
-## Before Class – Compose Preflight (JiTT)
+## Before Class – Compose Preflight (Just-in-Time Teaching, JiTT)
 - Install Redis locally or ensure Docker Desktop can pull `redis:7-alpine`:
   ```bash
   docker pull redis:7-alpine
   ```
-- Review the provided Compose primer (LMS) and list one question about networking or environment variables.
+- Review the provided Compose primer (Learning Management System (LMS)) and list one question about networking or environment variables.
 - Run `uv run schemathesis run docs/contracts/openapi.json --checks status_code_conformance --dry-run` to confirm tooling works.
 
 ## Agenda
@@ -27,14 +27,32 @@
 | **Part B – Lab 1** | **45 min** | **Guided build** | **Docker Compose stack with FastAPI, Redis, background worker.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided validation** | **Rate limiting, contract tests, GitHub Actions CI pipeline.** |
-| Wrap-up | 10 min | Q&A | EX3 milestone reminder, deployment prep.
+| Wrap-up | 10 min | Questions and Answers (Q&A) | Exercise 3 (EX3) milestone reminder, deployment prep.
 
 ## Part A – Theory Highlights
 1. **Compose structure:** `services` block, named volumes, networks, environment variables, healthchecks (`depends_on` with `service_healthy`).
-2. **Redis roles:** caching (movie list), rate limiting tokens, job queue backend.
+2. **Redis roles:** caching (movie list), rate limiting tokens, job queue backend—make sure students know Redis is an in-memory key-value datastore that excels at fast counters and lists.
 3. **Background jobs:** choose one lightweight runner (Arq or Celery). For class we’ll show Arq because it rides on asyncio.
 4. **Contracts:** `docs/service-contract.md` documents request/response shapes; Schemathesis enforces them alongside integration tests.
-5. **CI pipeline:** Compose for local dev, GitHub Actions for CI (use services job with `services.redis`, run `uv sync --frozen`, `pytest --cov`, `schemathesis`).
+5. **Continuous integration (CI) pipeline:** Compose for local dev, GitHub Actions for CI (use services job with `services.redis`, run `uv sync --frozen`, `pytest --cov`, `schemathesis`).
+
+```mermaid
+flowchart LR
+    Client["Browser / Streamlit / Typer"]
+    Proxy["Reverse Proxy\n(nginx optional)"]
+    API["FastAPI API\n(api service)"]
+    Worker["Background Worker\n(Arq/Celery)"]
+    Redis[(Redis Cache\nredis:7-alpine)]
+    CI["GitHub Actions CI\n(contracts + coverage)"]
+
+    Client --> Proxy
+    Proxy --> API
+    Client --> API
+    API --> Redis
+    Worker --> Redis
+    CI -->|"schemathesis + pytest"| API
+    CI -->|"redis service"| Redis
+```
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
@@ -162,7 +180,7 @@ class WorkerSettings:
     functions = [refresh_recommendations]
     cron_jobs = [cron(refresh_recommendations, cron_string="0 * * * *", kwargs={"user_id": 42})]
 ```
-Explain Arq’s simplicity and how it leverages async functions. Mention Celery as alternative if teams want more features.
+Explain Arq’s simplicity: it is a lightweight task queue that reuses `async def` functions and the same Redis instance, so students do not need to learn a new worker process model. Contrast it briefly with **Celery**, the older, feature-rich queue that supports multiple brokers (Redis/RabbitMQ) but demands more setup—point out when the heavier tool is worth the trade-off.
 
 ### 5. Caching `GET /movies`
 Wrap the list route in `app/main.py`:
@@ -237,12 +255,12 @@ Use `freezegun` or monkeypatch time if the window needs reset.
 Update `docs/service-contract.md` with:
 - Rate limit headers and expected values.
 - Cache invalidation rules.
-- Background job SLA (refresh runs every hour; immediate manual trigger via CLI).
+- Background job service level agreement (SLA) (refresh runs every hour; immediate manual trigger via CLI).
 
 ## Wrap-up & Next Steps
 - ✅ Compose stack, Redis cache + rate limiting, background worker, contract testing, CI pipeline outline.
 - Prep for Session 11 (Security Foundations): audit secrets, rotate tokens, create `.env.example` entries for Redis auth if enabled.
-- Point teams to the EX3 brief in [docs/exercises.md](../exercises.md#ex3--advanced-backend--compose) so they align infrastructure deliverables with the milestone.
+- Point teams to the EX3 brief in [docs/exercises.md](../exercises.md#ex3--capstone-polish-kiss) so they align infrastructure deliverables with the milestone.
 
 ## Troubleshooting
 - **Redis connection refused** → confirm Compose network is up or local Redis running; check `redis_url` env.

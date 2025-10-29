@@ -19,10 +19,37 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 ## Quick Links
 - [Course schedule by session](#course-schedule)
 - [Exercise lineup and deadlines](exercises.md)
-- [AWS Academy Cloud Foundations modules](exercises.md#aws-academy-cloud-foundations-modules)
 - [Optional MCP Workshop](sessions/optional/mcp.md)
+- [Optional DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md)
 - [Legacy slide archives](https://github.com/EASS-HIT-PART-A-2025-CLASS-VIII/lecture-notes/tree/main/lectures/archive)
 - [Troubleshooting tips](troubleshooting.md)
+- [Team Topologies summary](sessions/optional/TeamTopologies.md)
+
+## Visual Roadmap
+```mermaid
+gantt
+    title EASS 12-Session Journey
+    dateFormat  YYYY-MM-DD
+    section Foundations
+    Session\ 01 – Kickoff (Env, Git)         :milestone, 2025-11-03, 0d
+    Session\ 02 – HTTP/REST Probing          :milestone, 2025-11-10, 0d
+    Session\ 03 – FastAPI Fundamentals       :milestone, 2025-11-17, 0d
+    Session\ 04 – Docker & Reverse Proxy     :milestone, 2025-11-24, 0d
+    section Delivery
+    Session\ 05 – Persistence                :milestone, 2025-12-01, 0d
+    Session\ 06 – Frontend Choices           :milestone, 2025-12-08, 0d
+    Session\ 07 – Testing & Diagnostics      :milestone, 2025-12-15, 0d
+    Session\ 08 – AI-Assisted Coaching       :milestone, 2025-12-22, 0d
+    section Extension\ Ideas
+    Session\ 09 – Async Refresh (Optional)   :milestone, 2025-12-29, 0d
+    Session\ 10 – Compose Concepts (Optional):milestone, 2026-01-05, 0d
+    Session\ 11 – Security Tour (Optional)   :milestone, 2026-01-12, 0d
+    Session\ 12 – Tool-Friendly APIs         :milestone, 2026-01-19, 0d
+    section Assessments
+    EX1\ Window                              :active, 2025-11-10, 2025-12-02
+    EX2\ Window                              :active, 2025-12-01, 2025-12-23
+    EX3\ KISS\ Capstone                      :active, 2026-01-05, 2026-02-10
+```
 
 ## Course Schedule
 1. [Session 01 – Kickoff and Environment Setup](sessions/session-01.md)
@@ -33,25 +60,25 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 6. [Session 06 – Movie Dashboards with Streamlit & React](sessions/session-06.md)
 7. [Session 07 – Testing, Logging, and Profiling Basics](sessions/session-07.md)
 8. [Session 08 – Working with AI Coding Assistants (LM Studio or vLLM)](sessions/session-08.md)
-9. [Session 09 – Async Recommendation Refresh](sessions/session-09.md)
-10. [Session 10 – Docker Compose, Redis, and Service Contracts](sessions/session-10.md)
-11. [Session 11 – Security Foundations](sessions/session-11.md)
+9. [Session 09 – Async Recommendation Refresh _(Optional exploration)_](sessions/session-09.md)
+10. [Session 10 – Docker Compose, Redis, and Service Contracts _(Optional ideas)_](sessions/session-10.md)
+11. [Session 11 – Security Foundations _(Optional vocabulary only)_](sessions/session-11.md)
 12. [Session 12 – Tool-Friendly APIs and Final Prep](sessions/session-12.md)
 
-**Optional add-on:** [MCP Workshop – Weather MCP Server](sessions/optional/mcp.md) for teams who want to ship MCP-compatible tools after Session 12.
+**Optional add-ons:**  
+- [MCP Workshop – Weather MCP Server](sessions/optional/mcp.md) for teams who want to ship MCP-compatible tools after Session 12.  
+- [DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md) for students who want a local analytics sandbox that complements Session 05.
 
 ## Exercises at a Glance
-- **EX1 – Backend Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025
-- **EX2 – Frontend Choices (Streamlit or React)**: assigned Mon Dec 1 · due Tue Dec 23, 2025
-- **EX3 – Advanced Backend + Compose**: assigned Mon Jan 5 · milestone Tue Jan 20, 2026 · final Tue Feb 10, 2026
-- **AWS Academy Cloud Foundations** modules (Compute, Storage, Databases): all certificates due Tue Dec 16, 2025 (recommended pacing: Compute by Nov 25, Storage by Dec 9)
-- **EX3 demo movie**: ship a short (≤3 min) video that shows graders the live Azure deployment end-to-end.
-- **Single repo + EX3 deployment:** Students work in one monorepo for all exercises and deploy only the EX3 Docker Compose stack (backend, frontend, supporting services) to a single [Azure for Students](https://azure.microsoft.com/en-us/free/students) compute instance—budget the \$100 credit so nothing is billed.
+- **EX1 – FastAPI Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build a tiny CRUD API with SQLModel + SQLite and tests.
+- **EX2 – Friendly Interface**: assigned Mon Dec 1 · due Tue Dec 23, 2025. Add a Streamlit dashboard or Typer CLI that calls the EX1 API.
+- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate API + interface, add one small improvement, document the runbook. Everything stays local—no cloud, Docker, or security features required.
+- Optional deep dives (Sessions 9–11) exist for curiosity and portfolio stretching; they do **not** add scope to the graded exercises.
 
 ## Teaching Philosophy
 - Keep examples tiny and copy/paste friendly.
 - Repeat concepts using the whiteboard sketches described in each session and the Natalie reference notes in `lectures/notes/`.
-- Keep external work aligned: remind students about AWS Academy module deadlines and Discord support channels during class.
+- Keep optional deep dives clearly labeled so students know graded work stays lightweight and local.
 - Encourage question “warm-ups”: students share what they tried before asking for help.
 
 Happy teaching!

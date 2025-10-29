@@ -2,6 +2,28 @@
 
 ## General Environment & Setup
 
+```mermaid
+flowchart TD
+    Start["Test or command fails"]
+    ModuleError{"Error mentions\nModuleNotFoundError?"}
+    UVError{"Error says\n`uv` not found?"}
+    DepError{"ImportError for package?"}
+    FixInit["Create `app/__init__.py`"]
+    RunFromRoot["Run from project root\n(cd hello-uv)"]
+    CheckPyproject["Verify `pyproject.toml`\nexists in root"]
+    InstallUV["Install uv\n(pip install uv)"]
+    SyncDeps["Sync environment\n(uv sync)"]
+    InspectLock["Inspect dependencies\n(pyproject/uv.lock)"]
+
+    Start --> ModuleError
+    ModuleError -->|Yes| FixInit --> RunFromRoot --> CheckPyproject
+    ModuleError -->|No| UVError
+    UVError -->|Yes| InstallUV --> SyncDeps
+    UVError -->|No| DepError
+    DepError -->|Yes| SyncDeps --> InspectLock
+    DepError -->|No| Start
+```
+
 ### "ModuleNotFoundError: No module named 'app'"
 
 **Symptoms:**

@@ -1,6 +1,6 @@
 # EASS – Engineering of Advanced Software Solutions (Course Materials)
 
-This repository contains the fully scripted 12-session plan for the **EASS 8 – Engineering of Advanced Software Solutions** course. Each class blends 45 minutes of theory with two 45-minute hands-on blocks, and the entire arc follows a single project: building a movie recommendation platform with FastAPI, SQLModel, Streamlit/React, Redis, and Docker.
+This repository contains the fully scripted 12-session plan for the **EASS 8 – Engineering of Advanced Software Solutions** course. Each class blends 45 minutes of theory with two 45-minute hands-on blocks, and the entire arc follows a single project: building a movie catalogue with FastAPI, SQLModel, Typer, and Streamlit—no heavy infrastructure or security overhead required.
 
 ## 🚀 Quick Start for Instructors
 
@@ -14,22 +14,21 @@ Open the `docs/` folder (or load the repo in VS Code) to follow any session dire
 Key documents:
 
 - `docs/index.md` – entry point with links to every session and deadline summary.
-- `docs/exercises.md` – specifications and rubrics for EX1–EX3 plus AWS Academy requirements.
+- `docs/exercises.md` – specifications and rubrics for the three lightweight exercises.
 - `docs/sessions/session-XX.md` – detailed talk tracks, copy/paste code, AI prompt kits, troubleshooting, and verification commands for each class.
 - `docs/troubleshooting.md` – quick fixes for common environment issues (uv, imports, Redis, etc.).
 - `examples.http` – ready-to-run VS Code REST Client requests for the movie API.
 
 ## 🧠 Course Highlights
 
-- Sessions 01–04: developer environment, HTTP/REST, FastAPI fundamentals, Docker + nginx.
-- Session 05 onward: movie service persistence, Streamlit & React frontends, testing/logging, AI-assisted coding, async recommendation rebuilds, Docker Compose with Redis, JWT security, and tool-friendly APIs.
+- Sessions 01–04: developer environment (Linux/WSL/macOS), HTTP/REST, FastAPI fundamentals, practical packaging with uv.
+- Sessions 05–08: movie service persistence, Streamlit & Typer interfaces, testing/logging, and AI-assisted coding habits.
+- Sessions 09–11: optional deep dives (async refreshers, Compose concepts, security vocabulary) for curious students—deliverables stay simple even if you browse these.
+- Session 12: polish, demos, and tool-friendly API patterns.
 - Exercises pace with the storyline:
-  - **EX1** (due Tue 2 Dec 2025, 23:59 Israel time): ship the FastAPI movie backend with tests and Docker.
-  - **EX2** (due Tue 23 Dec 2025, 23:59 Israel time): deliver a Streamlit or React movie dashboard.
-  - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): compose the full stack (API + Redis + nginx) with an advanced feature (async rebuild, auth, or observability).
-  - EX3 submission must include a short (≤3 min) demo movie that walks graders through the live Azure deployment.
-- Students stay in a single monorepo for EX1–EX3 and deploy only the EX3 Docker Compose stack to a single Azure for Students compute instance—claim the \$100 credit, monitor usage, and avoid any personal spend.
-- AWS Academy Cloud Foundations modules (Compute, Storage, Databases) must all be submitted by **Tue 16 Dec 2025, 23:59 Israel time** (soft pacing: Compute by Nov 25, Storage by Dec 9).
+  - **EX1** (due Tue 2 Dec 2025, 23:59 Israel time): ship a FastAPI + SQLModel CRUD API with a tiny SQLite database and tests.
+  - **EX2** (due Tue 23 Dec 2025, 23:59 Israel time): deliver a Streamlit dashboard **or** Typer CLI that talks to the EX1 API.
+  - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): integrate the API and interface, add one thoughtful improvement, document the runbook. Everything runs locally; cloud, Docker, and security work are optional extras only.
 
 ## 🗂️ Legacy Materials
 

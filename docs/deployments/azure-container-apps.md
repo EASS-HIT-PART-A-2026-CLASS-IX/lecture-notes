@@ -4,6 +4,23 @@ This guide walks EX3 teams through deploying their Docker Compose stack (FastAPI
 
 ---
 
+```mermaid
+flowchart LR
+    Local["Local Compose Stack"]
+    Build["docker buildx\nlinux/amd64 images"]
+    ACR["Azure Container Registry"]
+    Release["docker-compose.release.yml"]
+    ACAEnv["Container Apps Environment"]
+    Apps["Container Apps\n(api / frontend / worker)"]
+    Ingress["Ingress rules\n(frontend/api)"]
+    Monitor["Log Analytics\n(telemetry)"]
+
+    Local --> Build --> ACR
+    Local --> Release --> ACAEnv
+    ACR --> ACAEnv --> Apps --> Ingress
+    Apps --> Monitor
+```
+
 ## 1. Prerequisites
 
 - Azure for Students account with active \$100 credit.
