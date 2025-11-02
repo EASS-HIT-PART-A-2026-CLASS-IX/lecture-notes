@@ -11,7 +11,7 @@ gantt
     section Exercises
     EX1 – FastAPI Foundations     :active, 2025-11-10, 2025-12-02
     EX2 – Friendly Interface      :2025-12-01, 2025-12-23
-    EX3 – Capstone Build          :2026-01-05, 2026-02-10
+    EX3 – Capstone Polish         :2026-01-05, 2026-02-10
     EX3 Milestone Demo            :milestone, 2026-01-20, 0d
 ```
 
@@ -22,7 +22,7 @@ gantt
 - **Sessions to revisit:** [Session 02 – Introduction to HTTP and REST](sessions/session-02.md), [Session 03 – FastAPI Fundamentals](sessions/session-03.md).
 - **Required Features:**
   - Endpoints: `GET /movies`, `POST /movies`, `PUT /movies/{id}`, `DELETE /movies/{id}`. Optional extras (ratings, filters) belong in stretch goals, not the base grade.
-  - Data layer built with SQLModel + SQLite (file-based DB checked into the repo for quick demos).
+  - Data layer built with SQLModel + SQLite. Ship schema + seed script (Typer CLI or SQL) instead of committing the `.db` file.
   - Tests using `pytest` and FastAPI’s `TestClient` (cover happy-path listing and create/update/delete).
   - README explaining how to create the uv environment, run the API locally, and execute the tests.
 - **Rubric (100 pts):** correctness 40, simplicity/readability 20, tests 20, documentation 20. Bonus (+5) for seeding the database with a handful of sample movies via a Typer CLI.
@@ -30,6 +30,7 @@ gantt
 ## EX2 – Friendly Interface
 - **Assigned:** Monday, Dec 1, 2025  
 - **Due:** Tuesday, Dec 23, 2025 at 23:59 (Israel time)
+- **Heads-up:** This timeline intentionally overlaps with EX1’s submission window; you can finish EX1 and kick off EX2 planning on the same day.
 - **Goal:** Build a lightweight interface that talks to the EX1 API. Pick either a **Streamlit dashboard** or a **Typer CLI**—both should emphasise clear flows over features.
 - **Sessions to revisit:** [Session 05 – Persistence Refresh](sessions/session-05.md), [Session 06 – Interface Options](sessions/session-06.md).
 - **Required Features:**
@@ -58,7 +59,8 @@ gantt
 1. Push code to the designated GitHub Classroom repository (single monorepo for EX1–EX3 is encouraged but not mandatory—clarify structure in your README).
 2. Tag releases if requested (e.g., `ex1-final`). Use meaningful commit messages so instructors can review your progression.
 3. Include an “AI Assistance” section in each README describing prompts/tools used and how outputs were verified locally.
-4. Late policy: 48-hour grace period with 10% deduction; communicate early if blockers appear.
+4. Provide reproducible database setup via migrations or seed scripts; do not commit SQLite `.db` artifacts.
+5. Late policy: 48-hour grace period with 10% deduction; communicate early if blockers appear.
 
 ## Support Channels
 - Discord `#helpdesk` channel for quick questions (invite: https://discord.gg/EYjQrSmF7f).
