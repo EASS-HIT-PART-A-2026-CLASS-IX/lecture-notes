@@ -5,7 +5,7 @@
 
 ## Learning Objectives
 - Understand course structure, grading, and support channels.
-- Install or verify core tools: uv, Git, Python 3.11+, VS Code, Docker Desktop.
+- Install or verify core tools: uv, Git, Python 3.12+, VS Code, Docker Desktop.
 - Create a minimal Python project with uv and run tests from the terminal.
 
 **Guiding principles:** keep everything **KISS** (Keep It Simple, Students) and share questions using the **PARD** format (Problem → Action → Result → Desired) so we can move fast together. All commands assume macOS, Linux, or Windows Subsystem for Linux (WSL); no native Windows PowerShell steps are covered.
@@ -29,7 +29,7 @@ Ask students to complete this 5-minute checklist the night before:
 | **Break** | **10 min** | **—** | **Encourage movement – launch [10-minute timer](https://e.ggtimer.com/10minutes)** |
 | **PART B – Hands-on Lab 1** | **45 min** | **Guided coding** | **Scaffold the starter project, run first test** |
 | Environment setup | 10 min | Guided | Install verification, create project directory |
-| uv project init | 15 min | Live code | Create venv, init project, add pytest |
+| uv project init | 15 min | Live code | Init project, create venv, add pytest |
 | First test | 15 min | Live code | Write and run test_math.py |
 | Git foundation | 5 min | Live code | Initialize repo, first commit |
 | **Break** | **10 min** | **—** | **Encourage movement – launch [10-minute timer](https://e.ggtimer.com/10minutes)** |
@@ -70,10 +70,10 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
   ```
 - **B2** – _Project scaffold (no activation needed):_  
   ```bash
-  uv init
-  uv venv --python 3.11
+  uv init -p 3.12
+  uv venv --python 3.12
   uv add pytest==8.*
-  uv run python --version  # should report 3.11.x
+  uv run python --version  # should report 3.12.x
   ```
   If `uv` is missing, install it first with `curl -LsSf https://astral.sh/uv/install.sh | sh && exec "$SHELL" -l`.
 - **B3** – _Write starter tests (editor of your choice):_  
@@ -161,7 +161,7 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 3. **Explain grading.** “We have three large exercises. Each one is assigned on a Monday and due on a Tuesday three weeks later. There are no surprise quizzes. Show up, code along, and you will earn the grade.”
 4. **Call out the monorepo + KISS pledge.** "You’re welcome to keep all three exercises in one Git repo so EX2 naturally builds on EX1 and EX3 pulls everything together—but it’s not mandatory. What *is* required: keep every deliverable simple, local, and easy to demo on your laptop. No cloud accounts, no security audits, just clean FastAPI + SQLModel fundamentals."
 5. **Clarify AI policy.** "You may use AI tools like ChatGPT, Claude, Gemini, Cursor, Copilot, LM Studio, or Ollama. You must understand every line you submit, keep a lightweight spec (spec.md or a tessl.io export) in your repo, and when you ask for help share Problem → Action → Result → Desired."
-6. **Outline the tool belt.** "Today we confirm Python 3.11+, uv for environments, Git for version control, VS Code for editing, and Docker Desktop for later sessions. Soon we'll add FastAPI for building web APIs and learn to use LLMs both as coding assistants (to help you write code faster) and as components inside your applications (like calling a local LLM endpoint)."
+6. **Outline the tool belt.** "Today we confirm Python 3.12+, uv for environments, Git for version control, VS Code for editing, and Docker Desktop for later sessions. Soon we'll add FastAPI for building web APIs and learn to use LLMs both as coding assistants (to help you write code faster) and as components inside your applications (like calling a local LLM endpoint)."
 7. **Preview the three KISS exercises.** "You’ll ship three small deliverables: EX1 is a FastAPI + SQLModel CRUD API, EX2 is a friendly Streamlit dashboard or Typer CLI, and EX3 stitches them together with one thoughtful improvement. Everything runs locally—no cloud or security gauntlets."
 8. **Transition to Part B.** "Let's make sure every laptop can create a project. Follow along exactly; copy/paste saves time."
 
@@ -222,20 +222,22 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 
 **The Five Pillars of Our Stack:**
 
-1. **Python 3.11+** – Our main programming language.
+1. **Python 3.12+** – Our main programming language.
    - Modern syntax (type hints, `match` statements).
    - Rich ecosystem for web development.
    - When to reach for it: every backend, scripting, and testing task in this course.
 
 2. **uv** – Fast Python environment and dependency manager.
    - Replaces `pip` + `virtualenv` + `pip-tools` with one tool.
-   - Creates `pyproject.toml` (project manifest) and `uv.lock` (exact versions).
-   - Can specify Python version: `uv venv --python 3.11` or `uv venv --python 3.12`.
+   - `uv init` creates `pyproject.toml` (project manifest); `uv add` / `uv sync` write `uv.lock` (exact versions).
+   - Can specify Python version: `uv venv --python 3.12` (preferred) or `uv venv --python 3.13` when ready.
+   - Tip: Pin the project's minimum Python with `uv init -p 3.12`; matching versions prevent `uv` from recreating your venv unexpectedly.
    - Why not just pip? uv is faster (written in Rust), handles lockfiles automatically, manages Python versions, and will be the industry standard soon.
    - Think of it as: cargo (Rust) or npm (Node.js) but for Python.
    - Quick demo: 
      ```bash
-     uv venv --python 3.11    # creates .venv with Python 3.11
+     uv init -p 3.12          # scaffolds pyproject (requires-python >=3.12)
+     uv venv --python 3.12    # creates .venv with Python 3.12
      uv add pytest            # installs and locks dependency
      uv run pytest            # runs command in the environment
      uv run python --version  # check Python version in venv
@@ -330,15 +332,17 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
    ```bash
    curl -s https://api.github.com/users/aws | uv run python -m json.tool | head -20
    ```
-   - Confirms your network works, pretty-prints the JSON, and shows you the shape of the response quickly.
+   - Confirms your network works, pretty-prints the JSON, and shows you the shape of the response quickly. Run it inside your project folder so `uv run` uses your 3.12+ environment.
 
 2. **uv demo:**
    ```bash
-   uv venv --python 3.11
+   uv init -p 3.12
+   uv venv --python 3.12
    uv add httpx
    uv run python --version
    uv run python -c "import httpx; print(httpx.get('https://api.github.com/users/aws').json()['followers'])"
    ```
+   - `uv init` scaffolds a `pyproject.toml` so dependency commands work (set min Python to 3.12).
    - `uv venv` creates an isolated Python.
    - `uv add` installs a package and locks the version.
    - `uv run` executes commands inside that environment (activation is optional; keep using `uv run …` for consistency).
@@ -408,7 +412,7 @@ If the link fails, run `python -c "import time; time.sleep(600)"` or set a phone
 ### uv Project Initialization (15 Minutes)
 
 **Instructor Live Coding (students follow along exactly):**
-1. Execute **Quick Reference B2** together. Narrate what each command does: `uv venv` isolates Python, `uv init` scaffolds metadata, `uv add` pins dependencies.
+1. Execute **Quick Reference B2** together. Narrate what each command does: `uv init` scaffolds metadata, `uv venv` isolates Python, `uv add` pins dependencies.
 2. If anyone activates the environment out of habit, point out the `(.venv)` prompt but emphasise that the class standard is to rely on `uv run ...` instead.
 3. Close with a group `uv run pytest --version` to prove the dependency landed.
 
@@ -580,9 +584,9 @@ Share a printed or PDF **terminal cheat sheet** (Mac shortcuts on the left, Wind
       cd hello-uv
       ```
 
-   2. Create the uv virtual environment (Python 3.11 only) and install dependencies:
+   2. Create the uv virtual environment (Python 3.12+; matches `pyproject.toml`'s `requires-python`) and install dependencies:
       ```bash
-      uv venv --python 3.11
+      uv venv --python 3.12
       uv sync
       ```
 
@@ -807,7 +811,7 @@ Post in Discord `#helpdesk`:
 ## Materials Checklist (For Instructor)
 
 ### Before Class:
-- [ ] Python 3.11+ installed on all lab machines
+- [ ] Python 3.12+ installed on all lab machines
 - [ ] uv installed (Astral installer or package manager; verify with `uv --version`)
 - [ ] Git installed and verified
 - [ ] VS Code installed with Python extension
@@ -897,20 +901,20 @@ git config --global user.email "you@school.edu"
 
 **Solution (macOS/Linux/WSL):**
 ```bash
-python3 --version        # ensure 3.11.x
+python3 --version        # ensure 3.12.x
 python3 -m ensurepip --upgrade
 python3 -m pip install --upgrade pip
-sudo apt install -y python3.11-venv  # Ubuntu/WSL only
-uv venv --python 3.11
+sudo apt install -y python3.12-venv  # Ubuntu/WSL only
+uv venv --python 3.12
 ```
-Most failures come from missing `python3.11-venv` or an older Python binary on the PATH.
+Most failures come from missing `python3.12-venv` or an older Python binary on the PATH.
 
-### Issue: Python version is too old (< 3.11)
+### Issue: Python version is too old (< 3.12)
 
 **Solution:**
-- **macOS:** `brew install python@3.11` then ensure `python3 --version` reports 3.11 (`brew info python@3.11` for linking tips).
-- **Ubuntu/Debian (including WSL):** `sudo apt update && sudo apt install -y python3.11 python3.11-venv`. If multiple versions exist, run `sudo update-alternatives --config python3` on lab machines.
-- **Other distros:** install Python 3.11 via your package manager or pyenv; avoid 3.12 for this course.
+- **macOS:** `brew install python@3.12` then ensure `python3 --version` reports 3.12 (`brew info python@3.12` for linking tips).
+- **Ubuntu/Debian (including WSL):** `sudo apt update && sudo apt install -y python3.12 python3.12-venv`. If multiple versions exist, run `sudo update-alternatives --config python3` on lab machines.
+- **Other distros:** install Python 3.12 via your package manager or pyenv; align all machines to 3.12 for this course.
 
 ### Issue: Tests don't run in VS Code Test Explorer
 
@@ -933,6 +937,8 @@ Most failures come from missing `python3.11-venv` or an older Python binary on t
 
 **Solution:**
 ```bash
+# If you haven't initialized a project yet:
+#   uv init -p 3.12
 uv add httpx
 uv run python -c "import httpx; client = httpx.Client(); print(client.get('https://api.github.com/users/zozo123').status_code)"
 ```

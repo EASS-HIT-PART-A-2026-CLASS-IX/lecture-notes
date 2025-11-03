@@ -27,7 +27,7 @@ Every code block below is copy/paste ready and written in Python; shell snippets
 ---
 
 ## Before Workshop – Preflight (JiTT)
-- Install `uv` ≥ 0.5 and Python 3.11/3.12 (PydanticAI pins to `>=3.9`, we standardize on 3.11).
+- Install `uv` ≥ 0.5 and Python 3.12+ (PydanticAI pins to `>=3.9`, we standardize on 3.12).
 - Enable one model track:
   - **Google AI Studio:** create an API key at <https://aistudio.google.com/app/apikey>, note the quota, and copy the key.
   - **Local:** install [Ollama](https://ollama.com), pull a model (`ollama pull llama3.2`) and confirm `ollama list`.
@@ -61,7 +61,7 @@ export OLLAMA_BASE_URL="http://127.0.0.1:11434"  # default daemon URL
 
 ### 1. Create the workspace
 ```bash
-uv init ai-local-sdk --python 3.11
+uv init ai-local-sdk --python 3.12
 cd ai-local-sdk
 uv add "pydantic-ai[google]" "google-generativeai" "pydantic-settings" "python-dotenv" \
        "httpx" "fastapi" "uvicorn[standard]" "typer[all]"

@@ -72,7 +72,7 @@ weather-mcp/
 name = "weather-mcp"
 version = "0.1.0"
 description = "Weather MCP demo with alerts and forecast tools"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
   "mcp[cli]",
   "httpx>=0.27.0",

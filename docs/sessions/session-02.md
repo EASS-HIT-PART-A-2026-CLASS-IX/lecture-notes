@@ -77,9 +77,25 @@ flowchart LR
 - **Minutes 35–45** – Optional pytest smoke test plus log review.
 
 ### 1. Setup commands
+
+If you're starting a fresh library (recommended so Session 02 artifacts stay focused):
+
 ```bash
-cd hello-uv
+mkdir -p http-probes
+cd http-probes
+uv init -p 3.12 --package   # run once; creates pyproject/lock scaffold
+uv venv --python 3.12       # creates .venv pinned to 3.12
+uv sync                     # materialises lock into the environment
+uv run python --version     # sanity-check the managed interpreter (expect 3.12.x)
+```
+
+If you prefer to keep everything inside `hello-uv`, `cd` into that folder instead and skip the `uv init` step if the project already exists.
+
+Install the HTTP tooling and scaffold the package:
+
+```bash
 uv add "httpx==0.*" "pydantic==2.*" "typer==0.*"
+# (Later machines can run `uv sync` to recreate the environment from `uv.lock`.)
 mkdir -p app
 touch app/__init__.py app/http_client.py app/cli.py
 ```
