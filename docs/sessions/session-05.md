@@ -36,6 +36,7 @@
 3. **Uniqueness/indexes:** `Field(index=True, unique=True)` for movie titles or slug fields.
 4. **Alembic autogenerate:** show the flow `alembic revision --autogenerate -m "create tables"` → inspect diff → `alembic upgrade head`. Reinforce that Alembic is SQLAlchemy’s migration tool and still requires manual review of generated scripts.
 5. **Trace identifiers (IDs) & logging:** reuse request-level `X-Trace-Id` when logging database (DB) actions to keep observability consistent.
+6. **Storage decision cheat sheet:** reinforce that SQLModel makes it easy to swap engines. Use SQLite during Sessions 03–05 for a lightweight transactional store, graduate to Postgres once you need concurrent writers or cloud backups, lean on Redis (Session 10) for sub-millisecond caches/rate limiting, and reach for DuckDB when the team needs analytics on local parquet/CSV data. Share the DuckDB deep dive from CodeCut (<https://codecut.ai/deep-dive-into-duckdb-data-scientists/>) so students see why columnar OLAP engines feel different.
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
