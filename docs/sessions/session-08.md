@@ -86,6 +86,81 @@ Hello, Alice!
 
 - **Bring-back takeaway:** One-liner summary—DSPy lets you declare a task (`Signature`) and run it through an LLM module (`Predict`) with zero hand-crafted prompts, so you can slot Pydantic AI tools or FastAPI endpoints behind the scenes without rewriting specs. Capture at least one observation (latency, determinism, optimizer effect) in your lab notes.
 
+### DSPy + Pydantic AI mini-PoC (20–25 min)
+Take DSPy past “hello world” by wiring it to the same Pydantic AI tool you build later in Part C. Students can finish this sequence entirely on laptops—no cloud accounts required.
+
+1. **Scaffold the FastAPI tool (reuse from Part C):**
+   ```python
+   # agents/movies.py
+   from pydantic import BaseModel
+   from typing import Optional
+   import httpx
+   from pydantic_ai import Tool
+   from app.config import Settings
+
+   class PitchRequest(BaseModel):
+       title: str
+       mood: str = "optimistic"
+
+   class PitchResponse(BaseModel):
+       title: str
+       hook: str
+
+   def pitch_tool(settings: Settings, client: Optional[httpx.Client] = None) -> Tool:
+       session = client or httpx.Client(base_url=settings.api_base_url, timeout=10)
+
+       @Tool
+       def craft_pitch(payload: PitchRequest) -> PitchResponse:
+           resp = session.post("/tool/movie-pitch", json=payload.model_dump())
+           resp.raise_for_status()
+           return PitchResponse.model_validate(resp.json()["data"])
+
+       return craft_pitch
+   ```
+
+2. **Define a DSPy signature + module that wraps the tool call:**
+   ```python
+   # labs/dspy_pitch.py
+   import dspy
+   from agents.movies import pitch_tool
+   from app.config import Settings
+
+   class PitchMovie(dspy.Signature):
+       """Return a compelling hook for a given movie title."""
+       title: str = dspy.InputField()
+       hook: str = dspy.OutputField()
+
+   def build_predictor():
+       dspy.configure(lm=dspy.OpenAI(model="gpt-4o-mini"))
+       predictor = dspy.Predict(PitchMovie)
+       settings = Settings()
+       predictor.use(pitch_tool(settings))  # bridge to typed tool
+       return predictor
+   ```
+
+3. **Run + evaluate (stores everything locally):**
+   ```python
+   if __name__ == "__main__":
+       predictor = build_predictor()
+       result = predictor(title="The Last Signal")
+       print(result.hook)
+   ```
+
+4. **Stretch goal:** plug in `dspy.Evaluate` with two examples so you can see how tuning/optimizers affect tool usage.
+   ```python
+   examples = [
+       dspy.Example(title="Orbit Shift", hook="A solar engineer hears music in cosmic rays."),
+       dspy.Example(title="Dawn Protocol", hook="A grad student jailbreaks a weather AI."),
+   ]
+   evaluator = dspy.Evaluate(dspy_asserts=[lambda out: len(out.hook) < 140])
+   evaluator(predictor=build_predictor(), devset=examples)
+   ```
+
+5. **Debrief questions (capture answers in lab notes):**
+   - How did DSPy’s structured inputs feel compared to writing full prompts?
+   - Where would you place guardrails—inside the `Signature`, the Pydantic schema, or both?
+   - Could you swap DSPy out for direct Pydantic AI usage and keep the rest of the stack unchanged?
+
 ```mermaid
 sequenceDiagram
     participant User
