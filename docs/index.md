@@ -21,9 +21,11 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - [Exercise lineup and deadlines](exercises.md)
 - [Optional MCP Workshop](sessions/optional/mcp.md)
 - [Optional DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md)
+- [Storage engine cheat sheet](sessions/session-05.md#part-a-–-theory-highlights) (SQLite ↔ Postgres ↔ Redis ↔ DuckDB guidance)
 - [Legacy slide archives](https://github.com/EASS-HIT-PART-A-2025-CLASS-VIII/lecture-notes/tree/main/lectures/archive)
 - [Troubleshooting tips](troubleshooting.md)
 - [Team Topologies summary](sessions/optional/TeamTopologies.md)
+- [DSPy + Pydantic AI agent lab](sessions/session-08.md#dspy-micro-lab)
 
 ## Visual Roadmap
 ```mermaid

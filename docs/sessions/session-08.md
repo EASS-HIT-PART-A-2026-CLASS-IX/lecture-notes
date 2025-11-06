@@ -1,18 +1,23 @@
 # Session 08 – Working with AI Coding Assistants (LM Studio or vLLM)
 
 - **Date:** Monday, Dec 22, 2025
-- **Theme:** Pair program with artificial intelligence (AI) safely—prompt with intent, review outputs critically, and wire agents to your FastAPI backend using Pydantic AI (a typed agent framework built by the Pydantic team).
+- **Theme:** Pair program with artificial intelligence (AI) safely—prompt with intent, review outputs critically, wire agents to your FastAPI backend using Pydantic AI (typed agent framework), and experiment with DSPy for declarative LLM orchestration.
 
 ## Learning Objectives
 - Apply spec-first and tests-first prompting patterns to extend the movie service while keeping humans in charge.
 - Wrap the FastAPI application programming interface (API) behind a Pydantic AI tool-call function that validates inputs/outputs and emits Logfire telemetry.
 - Call a local large language model (LLM) endpoint (LM Studio or vLLM) and evaluate responses automatically with tests.
+- Prototype a DSPy `Signature` + `Predict` pair to feel the ergonomics of declarative prompting before adding guardrails.
 - Document artificial intelligence (AI) assistance and toggle telemetry/privacy settings responsibly.
 
 ## Before Class – AI Preflight (Just-in-Time Teaching, JiTT)
 - Install agent tooling:
   ```bash
   uv add "pydantic-ai==0.*" "httpx==0.*"
+  ```
+- Optional but encouraged: add DSPy so you can run the micro-lab offline.
+  ```bash
+  uv add "dspy-ai==2.*"
   ```
 - Ensure LM Studio (desktop app for hosting local models) or vLLM (open-source high-performance inference server) is running locally—or know how to start the Docker image shared in the Learning Management System (LMS). Note the base URL.
 - Prefer vLLM (Versatile Large Language Model)? Pull and run TinyLlama ahead of time:
@@ -48,6 +53,38 @@
 3. **Micro demo:** Use ChatGPT/Claude to generate pytest cases for a new `/movies/{id}/ratings` endpoint, implement manually, rerun tests.
 4. **Telemetry toggles:** Show how to run Pydantic AI with `logfire` instrumentation turned on/off (privacy) and how to scrub tokens before logging.
 5. **Attribution:** Update README changelog or pull request (PR) template with “AI-assisted sections” including prompt summary.
+
+### DSPy micro-lab
+- **Why here?** DSPy (https://dspy.ai/) complements Pydantic AI by giving you declarative signatures + optimizers that remove the need for hand-tuned prompts.
+- **Install ahead of time:** `uv add "dspy-ai==2.*"` (keeps parity with the course `uv` workflow).
+- **Hello world (5 min):**
+
+```python
+import dspy
+
+# setup
+dspy.configure(lm=dspy.OpenAI(model="gpt-4o-mini"))
+
+# define task
+class Hello(dspy.Signature):
+    """Say hello to someone."""
+    name: str = dspy.InputField()
+    greeting: str = dspy.OutputField()
+
+# make module
+hello = dspy.Predict(Hello)
+
+# run
+print(hello(name="Alice").greeting)
+```
+
+Output (typical):
+
+```
+Hello, Alice!
+```
+
+- **Bring-back takeaway:** One-liner summary—DSPy lets you declare a task (`Signature`) and run it through an LLM module (`Predict`) with zero hand-crafted prompts, so you can slot Pydantic AI tools or FastAPI endpoints behind the scenes without rewriting specs. Capture at least one observation (latency, determinism, optimizer effect) in your lab notes.
 
 ```mermaid
 sequenceDiagram
