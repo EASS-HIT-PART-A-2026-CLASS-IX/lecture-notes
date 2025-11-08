@@ -29,6 +29,7 @@
 
   curl http://localhost:8000/v1/models  # confirm the endpoint is live
   ```
+- No GUI budget? Students can install llama.cpp plus the Gemma 3 270M Instruct weights during JiTT. The three commands (install, run, curl) are listed later in [Local llama.cpp fallback](#local-llamacpp-fallback-gemma-3-270m).
 - Update your Exercise 2 (EX2) README with AI usage to date; bring one prompt you felt proud of and one that failed.
 - Optional: skim the Model Context Protocol (MCP) primer to prepare for Session 12’s tool-friendly APIs.
 
@@ -312,6 +313,47 @@ Explain `transport="tool-only"` executes tools without calling an LLM—perfect 
 - LM Studio: configure `OPENAI_API_KEY=dummy`, `OPENAI_BASE_URL=http://localhost:1234/v1`, set model name to the loaded local model.
 - vLLM Docker (from LMS script) listens on `http://localhost:8000/v1`; run `docker compose up vllm` to start.
 - Use Logfire toggle to capture agent runs when telemetry enabled.
+
+### Local llama.cpp fallback (Gemma 3 270M)
+Add this lightweight option for students who prefer a CLI workflow or can’t install LM Studio.
+
+1. **Install llama.cpp.**
+   ```bash
+   brew install llama.cpp
+   ```
+   Confirm `llama-server --help` works so everyone knows the binary is on `PATH`.
+2. **Launch the Gemma 3 270M Instruct server.**
+   ```bash
+   llama-server \
+     -hf ggml-org/gemma-3-270m-it-GGUF \
+     --model gemma-3-270m-it \
+     --port 8080 \
+     --host 127.0.0.1 \
+     --jinja \
+     -c 4096
+   ```
+   - `-hf` pulls the GGUF file once (stored in `~/.cache/huggingface`).
+   - `--jinja` keeps the chat prompt template aligned with Gemma 3.
+   - Reuse port 8080 so examples stay consistent with LM Studio callouts.
+3. **Test with curl before wiring agents.**
+   ```bash
+   curl http://127.0.0.1:8080/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{
+       "model": "gemma-3-270m-it",
+       "messages": [
+         { "role": "user", "content": "Say hello and tell me your parameter count." }
+       ]
+     }'
+   ```
+   Expect a short greeting confirming the 270M parameter count.
+4. **Reuse the same environment variables as LM Studio.**
+   - `OPENAI_BASE_URL=http://127.0.0.1:8080/v1`
+   - `OPENAI_API_KEY=dummy` (header required even though llama.cpp ignores it)
+   - `AI_MODEL=gemma-3-270m-it`
+5. **In-class teaching idea:** Pair up—one student runs LM Studio, another runs `llama-server`. Swap `OPENAI_BASE_URL` values to prove tooling only depends on the OpenAI-compatible protocol, not the runtime.
+
+> ✅ **Simple mental model:** LM Studio, vLLM, and llama.cpp all expose `/v1/chat/completions` with the same JSON contract. Once students know one, they can switch between them by editing three environment variables.
 
 > 🎉 **Quick win:** Once `agent.run(...)` returns structured recommendations without touching an external API, you have a reproducible agent test harness ready for EX3 demos.
 

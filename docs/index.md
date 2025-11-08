@@ -26,6 +26,7 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - [Troubleshooting tips](troubleshooting.md)
 - [Team Topologies summary](sessions/optional/TeamTopologies.md)
 - [DSPy + Pydantic AI agent lab](sessions/session-08.md#dspy-micro-lab)
+- [Local llama.cpp fallback (Session 08)](sessions/session-08.md#local-llamacpp-fallback-gemma-3-270m)
 
 ## Visual Roadmap
 ```mermaid

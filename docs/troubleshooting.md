@@ -163,6 +163,42 @@ docker run --rm -it \
 
 ---
 
+### “LM Studio is blocked” or “Need a CLI-only LLM endpoint”
+
+**Symptom:** Lab machines cannot install LM Studio or Docker images.
+
+**Quick fix:** Use `llama.cpp` with the Gemma 3 270M Instruct GGUF hosted from Hugging Face. Works entirely in terminal windows and mimics the OpenAI API.
+
+```bash
+# 1) Install binaries
+brew install llama.cpp
+
+# 2) Launch server (pulls weights once)
+llama-server \
+  -hf ggml-org/gemma-3-270m-it-GGUF \
+  --model gemma-3-270m-it \
+  --port 8080 \
+  --host 127.0.0.1 \
+  --jinja \
+  -c 4096
+
+# 3) Test OpenAI-compatible endpoint
+curl http://127.0.0.1:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemma-3-270m-it",
+    "messages": [
+      {"role": "user", "content": "Say hello and tell me your parameter count."}
+    ]
+  }'
+```
+
+- Point Pydantic AI, DSPy, or curl examples at `OPENAI_BASE_URL=http://127.0.0.1:8080/v1`, `OPENAI_API_KEY=dummy`, `OPENAI_MODEL=gemma-3-270m-it`.
+- If the download stalls, remove `~/.cache/huggingface/hub/*gemma-3-270m*` and rerun the command (resumes cleanly).
+- For Linux labs without Homebrew, build from source (`cmake .. && make -j`) or grab the prebuilt binaries from the llama.cpp releases page.
+
+---
+
 ### "Error: database is locked"
 
 **Symptom:** SQLite file locked during concurrent access
