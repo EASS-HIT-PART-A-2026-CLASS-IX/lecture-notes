@@ -12,7 +12,7 @@
 ## Before Class – Frontend Preflight (Just-in-Time Teaching, JiTT)
 - Install dashboard tooling:
   ```bash
-  uv add "streamlit==1.*" "rich==13.*" "typer==0.*" "httpx==0.*"
+  uv add streamlit rich typer httpx
   ```
 - Clone the Exercise 2 (EX2) starter repo (link on the Learning Management System (LMS)) or copy the provided `frontend/` skeleton into your project.
 - Run the micro demo “Typer: hello --name Alice” to warm up on command-line interface (CLI) user experience (UX).

@@ -12,7 +12,7 @@
 ## Before Class – Security Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
   ```bash
-  uv add "passlib[bcrypt]" "pyjwt==2.*"
+  uv add passlib[bcrypt] pyjwt
   ```
 - Rotate any hard-coded secrets in your repo; ensure `.env` is gitignored and `.env.example` is up to date.
 - Review OWASP API Security Top 10 summary (Learning Management System (LMS)) and bring one question.

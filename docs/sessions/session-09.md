@@ -12,7 +12,7 @@
 ## Before Class – Async Preflight (Just-in-Time Teaching, JiTT)
 - Install async tooling:
   ```bash
-  uv add "httpx==0.*" "anyio==4.*" "tenacity==9.*"
+  uv add httpx anyio tenacity
   ```
 - Review Python’s `asyncio` basics (Learning Management System (LMS) primer) and jot one question about concurrency hazards.
 - Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you're exploring the optional Compose stretch, verify `docker compose up` succeeds before class.

@@ -12,7 +12,7 @@
 ## Before Class – Persistence Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
   ```bash
-  uv add "sqlmodel==0.0.22" "alembic==1.*" "typer==0.*"
+  uv add sqlmodel alembic typer
   ```
 - Create `alembic.ini` with `uv run alembic init migrations` if you want to peek ahead; note blockers for class.
 - Review SQLite basics (3-minute cheat sheet linked in the Learning Management System (LMS)) and write down one question about indexes or foreign keys.

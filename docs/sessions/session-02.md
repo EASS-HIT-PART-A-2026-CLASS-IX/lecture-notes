@@ -49,7 +49,13 @@ X-Trace-Id: 123abc
 | Update (partial) | `PATCH /movies/42` | Sometimes | Body: `{"year": 2011}` |
 | Delete | `DELETE /movies/42` | Yes (repeat = same end state) | Returns `204` even if already gone |
 
-**Idempotent** = doing it twice gives same result. **Safe** = doesn't change data.
+**Idempotent** = doing it twice gives same result. Think of a simple math function:
+
+- `f(x) = |x|` (absolute value) is idempotent because once the number is positive, applying `f` again keeps it the same: `f(f(-3)) = f(3) = 3`.
+- `f(x) = x + 1` is **not** idempotent because `f(f(x)) = x + 2`.
+
+In HTTP terms, calling `PUT /movies/42` twice leaves the resource in the same state (like `f(x) = 1`), but calling `POST /movies` twice creates two records (like `f(x) = x + 1`).  
+**Safe** = doesn't change data (e.g., GET); **idempotent** = same end state even if repeated (e.g., PUT, DELETE).
 
 ### 6. Gateway (Reverse Proxy)
 - Sits **in front of** app servers (nginx before FastAPI).

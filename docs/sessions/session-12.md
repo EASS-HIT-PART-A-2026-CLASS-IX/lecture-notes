@@ -13,7 +13,7 @@
 - Ensure Exercise 3 (EX3) repos are up to date, local run scripts succeed end to end, and tests pass with coverage + Schemathesis. (If you are exploring optional Compose/Redis extensions, double-check that stack too.)
 - Install doc tooling if not already:
   ```bash
-  uv add "mkdocs-material==9.*" "pdocs==1.*" "ruff==0.*" "mypy==1.*" "pre-commit==3.*"
+  uv add mkdocs-material pdocs ruff mypy pre-commit
   ```
 - Draft a release checklist outline (who, what, when) for your EX3 team.
 

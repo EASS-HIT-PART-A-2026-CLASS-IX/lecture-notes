@@ -13,11 +13,11 @@
 ## Before Class – AI Preflight (Just-in-Time Teaching, JiTT)
 - Install agent tooling:
   ```bash
-  uv add "pydantic-ai==0.*" "httpx==0.*"
+  uv add pydantic-ai httpx
   ```
 - Optional but encouraged: add DSPy so you can run the micro-lab offline.
   ```bash
-  uv add "dspy-ai==2.*"
+  uv add dspy-ai
   ```
 - Ensure LM Studio (desktop app for hosting local models) or vLLM (open-source high-performance inference server) is running locally—or know how to start the Docker image shared in the Learning Management System (LMS). Note the base URL.
 - Prefer vLLM (Versatile Large Language Model)? Pull and run TinyLlama ahead of time:
@@ -58,7 +58,7 @@
 
 ### DSPy micro-lab
 - **Why here?** DSPy (https://dspy.ai/) complements Pydantic AI by giving you declarative signatures + optimizers that remove the need for hand-tuned prompts.
-- **Install ahead of time:** `uv add "dspy-ai==2.*"` (keeps parity with the course `uv` workflow).
+- **Install ahead of time:** `uv add dspy-ai` (keeps parity with the course `uv` workflow).
 - **Hello world (5 min):**
 
 ```python
@@ -447,7 +447,7 @@ Pair two catalog servers to show a research workflow with zero secrets: fetch th
 - **Why now?** Students already juggle FastAPI, Pydantic AI, and DSPy in Session 08. Dropping in Qdrant—a lightweight, production-grade vector database—shows how retrieval-augmented generation (RAG) sharpens agent responses without leaving laptops.
 - **Packages:** stick with `uv` to keep parity with the rest of the course.
   ```bash
-  uv add "qdrant-client==1.*" "sentence-transformers==3.*"
+  uv add qdrant-client sentence-transformers
   ```
 - **Launch the server (Shell A, Docker):** run Qdrant locally (ARM/Intel both work) before class so embeddings can be ingested quickly. Keep this terminal tab open because it owns the container logs. If you prefer, `docker compose up qdrant` works too—just map ports `6333/6334`.
   ```bash

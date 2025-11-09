@@ -12,7 +12,7 @@
 ## Before Class – FastAPI Preflight (Just-in-Time Teaching, JiTT)
 - In `hello-uv`, install the core stack:
   ```bash
-  uv add "fastapi==0.115.*" "uvicorn==0.*" "pydantic==2.*" "pydantic-settings==2.*" "httpx==0.*" "pytest==8.*"
+  uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
   ```
   Post any failures in Discord `#helpdesk` using **Problem → Action → Result → Desired**.
 - Create `.env.example` (keep real secrets out of Git):
@@ -342,7 +342,7 @@ Share that Schemathesis (Session 02 stretch) can now target the real schema.
 - Point everyone to the full brief in [docs/exercises.md](../exercises.md#ex1--fastapi-foundations) to double-check rubric expectations.
 
 ## Troubleshooting
-- **ImportError for `BaseSettings`:** verify `pydantic-settings==2.*` is installed; rerun `uv add` if needed.
+- **ImportError for `BaseSettings`:** verify `pydantic-settings` is installed; rerun `uv add pydantic-settings` if needed.
 - **State bleeding between tests:** temporarily call cleanup methods in tests; Session 07 introduces fixtures for isolation.
 - **OpenAPI docs not reloading:** ensure `uvicorn` is running with `--reload` and refresh the browser.
 

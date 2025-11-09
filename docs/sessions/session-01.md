@@ -72,7 +72,7 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
   ```bash
   uv init -p 3.12
   uv venv --python 3.12
-  uv add pytest==8.*
+  uv add pytest
   uv run python --version  # should report 3.12.x
   ```
   If `uv` is missing, install it first with `curl -LsSf https://astral.sh/uv/install.sh | sh && exec "$SHELL" -l`.
@@ -686,7 +686,7 @@ This is the workflow you'll use for all three exercises."
 ### Optional Preview: Typer, Pydantic, FastAPI, SQLModel
 If you finish early, install a small bundle and explore what’s ahead:
 ```bash
-uv add "typer==0.*" "pydantic==2.*" "fastapi==0.115.*" "sqlmodel==0.0.22" "uvicorn==0.*"
+uv add typer pydantic fastapi sqlmodel uvicorn
 ```
 - **Typer (CLI skeleton):**
   ```python
@@ -968,7 +968,7 @@ uv run python -c "import httpx; client = httpx.Client(); print(client.get('https
 
 **Solution:**
 ```bash
-uv --network-timeout 60 add pytest==8.*
+uv --network-timeout 60 add pytest
 ```
 Raising the timeout usually resolves slow mirror responses. Persistent failures typically indicate a proxy/firewall configuration problem—capture it with PARD and escalate.
 

@@ -265,7 +265,7 @@ Update `docs/service-contract.md` with:
 ## Troubleshooting
 - **Redis connection refused** → confirm Compose network is up or local Redis running; check `redis_url` env.
 - **Slow Schemathesis runs** → narrow to critical endpoints with `--endpoint` filter or run in CI nightly.
-- **Arq import error** → install `uv add "arq==0.*"`; ensure worker service uses same image/tag as API.
+- **Arq import error** → install `uv add arq`; ensure worker service uses same image/tag as API.
 
 ### Common pitfalls
 - **Compose race conditions** – use `depends_on` with `condition: service_healthy` to avoid worker failures when Redis isn’t ready.

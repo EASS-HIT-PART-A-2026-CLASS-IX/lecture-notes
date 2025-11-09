@@ -12,7 +12,7 @@
 ## Before Class – Quality Preflight (Just-in-Time Teaching, JiTT)
 - Install testing/observability tools:
   ```bash
-  uv add "pytest-cov==5.*" "hypothesis==6.*" "logfire==0.*"
+  uv add pytest-cov hypothesis logfire
   ```
 - Ensure `pytest` succeeds locally (`uv run pytest -q`) before class so we focus on improvements, not broken baselines.
 - Skim the Logfire quickstart (link in the Learning Management System (LMS)) and note one question about dashboards or retention.

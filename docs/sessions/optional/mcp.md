@@ -17,7 +17,7 @@ Learners finish with:
 ## Before Workshop – Preflight (JiTT)
 - Install dependencies ahead of time:
   ```bash
-  uv add "mcp[cli]" "fastapi==0.115.*" "uvicorn==0.*" "httpx==0.*" "logfire==0.*"
+  uv add mcp[cli] fastapi uvicorn httpx logfire
   ```
 - Make sure Docker is logged in to `zozo001` and `uv run python -m mcp --help` succeeds.
 - Review the Logfire FastMCP guide (link in LMS) and note how to toggle telemetry on/off (`LOGFIRE_SEND_OFFLINE=true|false`).
