@@ -32,6 +32,13 @@ Share the pretty-printed JSON screenshot in your lab thread so everyone confirms
 
 **Sanity check:** Re-run `uv run pytest -q` in `hello-uv` so the testing muscle stays warm.
 
+## Admin & Homework Checkpoints
+- **Roster sync:** Post your GitHub username **and** best contact email in the Discord `#roster-sync` channel before Session 02 ends so we can add you to the GitHub org, Classroom repos, and mailing list without delays.
+- **AWS Academy – Cloud Foundations (Compute):** due **Tue Nov 25**; log blockers in `#helpdesk` immediately.
+- **EX1 – FastAPI Foundations:** due **Tue Dec 2**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations) while you build the Typer probes in this session.
+- **EX2 – Friendly Interface:** opens **Mon Dec 1**, due **Tue Dec 23**. Skim the [brief](../exercises.md#ex2--friendly-interface) now so today’s HTTP probes feed directly into your UI/CLI plan.
+- **EX3 – Capstone Polish (KISS):** kicks off **Mon Jan 5**, demo/upload window closes **Tue Feb 10**. Keep a running log in your repo for the [capstone checklist](../exercises.md#ex3--capstone-polish-kiss).
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
