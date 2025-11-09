@@ -77,6 +77,23 @@ curl -s https://httpbin.org/get?city=Haifa \
 
 **Ask class:** "What are the headers? Where would you stash correlation IDs?"
 
+### 4.5 Optional Docker MCP gateway teaser (5 min)
+- Tie HTTP debugging to the container mindset we will formalize in Session 04 by running a lightweight MCP (Model Context Protocol) gateway inside Docker. Stress that the goal is exposure, not depth.
+- Live-drive the following condensed sequence and call out how `docker mcp` exposes reusable tools (`search`, `fetch_content`) that behave like the HTTP probes from Part B:
+  ```bash
+  # 1. Pull + enable DuckDuckGo MCP server (idempotent).
+  docker pull mcp/duckduckgo
+  docker mcp server enable duckduckgo
+
+  # 2. Keep the gateway running in the foreground for live tooling.
+  docker mcp gateway run --servers=duckduckgo
+
+  # 3. In a second terminal, list tools and run a quick search:
+  docker mcp tools ls
+  docker mcp tools call search query="Yossi Eliaz" max_results=5
+  ```
+- Close the loop by pointing back to Part B’s Typer probes: both flows standardize HTTP calls, but Docker gives us isolation plus repeatable tooling—perfect prep for reverse proxy work in Session 04.
+
 ### 5. Preview EX1 contract requirements (5 min)
 Health endpoint, CRUD, predictable error payloads, coverage reports (Session 07), Docker packaging (Session 04).
 
