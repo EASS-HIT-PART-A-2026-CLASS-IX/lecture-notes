@@ -179,6 +179,95 @@ sequenceDiagram
     Agent->>Logfire: Telemetry (if enabled)
 ```
 
+### Qdrant vector DB stretch (retrieval-ready prompts)
+- **Why now?** Students already juggle FastAPI, Pydantic AI, and DSPy in Session 08. Dropping in Qdrant—a lightweight, production-grade vector database—shows how retrieval-augmented generation (RAG) sharpens agent responses without leaving laptops.
+- **Packages:** stick with `uv` to keep parity with the rest of the course.
+  ```bash
+  uv add "qdrant-client==1.*" "sentence-transformers==3.*"
+  ```
+- **Launch the server (Shell A, Docker):** run Qdrant locally (ARM/Intel both work) before class so embeddings can be ingested quickly. Keep this terminal tab open because it owns the container logs. If you prefer, `docker compose up qdrant` works too—just map ports `6333/6334`.
+  ```bash
+  docker run --rm -p 6333:6333 -p 6334:6334 \
+    -v ${HOME}/.qdrant:/qdrant/storage \
+    qdrant/qdrant:latest
+  ```
+- **Seed script (`labs/qdrant_seed.py`):** reuse the movie dataset from earlier sessions, generate embeddings with `sentence-transformers`, and upsert them into a `movies` collection.
+  ```python
+  import uuid
+
+  import numpy as np
+  from qdrant_client import QdrantClient
+  from qdrant_client.http import models
+  from sentence_transformers import SentenceTransformer
+
+  client = QdrantClient(host="localhost", port=6333)
+  encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+  movies = [
+      {"id": 1, "title": "Arrival", "description": "A linguist decodes alien language to avert war."},
+      {"id": 2, "title": "Blade Runner 2049", "description": "A replicant uncovers a secret with world-altering stakes."},
+  ]
+
+  client.recreate_collection(
+      collection_name="movies",
+      vectors_config=models.VectorParams(size=encoder.get_sentence_embedding_dimension(), distance=models.Distance.COSINE),
+  )
+
+  payloads = []
+  vectors = []
+  ids = []
+  for movie in movies:
+      payloads.append(movie)
+      vectors.append(encoder.encode(movie["description"]))
+      ids.append(uuid.uuid4().hex)
+
+  client.upsert(
+      collection_name="movies",
+      points=models.Batch(ids=ids, vectors=np.stack(vectors).tolist(), payloads=payloads),
+  )
+  ```
+- **Query helper (`labs/qdrant_query.py`, Shell C):** run searches from a separate terminal so students see the retrieval loop in isolation before wiring agents. This script prints the top matches and scores, making it easy to validate embeddings before touching FastAPI.
+  ```python
+  import argparse
+
+  from qdrant_client import QdrantClient
+  from sentence_transformers import SentenceTransformer
+
+
+  def search(query: str, limit: int = 3) -> None:
+      client = QdrantClient(host="localhost", port=6333)
+      encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+      hits = client.search(
+          collection_name="movies",
+          query_vector=encoder.encode(query),
+          limit=limit,
+          with_payload=True,
+      )
+
+      print(f"\nTop {len(hits)} matches for '{query}':")
+      for hit in hits:
+          title = hit.payload["title"]
+          score = round(hit.score, 4)
+          print(f"- {title} (score={score}) – {hit.payload['description']}")
+
+
+  if __name__ == "__main__":
+      parser = argparse.ArgumentParser()
+      parser.add_argument("query", help="Natural-language search string")
+      parser.add_argument("--limit", type=int, default=3)
+      args = parser.parse_args()
+      search(query=args.query, limit=args.limit)
+  ```
+- **Recommended shell choreography (three terminal tabs):**
+  1. **Shell A:** run the Docker command above (Qdrant server).
+  2. **Shell B:** seed data with `uv run python labs/qdrant_seed.py` (rerun whenever the dataset changes).
+  3. **Shell C:** validate retrievals with `uv run python labs/qdrant_query.py "first contact sci-fi"` and capture the printed matches in lab notes.
+- **Docker quick checks:** `docker ps --filter "ancestor=qdrant/qdrant"` confirms the container is still running; `docker logs <container_id> | tail` surfaces schema errors quickly. Stop cleanly with `docker stop <container_id>` when labs end so the volume stays intact.
+- **Bridge to FastAPI/Pydantic AI:** expose `POST /tool/movie-search` that accepts a natural-language query, runs `client.search(collection_name="movies", query_vector=encoder.encode(query), limit=3)`, and returns the payloads as structured context for the agent chain. Students can then:
+  1. Call the tool directly from Pydantic AI (Part C) to ground model responses.
+  2. Wrap the same search call in a DSPy `Signature` so optimizers can choose when to hit Qdrant vs. rely on the base prompt.
+- **Bring-back takeaway:** capture latency, relevance, and prompt-drift notes in the lab journal. Ask: *Did the retrieved snippets make LM Studio/vLLM outputs more accurate?* Encourage teams to recycle the pattern in Exercise 3 (EX3) if they pitch recommendations, FAQs, or troubleshooting guides.
+
 ## Part B – Lab 1 (45 Minutes)
 
 ### Lab timeline
