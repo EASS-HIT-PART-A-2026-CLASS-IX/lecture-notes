@@ -43,6 +43,7 @@
 | **Part B – Lab 1** | **45 min** | **Guided pairing** | **Extend API with AI help, evaluate via pytest.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided agent** | **Connect LM Studio/vLLM through Pydantic AI + automated evaluation.** |
+| MCP microservice hop | 15 min | Live demo + pairing | Reuse a catalog MCP server (DuckDuckGo search) as a typed microservice + local LLM analysis. |
 | Retrospective & next steps | 10 min | Discussion | Share effective prompts, log outstanding risks.
 
 ## Part A – Guardrails & Patterns
@@ -179,6 +180,269 @@ sequenceDiagram
     Agent->>Logfire: Telemetry (if enabled)
 ```
 
+### DuckDuckGo MCP microservice lab (15 min)
+Give students an end-to-end agentic path they can demo entirely offline: the DuckDuckGo MCP server on Docker Hub needs zero API keys, so everyone can search the open web and summarize hits with a local LLM.
+
+1. **Pull the image once (Shell A).**
+   ```bash
+   docker pull mcp/duckduckgo:latest
+   ```
+   Keep the image cached so labs run smoothly on limited Wi-Fi.
+
+2. **Install the agent deps (Shell B, repo root).**
+   ```bash
+   uv add "mcp[cli]" "pydantic-ai[litellm]"
+   ```
+   That keeps the CLI client (`stdio_client`, Inspector helpers) in sync with the code you ship in Session 12.
+
+3. **Copy/paste a typed wrapper (use as-is or drop into `labs/duck_search_agent.py`).**
+   ```python
+   import asyncio
+   import re
+   from typing import List
+
+   from mcp.client.session import ClientSession
+   from mcp.client.stdio import StdioServerParameters, stdio_client
+   from pydantic import BaseModel
+   from pydantic_ai import Agent, Tool
+   from pydantic_ai.models.litellm import LiteLLMCompletionModel
+
+   MCP_IMAGE = "mcp/duckduckgo:latest"
+
+   class DuckResult(BaseModel):
+       title: str
+       url: str
+       snippet: str
+
+   RESULT_LINE = re.compile(r"^(?P<rank>\d+)\. (?P<title>.+)$")
+
+   def parse_duck_results(payload: str) -> List[DuckResult]:
+       results: List[DuckResult] = []
+       current: dict[str, str] | None = None
+       for raw in payload.splitlines():
+           line = raw.strip()
+           if not line or line.startswith("Found "):
+               continue
+           match = RESULT_LINE.match(line)
+           if match:
+               if current:
+                   results.append(DuckResult(**current))
+               current = {"title": match.group("title"), "url": "", "snippet": ""}
+               continue
+           if line.startswith("URL:") and current is not None:
+               current["url"] = line.split("URL:", 1)[1].strip()
+               continue
+           if line.startswith("Summary:") and current is not None:
+               current["snippet"] = line.split("Summary:", 1)[1].strip()
+       if current:
+           results.append(DuckResult(**current))
+       return results
+
+   async def duck_search(query: str, limit: int = 3) -> List[DuckResult]:
+       server = StdioServerParameters(
+           command="docker",
+           args=["run", "--rm", "-i", MCP_IMAGE],
+       )
+       async with stdio_client(server) as (read, write):
+           async with ClientSession(read, write) as session:
+               await session.initialize()
+               resp = await session.call_tool("search", {"query": query, "max_results": limit})
+               text = resp.content[0].text
+               return parse_duck_results(text)[:limit]
+
+   duck_tool = Tool(fn=duck_search, name="duck_search", description="Search DuckDuckGo via MCP")
+
+   lm = LiteLLMCompletionModel(model="lmstudio-community/gemma-2b", base_url="http://127.0.0.1:1234/v1")
+
+   agent = Agent[
+       str
+   ](
+       prompt="Call duck_search to gather facts, then summarize in 3 bullet points.",
+       model=lm,
+       tools=[duck_tool],
+   )
+
+   async def run():
+       response = await agent.run("What are the latest updates on WebGPU docs?", tool_choice="auto")
+       print(response.data)
+
+   if __name__ == "__main__":
+       asyncio.run(run())
+   ```
+   - `StdioServerParameters` spawns the Docker container only when the tool runs; no long-lived services to babysit.
+   - `parse_duck_results` turns the formatted string into structured `DuckResult` objects so your LLM prompt stays deterministic.
+   - Swap the LiteLLM endpoint for whichever local model is live (LM Studio, vLLM, llama.cpp HTTP server).
+
+4. **Demo flow.**
+   - Start LM Studio/vLLM/llama.cpp so the completion endpoint is ready.
+   - Run `uv run python labs/duck_search_agent.py "Find upcoming ACM conferences"`.
+   - Narrate the chain: Docker spins up, `duck_search` streams search output, the local LLM converts typed hits into bullets.
+   - Briefly stop Docker to show the failure path—Pydantic raises a validation error when the tool output cannot be parsed.
+
+5. **Mini-retro prompts (hand students sticky notes):**
+   - How did using a catalog MCP server speed up your progress compared to building a bespoke REST microservice?
+   - If you needed to cache DuckDuckGo results, where would you place the cache layer?
+   - Which other zero-key servers from the catalog would plug into this harness with the fewest changes?
+
+**Stretch:** chain the `fetch_content` tool for each top result, summarize the page locally, and forward sentiment scores to your FastAPI service to prove typed agents compose cleanly.
+
+#### Docker Desktop MCP Toolkit mini-demo (5 min)
+Validate the exact screenshots from Docker Desktop and give students a zero-friction, keyless path.
+
+1. **Add the DuckDuckGo server from the catalog.** Open Docker Desktop → **MCP Toolkit (Beta)** → **Catalog** → **DuckDuckGo** → **Add**. No secrets needed. Docker Desktop pulls `mcp/duckduckgo:latest`, lists it under *My servers*, and manages lifecycle automatically.
+2. **Explain the CLI equivalent** for folks without the GUI:
+   - Use the Inspector in stdio mode so you can reuse the same commands everywhere:
+     ```bash
+     npx @modelcontextprotocol/inspector \
+       --transport stdio \
+       --stdio-command docker \
+       --stdio-args "run --rm -i mcp/duckduckgo:latest"
+     ```
+   - The Inspector UI shows real-time tool logs and lets you fire `search`/`fetch_content` interactively.
+3. **Confirm it is working:** `docker ps --filter ancestor=mcp/duckduckgo:latest` should show a container whenever Inspector or your agent connects. Stop the container from the Docker Desktop UI to demonstrate deterministic failure handling.
+4. **Pair it with the Pydantic AI script.** Drop the code above into `labs/duck_search_agent.py`, run `uv run python labs/duck_search_agent.py "Track WebGPU docs changes"`, and show Docker Desktop logging the tool call. This mirrors the catalog → container → MCP tool → local LLM loop your screenshots highlight.
+5. **Call out catalog reuse:** everything in the Docker MCP catalog (GitHub, Stripe, Neon, etc.) follows the same add → configure → call flow. Most servers are stdio-first, so `stdio_client` becomes the universal adapter.
+
+#### DuckDuckGo + arXiv author lookup (10 min, CLI-first e2e)
+Pair two catalog servers to show a research workflow with zero secrets: fetch the “Attention Is All You Need” paper via the arXiv MCP, then look up one author with DuckDuckGo, and let a local LLM summarize.
+
+1. **Pull + cache the images.**
+   ```bash
+   docker pull mcp/duckduckgo:latest
+   docker pull mcp/arxiv-mcp-server:latest
+   mkdir -p .cache/arxiv-papers
+   ```
+2. **Smoke-test both servers with Inspector (two tabs).**
+   - DuckDuckGo: `npx @modelcontextprotocol/inspector --transport stdio --stdio-command docker --stdio-args "run --rm -i mcp/duckduckgo:latest"`
+   - arXiv: same command but add `-v $(pwd)/.cache/arxiv-papers:/app/papers mcp/arxiv-mcp-server:latest`. Inspector should list `search_papers`, `download_paper`, `list_papers`, and `read_paper`.
+3. **Wire both servers into one lab script (paste anywhere, e.g., `labs/attention_lookup.py`).**
+   ```python
+   import asyncio
+   import json
+   import os
+   import re
+   from pathlib import Path
+   from typing import List
+
+   from mcp.client.session import ClientSession
+   from mcp.client.stdio import StdioServerParameters, stdio_client
+   from pydantic import BaseModel
+   from pydantic_ai import Agent, Tool
+   from pydantic_ai.models.litellm import LiteLLMCompletionModel
+
+   MCP_DDG_IMAGE = "mcp/duckduckgo:latest"
+   MCP_ARXIV_IMAGE = "mcp/arxiv-mcp-server:latest"
+   ARXIV_CACHE = Path(os.getenv("ARXIV_CACHE", Path.cwd() / ".cache/arxiv-papers"))
+   ARXIV_CACHE.mkdir(parents=True, exist_ok=True)
+
+   class PaperDetails(BaseModel):
+       paper_id: str
+       title: str
+       authors: List[str]
+       abstract: str
+       excerpt: str
+
+   class AuthorFacts(BaseModel):
+       author: str
+       bullets: List[str]
+
+   class DuckResult(BaseModel):
+       title: str
+       url: str
+       snippet: str
+
+   RESULT_LINE = re.compile(r"^(?P<rank>\\d+)\\. (?P<title>.+)$")
+
+   def parse_duck_results(payload: str) -> List[DuckResult]:
+       results: List[DuckResult] = []
+       current: dict[str, str] | None = None
+       for raw in payload.splitlines():
+           line = raw.strip()
+           if not line or line.startswith("Found "):
+               continue
+           match = RESULT_LINE.match(line)
+           if match:
+               if current:
+                   results.append(DuckResult(**current))
+               current = {"title": match.group("title"), "url": "", "snippet": ""}
+               continue
+           if line.startswith("URL:") and current is not None:
+               current["url"] = line.split("URL:", 1)[1].strip()
+               continue
+           if line.startswith("Summary:") and current is not None:
+               current["snippet"] = line.split("Summary:", 1)[1].strip()
+       if current:
+           results.append(DuckResult(**current))
+       return results
+
+   async def _call_duck(author: str) -> AuthorFacts:
+       server = StdioServerParameters(
+           command="docker",
+           args=["run", "--rm", "-i", MCP_DDG_IMAGE],
+       )
+       async with stdio_client(server) as (read, write):
+           async with ClientSession(read, write) as session:
+               await session.initialize()
+               resp = await session.call_tool(
+                   "search",
+                   {"query": f"{author} transformer paper interview", "max_results": 3},
+               )
+               hits = parse_duck_results(resp.content[0].text)
+               bullets = [f"{hit.title}: {hit.url}" for hit in hits[:3]]
+               return AuthorFacts(author=author, bullets=bullets)
+
+   async def _call_arxiv(paper_id: str) -> PaperDetails:
+       server = StdioServerParameters(
+           command="docker",
+           args=[
+               "run", "--rm", "-i",
+               "-v", f"{ARXIV_CACHE}:/app/papers",
+               MCP_ARXIV_IMAGE,
+           ],
+       )
+       async with stdio_client(server) as (read, write):
+           async with ClientSession(read, write) as session:
+               await session.initialize()
+               search = await session.call_tool(
+                   "search_papers", {"query": f"id:{paper_id}", "max_results": 1}
+               )
+               paper = json.loads(search.content[0].text)["papers"][0]
+               await session.call_tool("download_paper", {"paper_id": paper_id})
+               body = await session.call_tool("read_paper", {"paper_id": paper_id})
+               excerpt = json.loads(body.content[0].text)["content"][:800]
+               return PaperDetails(
+                   paper_id=paper_id,
+                   title=paper["title"],
+                   authors=paper["authors"],
+                   abstract=paper["abstract"],
+                   excerpt=excerpt,
+               )
+
+   arxiv_tool = Tool(fn=_call_arxiv, name="fetch_arxiv_paper", description="Return metadata + excerpt for a paper id")
+   duck_tool = Tool(fn=_call_duck, name="lookup_author_news", description="Search DuckDuckGo for recent info about an author")
+
+   lm = LiteLLMCompletionModel(model="lmstudio-community/gemma-2b", base_url="http://127.0.0.1:1234/v1")
+
+   agent = Agent[
+       str
+   ](
+       prompt="Use fetch_arxiv_paper to understand the request, then lookup_author_news on one author. Report 3 concise bullets.",
+       model=lm,
+       tools=[arxiv_tool, duck_tool],
+   )
+
+   if __name__ == "__main__":
+       paper = "1706.03762"  # Attention Is All You Need
+       asyncio.run(agent.run(paper, tool_choice="auto"))
+   ```
+
+4. **Run the whole thing (Shell C):**
+   ```bash
+   uv run python labs/attention_lookup.py
+   ```
+   Watch the terminal: DuckDuckGo and arXiv containers spin up on demand, their logs stream through Docker Desktop, and LM Studio prints the combined summary. Students can swap the paper ID or author without touching API keys.
+
+5. **CLI verification recap:** everything stays copy/paste friendly—`docker pull`, `npx inspector --transport stdio ...`, and `uv run` cover the full workflow.
 ### Qdrant vector DB stretch (retrieval-ready prompts)
 - **Why now?** Students already juggle FastAPI, Pydantic AI, and DSPy in Session 08. Dropping in Qdrant—a lightweight, production-grade vector database—shows how retrieval-augmented generation (RAG) sharpens agent responses without leaving laptops.
 - **Packages:** stick with `uv` to keep parity with the rest of the course.
