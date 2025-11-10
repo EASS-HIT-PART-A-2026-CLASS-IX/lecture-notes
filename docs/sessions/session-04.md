@@ -11,6 +11,7 @@
 
 ## Before Class – Container Preflight (Just-in-Time Teaching, JiTT)
 - Run `docker --version` and `docker compose version`; reinstall or start Docker Desktop if commands fail.
+- If Docker Desktop is already installed, open the **Labspaces** tab (left sidebar) and launch **Building secure container images** or **Container-supported development**. Those ready-made sandboxes mirror Session 04’s goals—multi-stage builds + reverse proxy basics—without touching your local Python install.
 - In `hello-uv`, create `.dockerignore` (if missing):
   ```ignore
   __pycache__/

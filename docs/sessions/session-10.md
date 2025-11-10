@@ -14,6 +14,7 @@
   ```bash
   docker pull redis:7-alpine
   ```
+- For hands-on Compose drills, open Docker Desktop and launch a **Labspace** from the left navigation (blue beaker icon). The **Building agentic apps with Docker** and **Container-supported development** lab cards mirror Session 10’s multi-service stack, so you can rehearse Compose + Redis workflows even if your laptop cannot run the full stack.
 - Review the provided Compose primer (Learning Management System (LMS)) and list one question about networking or environment variables.
 - Run `uv run schemathesis run docs/contracts/openapi.json --checks status_code_conformance --dry-run` to confirm tooling works.
 
