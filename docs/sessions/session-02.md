@@ -188,11 +188,10 @@ Kick off with an everyday analogy: the diner (client) reads the menu and places 
 
 **Draw on board:**
 ```
-┌─────────┐      HTTP Request      ┌─────────┐      ┌──────────┐
-│ Client  │ ───────────────────────>│ Gateway │─────>│  Server  │
-│ (curl)  │                         │ (nginx) │      │ (FastAPI)│
-└─────────┘<─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─└─────────┘<─────└──────────┘
-             HTTP Response
+┌─────────┐        HTTP Request        ┌─────────┐        ┌──────────┐
+│ Client  │ ──────────────────────────>│ Gateway │───────>│  Server  │
+│ (curl)  │                            │ (nginx) │        │ (FastAPI)│
+└─────────┘<─────── HTTP Response ─────└─────────┘<───────└──────────┘
 ```
 
 **Client responsibilities:**
