@@ -154,6 +154,100 @@ What to call out while the output streams:
 
 Optional stretch if time allows: Run `npx @modelcontextprotocol/inspector` and point it at `python -m app.mcp_movies` to visualize the tool schemas the same way VS Code’s REST Client visualizes HTTP requests.
 
+#### Package the FastMCP server as a reusable container
+
+The Docker MCP catalog expects an OCI image. Containerizing the FastMCP script keeps the runtime + dependencies identical wherever you run it.
+
+**1. Dockerfile (`Dockerfile.fastmcp`).**
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Install FastMCP + CLI helpers without polluting global pip cache
+RUN pip install --no-cache-dir "mcp[cli]>=1.1.0"
+
+# Copy only the FastMCP code (reuse existing app package)
+COPY app app
+
+# `FastMCP.run(transport="stdio")` is the entry point expected by the Toolkit
+ENTRYPOINT ["python", "-m", "app.mcp_movies", "--transport=stdio"]
+```
+
+**2. Build + push the image.** Substitute your own registry (GHCR, ECR, Docker Hub, etc.).
+
+```bash
+docker build -f Dockerfile.fastmcp -t ghcr.io/<org>/session12-fastmcp:latest .
+docker push ghcr.io/<org>/session12-fastmcp:latest
+```
+
+**3. Smoke-test the container with Inspector or the stdio probe.**
+
+```bash
+# Option A – Inspector speaks MCP stdio to the containerized server
+npx @modelcontextprotocol/inspector --stdio \
+  "docker run --rm -i ghcr.io/<org>/session12-fastmcp:latest"
+```
+
+```python
+# Option B – Point scripts/mcp_probe.py at the docker image
+params = StdioServerParameters(
+    command="docker",
+    args=["run", "--rm", "-i", "ghcr.io/<org>/session12-fastmcp:latest"],
+)
+```
+
+Once the container responds correctly over stdio, it’s ready to be referenced by a catalog entry and served by `docker mcp gateway`.
+
+#### Add your FastMCP server to a Docker MCP catalog
+
+Students inevitably ask, “Can Docker MCP Toolkit run the FastMCP server we just built even though it’s not in the official catalog?” Yes—treat it like any other server entry by creating a tiny catalog file and pointing the gateway at it.
+
+**1. Describe the server in YAML (`session12-movies.yaml`).** The entry references the container image you built for this lab (or any OCI image that wraps `python -m app.mcp_movies` with `mcp.run(transport="stdio")`). Adjust `image` and metadata to fit your registry.
+
+```yaml
+name: dev-fastmcp
+displayName: "Session 12 FastMCP catalog"
+registry:
+  session12-movies:
+    title: "Session 12 Movies"
+    description: "FastMCP bridge for the /movies demo"
+    type: "server"
+    image: "ghcr.io/<org>/session12-fastmcp:latest"
+    command:
+      - "--transport=stdio"
+    tools:
+      - name: "lookup-movie"
+      - name: "pick-tonight"
+```
+
+**2. Load the catalog into Docker MCP Toolkit.** This mirrors the forum answer that solved the “out-of-catalog” question.
+
+```bash
+# Create a personal catalog and add the FastMCP entry
+docker mcp catalog create dev-fastmcp
+docker mcp catalog add dev-fastmcp session12-movies ./session12-movies.yaml --force
+
+# Point the gateway (or Docker Desktop Toolkit) at the new catalog
+docker mcp gateway run --catalog dev-fastmcp --servers session12-movies
+
+# Verify the gateway sees the FastMCP tools
+docker mcp tools ls --catalog dev-fastmcp
+docker mcp tools call pick-tonight genre="sci-fi"
+```
+
+If the gateway logs `invalid message version tag ""; expected "2.0"`, the FastMCP process is not speaking MCP/JSON-RPC 2.0 yet—fix the server (usually by ensuring `FastMCP(...).run(transport="stdio")` is the entry point) before retrying.
+
+**3. Keep these references handy when publishing private catalogs:**
+1. Official Docker docs – Catalog + Toolkit overview, “Get started with MCP Toolkit,” and the gateway flags reference.
+2. Custom catalogs & private servers – Docker blog post *Your Org, Your Tools: Building a Custom MCP Catalog* plus the `docker/mcp-gateway` repo for CLI deep dives.
+3. MCP correctness – Model Context Protocol spec + Anthropic’s “Introducing MCP” article so your server always speaks JSON-RPC 2.0.
+4. Practical tutorials – NetworkChuck’s `docker-mcp-tutorial` repo, Ajeet Raina’s Toolkit+LM Studio walkthrough, and the Medium article *Run Any MCP Server Locally with Docker’s MCP Catalog and Toolkit*.
+5. Publishing / ecosystem – `modelcontextprotocol/registry` + GitHub MCP Registry docs for when you want team discovery beyond your laptop.
+
 ## Part B – Lab 1 (45 Minutes)
 
 ### Lab timeline

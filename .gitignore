@@ -95,6 +95,9 @@ dump.rdb
 POSSIBLE_PLAN.pdf
 _*
 
+# Allow package markers
+!**/__init__.py
+
 # Build artifacts
 .build/
 /site/

@@ -23,6 +23,31 @@
   ```
 - Watch the FastAPI “path operations” video (link in LMS) and write down two validation questions for discussion.
 
+## Minimal FastAPI Reference Example (Calculator API)
+- Folder: `examples/fastapi-calculator`
+- Provides a single-file FastAPI app with `/calc/add|subtract|multiply|divide` JSON endpoints, pytest coverage (FastAPI `TestClient` + httpx `ASGITransport`), and a Dockerfile pinned to Python 3.12.
+- Prep steps (once): `uv python install 3.12.9`
+- Run locally (Python 3.12 via `uv`):
+  ```bash
+  cd examples/fastapi-calculator
+  uv venv --python 3.12 && source .venv/bin/activate
+  uv pip install -r requirements.txt
+  uv run uvicorn app.main:app --reload
+  ```
+  Swagger UI lives at `http://127.0.0.1:8000/docs`. Explain that Swagger is FastAPI’s auto-generated OpenAPI explorer: it documents every route, allows ad-hoc testing, and shows real request/response payloads.
+  Send a quick `curl -X POST http://127.0.0.1:8000/calc/add -d '{"a": 5, "b": 8}' -H 'Content-Type: application/json'` to prove the JSON API works.
+- Tests:
+  ```bash
+  uv run pytest tests -q
+  ```
+  Mention how `tests/test_calculator.py` uses FastAPI’s synchronous `TestClient`, while `tests/test_httpx_client.py` demonstrates `httpx.AsyncClient` with `ASGITransport` to hit the app without starting a server.
+- Dockerize the exact same app:
+  ```bash
+  docker build -t calculator-api examples/fastapi-calculator
+  docker run --rm -p 8000:8000 calculator-api
+  ```
+Use this “calculator” reference during Session 03 whenever the movie service feels too heavy—you can show a concrete FastAPI + pytest + httpx + Docker workflow first, then layer on DI and repositories.
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
