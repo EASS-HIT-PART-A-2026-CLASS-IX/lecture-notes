@@ -129,12 +129,19 @@ Same mental model: client crafts request, reads response.
 - **Mental model:** Forward = "I represent you to the world." Reverse = "I represent your app to the world."
 
 ## Before Class – REST Warm-Up (JiTT)
-**Complete these steps in your existing `hello-uv` workspace from Session 01:**
+**Create a fresh Session 02 workspace at `~/eass-25/playground` so nobody depends on leftovers from Session 01:**
 
 ```bash
-cd ~/repos/hello-uv  # or wherever you created it in Session 01
-uv add httpx pydantic typer
+mkdir -p ~/eass-25/playground
+cd ~/eass-25/playground
+uv init -p 3.12          # scaffold pyproject + uv.lock tied to Python 3.12
+uv python install 3.12   # download the interpreter if it is missing
+uv python pin 3.12       # ensure every uv run uses Python 3.12
+uv run python --version  # double-check the version reads 3.12.x
+uv add httpx pydantic typer pytest
 ```
+
+**Reminder:** Keep every install command in this session as `uv add <package>`—skip manual version specifiers and let `uv.lock` capture the exact pins.
 
 Post the command output in Discord `#helpdesk` using **Problem → Action → Result → Desired** if anything fails.
 
@@ -148,7 +155,7 @@ Share the pretty-printed JSON screenshot in your lab thread so everyone confirms
 
 **AWS Academy:** Complete the **Cloud Foundations – Compute** module by **Tue Nov 25**; flag blockers early.
 
-**Sanity check:** Re-run `uv run pytest -q` in `hello-uv` so the testing muscle stays warm.
+**Sanity check:** Re-run `uv run pytest -q` inside `~/eass-25/playground` so the testing muscle stays warm.
 
 ## Admin & Homework Checkpoints
 - **Roster sync:** Post your GitHub username **and** best contact email in the Discord `#roster-sync` channel before Session 02 ends so we can add you to the GitHub org, Classroom repos, and mailing list without delays.
@@ -443,12 +450,12 @@ flowchart LR
 3. **Automate:** Wrap `httpx` in Typer so `uv run python -m app.cli echo` becomes your reusable CRUD probe.
 4. **Test:** Write one pytest that verifies the client handles the server's JSON contract correctly.
 
-### Scaffold inside hello-uv
+### Scaffold inside the Session 02 workspace
 
-**We're extending the existing `hello-uv` workspace from Session 01—do NOT create a new project.**
+**Use the dedicated `~/eass-25/playground` workspace you just created (rerun the JiTT commands now if you skipped them).**
 
 ```bash
-cd ~/repos/hello-uv
+cd ~/eass-25/playground
 uv sync
 mkdir -p app tests
 touch app/__init__.py app/http_client.py app/cli.py
