@@ -161,137 +161,282 @@ Optional stretch if time allows: Run `npx @modelcontextprotocol/inspector` and p
 - **Minutes 10–25** – Implement ETag logic with conditional GET.
 - **Minutes 25–35** – Build CSV export endpoint and verify streaming.
 - **Minutes 35–45** – Document OpenAPI examples + feature flags.
+
 ### 1. Pagination helpers (`app/pagination.py`)
 ```python
+# filepath: app/pagination.py
 from math import ceil
-from typing import Sequence
+from typing import Any, Sequence
 
 from fastapi import Query
 
 
-def paginate(items: Sequence, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+def paginate(
+    items: Sequence[Any],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> tuple[Sequence[Any], dict[str, int]]:
+    """Paginate a sequence and return items + metadata."""
     total = len(items)
     pages = ceil(total / page_size) if page_size else 1
     start = (page - 1) * page_size
     end = start + page_size
-    return items[start:end], {"page": page, "page_size": page_size, "total": total, "pages": pages}
+    return items[start:end], {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "pages": pages,
+    }
 ```
+
 Update `/movies` route:
 ```python
-from fastapi import Response
-from app.pagination import paginate
-
-
-@app.get("/movies", response_model=list[Movie], openapi_extra={
-    "responses": {
-        200: {
-            "description": "List movies",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "default": {
-                            "summary": "First page",
-                            "value": [{"id": 1, "title": "Arrival", "year": 2016, "genre": "Sci-Fi"}],
-                        }
-                    }
-                }
-            },
-        }
-    }
-})
-async def list_movies(response: Response, repository: RepositoryDep, settings: SettingsDep, page: int = 1, page_size: int = 20) -> list[Movie]:
-    movies = [movie for movie in repository.list()]
-    page_items, meta = paginate(movies, page, page_size)
-    response.headers["X-Total-Count"] = str(meta["total"])
-    response.headers["X-Total-Pages"] = str(meta["pages"])
-    return page_items
-```
-
-### 2. ETag support
-```python
+# filepath: app/main.py (or wherever your routes live)
 import hashlib
 import json
 from fastapi import Request, Response, status
+from app.pagination import paginate
 
 
-def compute_etag(payload: str) -> str:
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-@app.get("/movies", response_model=list[Movie], ...)
+@app.get(
+    "/movies",
+    response_model=list[Movie],
+    openapi_extra={
+        "responses": {
+            200: {
+                "description": "List movies with pagination",
+                "headers": {
+                    "X-Total-Count": {"description": "Total number of items"},
+                    "X-Total-Pages": {"description": "Total number of pages"},
+                    "ETag": {"description": "Entity tag for cache validation"},
+                    "Cache-Control": {"description": "Cache directives"},
+                },
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "default": {
+                                "summary": "First page",
+                                "value": [
+                                    {
+                                        "id": 1,
+                                        "title": "Arrival",
+                                        "year": 2016,
+                                        "genre": "Sci-Fi",
+                                    }
+                                ],
+                            }
+                        }
+                    }
+                },
+            },
+            304: {"description": "Not Modified - resource unchanged"},
+        }
+    },
+)
 async def list_movies(
     request: Request,
     response: Response,
     repository: RepositoryDep,
     settings: SettingsDep,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
 ) -> list[Movie]:
-    movies = [movie for movie in repository.list()]
+    """List movies with pagination, ETag caching, and conditional GET support."""
+    movies = list(repository.list())
     page_items, meta = paginate(movies, page, page_size)
+
+    # Set pagination headers
     response.headers["X-Total-Count"] = str(meta["total"])
     response.headers["X-Total-Pages"] = str(meta["pages"])
 
-    payload = json.dumps([movie.model_dump() for movie in page_items], sort_keys=True)
-    etag = compute_etag(payload)
-    if request.headers.get("If-None-Match") == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    # Compute ETag from canonical JSON
+    payload = json.dumps(
+        [movie.model_dump() for movie in page_items], sort_keys=True
+    )
+    etag = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    # Check conditional GET
+    if request.headers.get("If-None-Match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response.headers)
+
+    # Set cache headers
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "public, max-age=60"
+
     return page_items
 ```
-Ensure tests cover 200 + 304 paths.
 
-> 🎉 **Quick win:** When a second `curl` with `If-None-Match` returns `304`, you’ve implemented production-grade caching in under ten minutes.
+**Test the ETag flow:**
+```python
+# filepath: tests/test_movies_etag.py
+def test_movies_etag_caching(client):
+    """Verify ETag and conditional GET behavior."""
+    # First request gets 200 with ETag
+    response1 = client.get("/movies?page=1&page_size=10")
+    assert response1.status_code == 200
+    etag = response1.headers.get("ETag")
+    assert etag is not None
 
-### Tool schema validation (`embed=True` pattern)
+    # Second request with If-None-Match gets 304
+    response2 = client.get(
+        "/movies?page=1&page_size=10", headers={"If-None-Match": etag}
+    )
+    assert response2.status_code == 304
+
+    # Different page gets new ETag
+    response3 = client.get("/movies?page=2&page_size=10")
+    assert response3.status_code == 200
+    assert response3.headers.get("ETag") != etag
+```
+
+> 🎉 **Quick win:** When a second `curl` with `If-None-Match` returns `304`, you've implemented production-grade caching in under ten minutes.
+
+### 2. Tool schema validation (`embed=True` pattern)
 Use nested models so FastAPI validates MCP-compatible payloads before they hit business logic:
 ```python
+# filepath: app/tools.py
 from pydantic import BaseModel, Field
 
 
 class ToolPayload(BaseModel):
+    """Inner payload for tool endpoints - enforces strict validation."""
+
     user_id: int = Field(..., ge=1, description="User ID must be positive")
     limit: int = Field(5, ge=1, le=20, description="Number of recommendations")
 
 
 class ToolRequest(BaseModel):
+    """Wrapper for tool requests - allows future metadata expansion."""
+
     payload: ToolPayload
 
 
-@app.post("/tool/recommend-movie")
-async def recommend_tool(request: ToolRequest) -> dict[str, object]:
-    recs = await generate_recommendations(
-        user_id=request.payload.user_id,
-        limit=request.payload.limit,
-    )
-    return {
-        "status": "ok",
-        "data": {"recommendations": recs},
-        "error": None,
-    }
+class ToolResponse(BaseModel):
+    """Standardized tool response envelope."""
+
+    status: str
+    data: dict[str, object] | None = None
+    error: str | None = None
+
+
+@app.post("/tool/recommend-movie", response_model=ToolResponse)
+async def recommend_tool(request: ToolRequest, repository: RepositoryDep) -> ToolResponse:
+    """MCP-compatible recommendation endpoint with deterministic responses."""
+    try:
+        recs = await generate_recommendations(
+            user_id=request.payload.user_id,
+            limit=request.payload.limit,
+            repository=repository,
+        )
+        return ToolResponse(
+            status="ok",
+            data={"recommendations": recs},
+            error=None,
+        )
+    except Exception as exc:
+        return ToolResponse(
+            status="error",
+            data=None,
+            error=str(exc),
+        )
 ```
-FastAPI’s `embed=True` defaults keep the MCP contract deterministic while still enforcing inner validation.
 
 ### 3. CSV export endpoint
 ```python
+# filepath: app/main.py
+import csv
+import io
 from fastapi.responses import StreamingResponse
 
 
 @app.get("/movies/export.csv")
 async def export_movies_csv(repository: RepositoryDep) -> StreamingResponse:
-    def generate():
-        yield "id,title,year,genre\n"
-        for movie in repository.list():
-            yield f"{movie.id},{movie.title},{movie.year},{movie.genre}\n"
+    """Export all movies as CSV with proper escaping."""
 
-    return StreamingResponse(generate(), media_type="text/csv")
+    def generate():
+        """Generator that yields CSV rows."""
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write header
+        writer.writerow(["id", "title", "year", "genre"])
+        yield output.getvalue()
+        output.seek(0)
+        output.truncate(0)
+
+        # Write data rows
+        for movie in repository.list():
+            writer.writerow([movie.id, movie.title, movie.year, movie.genre])
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=movies.csv"},
+    )
 ```
-Add tests verifying content type, header, sample rows.
+
+**Test CSV export:**
+```python
+# filepath: tests/test_csv_export.py
+def test_csv_export(client):
+    """Verify CSV export format and content."""
+    response = client.get("/movies/export.csv")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "Content-Disposition" in response.headers
+
+    lines = response.text.strip().split("\n")
+    assert lines[0] == "id,title,year,genre"
+    assert len(lines) > 1  # At least header + one row
+```
 
 ### 4. Feature flags (config driven)
-Use `Settings.feature_preview` to gate experimental endpoints (toggle via `.env`). Document in README.
+```python
+# filepath: app/config.py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings with feature flags."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    # ...existing settings...
+
+    # Feature flags
+    feature_preview_csv_export: bool = False
+    feature_preview_mcp_tools: bool = False
+    feature_preview_recommendations: bool = False
+
+
+# filepath: app/main.py
+@app.get("/movies/export.csv")
+async def export_movies_csv(
+    repository: RepositoryDep, settings: SettingsDep
+) -> StreamingResponse:
+    """Export all movies as CSV (gated by feature flag)."""
+    if not settings.feature_preview_csv_export:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Feature not enabled",
+        )
+    # ...existing code...
+```
+
+Document in README:
+```markdown
+# filepath: README.md
+## Feature Flags
+
+Control experimental features via environment variables:
+
+- `FEATURE_PREVIEW_CSV_EXPORT=true` - Enable `/movies/export.csv` endpoint
+- `FEATURE_PREVIEW_MCP_TOOLS=true` - Enable MCP-compatible tool endpoints
+- `FEATURE_PREVIEW_RECOMMENDATIONS=true` - Enable recommendation engine
+```
 
 ## Part C – Lab 2 (45 Minutes)
 
@@ -305,39 +450,81 @@ Use `Settings.feature_preview` to gate experimental endpoints (toggle via `.env`
 - Publish `docs/service-contract.md` updates with OpenAPI examples, rate limiting info, and agent endpoints.
 
 ### 2. Pre-commit + lint/type checks
-```bash
-cat <<'CFG' > .pre-commit-config.yaml
+```yaml
+# filepath: .pre-commit-config.yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.0
+    rev: v0.8.4
     hooks:
       - id: ruff
+        args: [--fix]
       - id: ruff-format
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v1.11.0
     hooks:
       - id: mypy
-CFG
+        additional_dependencies: [pydantic, fastapi]
+        args: [--strict, --ignore-missing-imports]
+```
 
+```bash
+# Install and run
 pre-commit install
 pre-commit run --all-files
 ```
-Add `uv run --python 3.12 ruff check .` and `uv run --python 3.12 mypy app` to CI.
 
-> 🎉 **Quick win:** Seeing “All files pass” from `pre-commit run --all-files` means your release checklist can focus on features, not formatting.
+Add to CI:
+```yaml
+# filepath: .github/workflows/ci.yml (example)
+# ...existing code...
+    - name: Run pre-commit
+      run: |
+        uv run --python 3.12 pre-commit run --all-files
+```
+
+> 🎉 **Quick win:** Seeing "All files pass" from `pre-commit run --all-files` means your release checklist can focus on features, not formatting.
 
 ### 3. Changelog & release checklist
-- Adopt Conventional Commits (`feat:`, `fix:`, `docs:`) or equivalent; generate changelog with `git cliff` or manual notes.
-- Final release checklist example:
-  1. Run `uv run --python 3.12 pytest --cov` + `schemathesis` + `ruff` + `mypy`.
-  2. Execute the documented local demo script (`uv run --python 3.12 python -m app.demo` or the command listed in `docs/EX3-notes.md`) to prove the interface and API work together.
-  3. Capture smoke evidence (screenshots, short clip, or CLI transcript) that graders can reference alongside the README.
-  4. Tag release (`git tag -a v0.3.0 -m "EASS EX3"`).
-  5. Publish docs (`uv run --python 3.12 mkdocs build && netlify deploy` or similar).
-- Map each checklist line to the [EX3 requirements](../exercises.md#ex3--capstone-polish-kiss) so teams know which artifacts to submit.
+```markdown
+# filepath: docs/RELEASE_CHECKLIST.md
+# EX3 Release Checklist
 
-### 4. MCP teaser
-Preview how today’s deterministic responses feed directly into the optional MCP workshop (tool endpoints for agents). Encourage teams to read `sessions/optional/mcp.md` before elective session.
+## Pre-Release (Development Complete)
+- [ ] All features implemented per EX3 requirements
+- [ ] Feature flags documented in README
+- [ ] All tests passing: `uv run --python 3.12 pytest --cov`
+- [ ] Schemathesis validation: `uv run --python 3.12 pytest tests/test_schemathesis.py`
+- [ ] Linting clean: `uv run --python 3.12 ruff check .`
+- [ ] Type checking clean: `uv run --python 3.12 mypy app`
+- [ ] Pre-commit hooks passing: `pre-commit run --all-files`
+
+## Documentation
+- [ ] README updated with setup instructions
+- [ ] API documentation current: `uv run --python 3.12 mkdocs build`
+- [ ] OpenAPI spec includes examples for happy/sad paths
+- [ ] Service contract documented in `docs/service-contract.md`
+- [ ] Changelog updated with feature summary
+
+## Local Demo Validation
+- [ ] Run documented demo script: `uv run --python 3.12 python scripts/demo.py`
+- [ ] Verify all endpoints respond correctly
+- [ ] Test pagination, ETags, CSV export manually
+- [ ] Capture smoke evidence (screenshots/CLI output)
+
+## Release
+- [ ] Version bump in `pyproject.toml`
+- [ ] Lock dependencies: `uv sync --frozen`
+- [ ] Create git tag: `git tag -a v0.3.0 -m "EASS EX3 Submission"`
+- [ ] Push tag: `git push origin v0.3.0`
+- [ ] Generate release notes from changelog
+- [ ] Deploy documentation: `uv run --python 3.12 mkdocs gh-deploy`
+
+## Submission
+- [ ] Repository link provided
+- [ ] Smoke evidence attached (screenshots/video)
+- [ ] Team reflection document completed
+- [ ] Deliverables match EX3 requirements
+```
 
 ## Closing Circle
 - Share one capability you can now ship with confidence (e.g., async pipelines, secure auth, containers).
@@ -347,12 +534,15 @@ Preview how today’s deterministic responses feed directly into the optional MC
 ## Troubleshooting
 - **ETag mismatches** → ensure `ETag` computed on canonical JSON (sorted keys). Consider `json.dumps(..., sort_keys=True)`.
 - **Pre-commit slow** → use `--hook-stage manual` for heavy hooks, or run `uv run --python 3.12 ruff --watch` during dev.
-- **CSV export encoding issues** → enforce UTF-8 and escape commas if titles contain them (use `csv` module if needed).
+- **CSV export encoding issues** → use Python's `csv` module instead of manual string formatting to handle commas in titles.
 
 ### Common pitfalls
-- **Pagination math bugs** – test last page scenarios manually to confirm `X-Total-Pages` stays accurate.
-- **ETag ignoring embed payload** – be sure to serialize nested models the same way the API response does (`model_dump`).
-- **Pre-commit not running** – remind teams to run `pre-commit install` in each clone (containers included).
+- **Pagination math bugs** – test edge cases: empty list, single item, last page. Verify `X-Total-Pages` calculation with `math.ceil`.
+- **ETag not matching on identical content** – ensure `json.dumps(..., sort_keys=True)` for canonical representation.
+- **CSV encoding issues** – use Python's `csv` module instead of manual string formatting to handle commas in titles.
+- **Pre-commit not running** – each team member must run `pre-commit install` after cloning.
+- **Feature flag logic inverted** – test both `true` and `false` states explicitly.
+- **Missing type hints break mypy** – add `-> None` to all test functions, use `dict[str, Any]` for flexible dictionaries.
 
 ## Student Success Criteria
 
