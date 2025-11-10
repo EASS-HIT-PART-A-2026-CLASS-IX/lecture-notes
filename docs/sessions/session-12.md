@@ -23,6 +23,7 @@
 | EX3 dry run | 20 min | Student demos | Show the local run script/interface, tool-friendly endpoint, and any optional observability dashboards. |
 | Tool-friendly design | 15 min | Talk | Deterministic schemas, pagination strategy, entity tags (ETags), versioning. |
 | Micro demo: ETag handshake | 5 min | Live demo | `curl` with `If-None-Match` to show 304 responses. |
+| FastMCP bridge POC | 12 min | Live coding | Stand up a FastMCP server + probe so EX3 endpoints are callable by AI assistants. |
 | Release hygiene | 15 min | Talk | Pre-commit, Ruff, mypy, docs generation, changelog management. |
 | **Part B – Lab 1** | **45 min** | **Guided polish** | **Add pagination, ETags, CSV export, OpenAPI examples.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
@@ -49,6 +50,109 @@ flowchart LR
 
     Backlog --> Feature --> Tests --> Quality --> Docs --> Package --> Release --> Tooling
 ```
+
+### FastMCP bridge mini-lab (12 min)
+
+Tie the polish work to tool clients by shipping a local FastMCP proof-of-concept (POC). Students see that the same `/movies` contracts they hardened all semester can now power MCP-aware assistants.
+
+**1. Setup (2 min)**
+```bash
+cd ~/repos/hello-uv
+uv add "mcp[cli]>=1.1.0"
+mkdir -p app scripts
+touch app/mcp_movies.py scripts/mcp_probe.py
+```
+
+**2. FastMCP server (`app/mcp_movies.py`) — mirrors REST vocabulary**
+```python
+from __future__ import annotations
+
+import random
+from typing import Any
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("io.eass.session12.movies")
+
+MOVIES: dict[str, dict[str, Any]] = {
+    "alien": {"id": 1, "title": "Alien", "year": 1979, "genre": "sci-fi"},
+    "totoro": {"id": 2, "title": "My Neighbor Totoro", "year": 1988, "genre": "family"},
+    "dune": {"id": 3, "title": "Dune", "year": 2021, "genre": "adventure"},
+}
+
+
+def _slug(name: str) -> str:
+    return name.strip().lower()
+
+
+@mcp.tool(name="lookup-movie")
+async def lookup_movie(title: str) -> dict[str, Any]:
+    """Mirror GET /movies/{title} but through MCP."""
+    movie = MOVIES.get(_slug(title))
+    if not movie:
+        return {
+            "status": 404,
+            "error": "resource_not_found",
+            "detail": f"{title} missing from catalog",
+        }
+    return {"status": 200, "movie": movie}
+
+
+@mcp.tool(name="pick-tonight")
+async def pick_tonight(genre: str | None = None) -> dict[str, Any]:
+    """Equivalent to GET /movies?genre= — return one curated pick."""
+    pool = [m for m in MOVIES.values() if not genre or m["genre"] == genre.lower()]
+    if not pool:
+        return {"status": 204, "detail": f"No matches for genre={genre!r}"}
+    choice = random.choice(pool)
+    return {
+        "status": 200,
+        "detail": f"Queue up {choice['title']} ({choice['year']})",
+        "movie": choice,
+    }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+```
+
+**3. Local stdio probe (`scripts/mcp_probe.py`)**
+```python
+from __future__ import annotations
+
+import asyncio
+from mcp import ClientSession, StdioServerParameters, stdio_client
+
+
+async def main() -> None:
+    params = StdioServerParameters(command="python", args=["-m", "app.mcp_movies"])
+    async with stdio_client(params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            print("TOOLS:", [tool.name for tool in tools.tools])
+
+            lookup = await session.call_tool("lookup-movie", {"title": "Alien"})
+            print("LOOKUP:", lookup.content[0].text)
+
+            tonight = await session.call_tool("pick-tonight", {"genre": "sci-fi"})
+            print("PICK:", tonight.content[0].text)
+
+
+asyncio.run(main())
+```
+
+**4. Run + debrief (5 min)**
+```bash
+uv run --python 3.12 python scripts/mcp_probe.py
+```
+
+What to call out while the output streams:
+- `lookup-movie` reuses the exact error envelope students already wrote for 404s.
+- `pick-tonight` shows how deterministic responses keep MCP tools predictable.
+- Stdio client ⇄ FastMCP server mirrors the Typer ⇄ FastAPI flow—same trace IDs, same nouns, different transport.
+
+Optional stretch if time allows: Run `npx @modelcontextprotocol/inspector` and point it at `python -m app.mcp_movies` to visualize the tool schemas the same way VS Code’s REST Client visualizes HTTP requests.
 
 ## Part B – Lab 1 (45 Minutes)
 
@@ -197,7 +301,7 @@ Use `Settings.feature_preview` to gate experimental endpoints (toggle via `.env`
 - **Minutes 25–35** – Draft release checklist with automated tests + Docker builds.
 - **Minutes 35–45** – Rehearse MCP tool endpoint and capture deliverables for EX3.
 ### 1. Documentation build
-- Generate API docs: `uv run pdocs serve app` or `uv run mkdocs serve` (choose one per team).
+- Generate API docs: `uv run --python 3.12 pdocs serve app` or `uv run --python 3.12 mkdocs serve` (choose one per team).
 - Publish `docs/service-contract.md` updates with OpenAPI examples, rate limiting info, and agent endpoints.
 
 ### 2. Pre-commit + lint/type checks
@@ -218,18 +322,18 @@ CFG
 pre-commit install
 pre-commit run --all-files
 ```
-Add `uv run ruff check .` and `uv run mypy app` to CI.
+Add `uv run --python 3.12 ruff check .` and `uv run --python 3.12 mypy app` to CI.
 
 > 🎉 **Quick win:** Seeing “All files pass” from `pre-commit run --all-files` means your release checklist can focus on features, not formatting.
 
 ### 3. Changelog & release checklist
 - Adopt Conventional Commits (`feat:`, `fix:`, `docs:`) or equivalent; generate changelog with `git cliff` or manual notes.
 - Final release checklist example:
-  1. Run `uv run pytest --cov` + `schemathesis` + `ruff` + `mypy`.
-  2. Execute the documented local demo script (`uv run python -m app.demo` or the command listed in `docs/EX3-notes.md`) to prove the interface and API work together.
+  1. Run `uv run --python 3.12 pytest --cov` + `schemathesis` + `ruff` + `mypy`.
+  2. Execute the documented local demo script (`uv run --python 3.12 python -m app.demo` or the command listed in `docs/EX3-notes.md`) to prove the interface and API work together.
   3. Capture smoke evidence (screenshots, short clip, or CLI transcript) that graders can reference alongside the README.
   4. Tag release (`git tag -a v0.3.0 -m "EASS EX3"`).
-  5. Publish docs (`uv run mkdocs build && netlify deploy` or similar).
+  5. Publish docs (`uv run --python 3.12 mkdocs build && netlify deploy` or similar).
 - Map each checklist line to the [EX3 requirements](../exercises.md#ex3--capstone-polish-kiss) so teams know which artifacts to submit.
 
 ### 4. MCP teaser
@@ -242,7 +346,7 @@ Preview how today’s deterministic responses feed directly into the optional MC
 
 ## Troubleshooting
 - **ETag mismatches** → ensure `ETag` computed on canonical JSON (sorted keys). Consider `json.dumps(..., sort_keys=True)`.
-- **Pre-commit slow** → use `--hook-stage manual` for heavy hooks, or run `uv run ruff --watch` during dev.
+- **Pre-commit slow** → use `--hook-stage manual` for heavy hooks, or run `uv run --python 3.12 ruff --watch` during dev.
 - **CSV export encoding issues** → enforce UTF-8 and escape commas if titles contain them (use `csv` module if needed).
 
 ### Common pitfalls

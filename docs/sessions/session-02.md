@@ -375,7 +375,7 @@ POST /deleteMovie
 
 **Discussion point:** Every request in EX1 must generate or accept a trace ID so we can correlate logs, errors, and cache hits across all layers.
 
-### 5. (Optional) Docker MCP gateway pattern (5 min)
+### 5. Docker MCP gateway pattern (5 min)
 
 This is a stretch demo—skip if time is tight or Docker MCP tooling isn't installed. The core client/server/gateway lessons are already covered by nginx.
 
