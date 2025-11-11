@@ -48,6 +48,83 @@
   ```
 Use this “calculator” reference during Session 03 whenever the movie service feels too heavy—you can show a concrete FastAPI + pytest + httpx + Docker workflow first, then layer on DI and repositories.
 
+### EX1 Calculator Scaffold (deliverable blueprint, no code)
+Use this checklist when you want students (or an AI pair) to spin up the exact same calculator API from scratch. The idea is to **describe the deliverable with zero hidden steps**, so the EX1 baseline feels tangible.
+
+#### 1. Directory hierarchy
+```
+examples/fastapi-calculator/
+├── README.md
+├── .gitignore
+├── pyproject.toml            # uv-managed project metadata (requires-tool, ruff config)
+├── uv.lock                   # dependency lock (committed)
+├── .env.example              # MOVIE_* / CALC_* vars; never commit real `.env`
+├── Dockerfile                # slim image + uvicorn entrypoint
+├── src/
+│   └── calculator/
+│       ├── __init__.py
+│       ├── config.py         # Pydantic Settings + uv env wiring
+│       ├── models.py         # Pydantic request/response schemas (no string-based types)
+│       ├── routes.py         # APIRouter with `/calc/add|subtract|multiply|divide`
+│       ├── service.py        # Pure functions that implement the arithmetic
+│       └── main.py           # FastAPI app factory + router include + middleware
+├── tests/
+│   ├── test_routes.py        # pytest + FastAPI TestClient coverage (201, 422, trace ID)
+│   └── test_httpx_client.py  # httpx.AsyncClient + ASGITransport smoke test
+└── scripts/
+    └── smoke.py              # optional: one-off script exercising the HTTP client
+```
+- Keep `backend/` naming if you prefer (`backend/src/...`, `backend/tests/...`). The documentation and Docker context must still live at the top level so graders can run commands verbatim.
+- `.gitignore` essentials: `.venv/`, `.ruff_cache/`, `__pycache__/`, `.env`, `uv.lock` backups, `.DS_Store`.
+
+#### 2. Tooling + uv environments
+- **Local dev:** `uv venv --python 3.12 && source .venv/bin/activate`, `uv pip install -e .[dev]` (extras include `pytest`, `httpx`, `ruff`).
+- **Run API:** `uv run uvicorn calculator.main:app --reload`.
+- **Run tests:** `uv run pytest tests -q`.
+- **Lint:** `uv run ruff check src tests` (add `ruff format` if you opt into the formatter).
+- **Dockerized:** build from the project root `docker build -t calculator-api examples/fastapi-calculator` after copying `uv.lock` + `pyproject.toml` into the image and running `uv pip install .`. Entrypoint: `uvicorn calculator.main:app --host 0.0.0.0 --port 8000`.
+- **Multi-env note:** the same uv lockfile drives both local runs and Docker builds—no extra `requirements.txt` is necessary if you rely on `uv pip compile`. If you keep `requirements.txt`, regenerate it via `uv pip compile pyproject.toml -o requirements.txt`.
+
+#### 3. API + validation requirements
+- **Routes:** `POST /calc/add|subtract|multiply|divide`. Accept `{ "a": float, "b": float }` requests, respond with `{ "operation": "add", "result": 42.0 }`. Division must raise a `422` with `detail` describing divide-by-zero.
+- **Pydantic models:** use real type hints (`float`, `Literal["add","subtract",...]`, `BaseModel`). Example:
+  ```python
+  class OperationRequest(BaseModel):
+      a: float
+      b: float
+
+  class OperationResponse(BaseModel):
+      operation: Literal["add", "subtract", "multiply", "divide"]
+      result: float
+  ```
+  No string-based type annotations and no untyped dicts. Add a `field_validator("operation")` if you accept free-form operations.
+- **Traceability:** Middleware must propagate `X-Trace-Id` (incoming header or generated UUID) to responses and log entries.
+- **Config:** `Settings` derived from `BaseSettings` (`pydantic-settings`) with fields like `app_name`, `default_precision`, `log_level`. Load `.env` via `SettingsConfigDict(env_file=".env", env_prefix="CALC_")`.
+
+#### 4. Testing & quality gates
+- `tests/test_routes.py` shows synchronous usage with `TestClient` (FastAPI) covering happy path, validation error, and header propagation.
+- `tests/test_httpx_client.py` demonstrates `httpx.AsyncClient` with `ASGITransport` to avoid standing up a server.
+- Document how to run `pytest -q`, `ruff check`, and (optionally) `pytest --maxfail=1 --disable-warnings -q`.
+- Call out that every new calculator operation requires a corresponding test; red→green is part of the grading rubric.
+
+#### 5. README contract
+Your README must, at minimum, answer:
+1. **Setup:** `uv` + Python version, how to create/activate the environment, and how to install dependencies.
+2. **Run locally:** command to start uvicorn, pointing to `calculator.main:app`.
+3. **Run tests & lint:** pytest, ruff, (optional) `uv run python scripts/smoke.py`.
+4. **Docker instructions:** exact `docker build` + `docker run` commands and exposed port.
+5. **API contract:** example request/response payloads or reference to `/docs`.
+6. **AI assistance log:** prompts/tools and how outputs were verified.
+
+Use this starter paragraph when prompting an AI helper:
+```
+Create a FastAPI calculator backend (Python 3.12) with uv/pyproject packaging, Pydantic v2 request/response models, middleware that forwards `X-Trace-Id`, pytest+httpx tests, ruff config, Dockerfile, and README with local/uv/docker instructions. Layout must be:
+- Dockerfile, README.md, .gitignore, .env.example, pyproject.toml, uv.lock
+- src/calculator/{config.py,models.py,service.py,routes.py,main.py}
+- tests/{test_routes.py,test_httpx_client.py}
+```
+Paste the request into your AI tool, inspect the diff, and run the commands listed in the README to verify the scaffold.
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
