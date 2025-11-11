@@ -29,6 +29,16 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - [Local llama.cpp fallback (Session 08)](sessions/session-08.md#local-llamacpp-fallback-gemma-3-270m)
 - [Qdrant vector DB stretch (Session 08)](sessions/session-08.md#qdrant-vector-db-stretch-retrieval-ready-prompts)
 
+## Future-facing Engineering Archetypes
+Modern software careers are coalescing around four complementary builder profiles, and EASS intentionally lets students rehearse each mindset while staying within an approachable scope.
+
+1. **Field / Business Engineer (the people person)** – Owns discovery conversations, trims prototypes to the sharpest business value, and turns demos into “this solves your problem” stories.
+2. **DevOps & Infrastructure Engineer (the reliability guru)** – Keeps systems observable and shippable; in this course that means Docker Compose fluency, health checks, and deterministic deploys for every lab.
+3. **Full-stack Product Engineer (the end-to-end builder)** – Ships UI, API, and data layers together. FastAPI, Streamlit, and shared models appear across sessions so students get repeated reps on this archetype.
+4. **AI Full-stack Engineer (the intelligence layer)** – Orchestrates services that learn and act safely. Session 08’s agent labs and the optional MCP/DuckDB tracks show how to wire data contracts for AI-heavy features.
+
+**Course promise**: graduate students who are day-one ready for archetypes 3–4, while giving them enough automation/infra reps to be a smart bet for archetype 2 if a team decides to mentor them. We keep archetype 1 in view by narrating every build in stakeholder language, not just in console output.
+
 ## Visual Roadmap
 ```mermaid
 gantt

@@ -30,6 +30,16 @@ Key documents:
   - **EX2** (due Tue 23 Dec 2025, 23:59 Israel time): deliver a Streamlit dashboard **or** Typer CLI that talks to the EX1 API.
   - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): integrate the API and interface, add one thoughtful improvement, document the runbook. Everything runs locally; cloud, Docker, and security work are optional extras only.
 
+## 🌱 Future-facing Engineering Archetypes
+Modern software careers are coalescing around four builder profiles, and every lab in this repo intentionally hits each archetype so students can imagine their next role:
+
+1. **Field / Business Engineer (the people person)** – Turns office-hour demos into “this solves your problem” stories and keeps customer value front and center.
+2. **DevOps & Infrastructure Engineer (the reliability guru)** – Automates the boring parts: Docker Compose, repeatable env setup, health checks, and log-friendly services.
+3. **Full-stack Product Engineer (the end-to-end builder)** – Ships UI, API, and persistence together; FastAPI + Streamlit reps are the backbone of the course.
+4. **AI Full-stack Engineer (the intelligence layer)** – Wires agents, retrieval flows, and safe automation; Session 08 plus the optional MCP/DuckDB tracks pave that on-ramp.
+
+**Course promise**: graduates leave day-one ready for archetypes 3–4, with enough automation muscle memory to be a smart bet for archetype 2 if a team mentors them. By constantly narrating stakeholder impact we keep archetype 1 in the conversation too, so students can explain their builds to humans, not just terminals.
+
 ## 🗂️ Legacy Materials
 
 Historical slides and Natalie’s notes live under `lectures/`:

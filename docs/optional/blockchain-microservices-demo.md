@@ -262,8 +262,6 @@ Keep dual miners, fork visualizers, and live hash sliders for the optional modul
 - **Minimal dependencies**: Just Python 3.12 + uv + Docker (students already have these from prior modules)
 - **Time-bounded**: Core demo = 90 minutes lecture + 60 minutes lab. Fork extensions = optional 2-hour workshop.
 
----
-
 ### Wallet + Node Variations
 
 #### Flexibility for different class sizes
