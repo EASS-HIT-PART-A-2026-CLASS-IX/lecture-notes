@@ -73,19 +73,27 @@ Before class, complete these setup steps:
 
 ## Session Agenda
 
-| Time | Activity | Focus |
-|------|----------|-------|
-| 15 min | FastAPI fundamentals | Routes, validation, dependency injection concepts |
-| 10 min | Request flow walkthrough | HTTP → FastAPI → Repository → Response |
-| 45 min | **Lab 1: Build the API** | Settings, repository, routes, middleware |
-| 10 min | Break | — |
-| 45 min | **Lab 2: Test everything** | pytest fixtures, TestClient, red→green workflow |
-| 10 min | Docker deployment | Build and run the containerized app |
-| 10 min | Wrap-up | Review deliverables and next steps |
+| Segment | Duration | Format | Focus |
+| --- | --- | --- | --- |
+| Part A – Recap & intent | 5 min | Guided discussion | Surface wins from Session 02, confirm EX1 blockers, frame why FastAPI is today's focus. |
+| Part A – FastAPI fundamentals | 15 min | Talk + board | Map HTTP verbs to path operations, highlight what `/docs` gives you for free. |
+| Part A – Request flow walkthrough | 10 min | Diagram walkthrough | Trace HTTP → FastAPI → dependency injection → repository → response. |
+| Part A – Live demo: docs + TestClient | 15 min | Live coding | Show how FastAPI auto-generates docs/tests before we build it ourselves. |
+| Break | 10 min | — | Walk/stretch, reset terminals. |
+| **Part B – Lab 1** | **45 min** | **Guided build** | **Scaffold config, models, repository, and routes for Movie Service v0.** |
+| Break | 10 min | — | Hydrate, swap drivers. |
+| **Part C – Lab 2** | **45 min** | **Guided testing** | **Pytest fixtures, TestClient, regression hunts, red→green loops.** |
+| Docker deployment demo | 10 min | Live demo | Containerize the same app, compare local vs Docker runs. |
+| Wrap-up & checklist | 10 min | Discussion + Q&A | Review deliverables, preview Session 04 (SQLite + SQLModel). |
 
-## Core Concepts
+## Part A – Theory & Live Demos (45 minutes)
 
-### 1. FastAPI Path Operations
+**Talk track:**
+- Kick off with a 60-second recap of Session 02's HTTP anatomy and connect it to today's goal: code the same contracts in FastAPI.
+- Draw the request flow (client → FastAPI app → dependency injection → repository → response) before showing any code so students see where each file fits.
+- Bounce between the board and the live server (`/docs`, `pytest`) so every concept immediately maps to feedback loops they'll use in Labs 1 and 2.
+
+### 1. FastAPI Path Operations (15 min)
 
 FastAPI maps HTTP methods to Python functions:
 
@@ -110,7 +118,7 @@ def delete_movie(id: int): ...
 - `404` - Resource not found
 - `422` - Validation error
 
-### 2. Pydantic Models for Validation
+### 2. Pydantic Models for Validation (10 min)
 
 Pydantic automatically validates request/response data:
 
@@ -129,7 +137,7 @@ Benefits:
 - Self-documenting API
 - Auto-generated OpenAPI docs
 
-### 3. Dependency Injection
+### 3. Dependency Injection (10 min)
 
 Share resources across endpoints without globals:
 
@@ -152,14 +160,21 @@ Why use DI:
 - No global state issues
 - Clear dependencies in function signatures
 
-### 4. Local Feedback Loops
+### 4. Local Feedback Loops (10 min)
 
 - Run the API with `uv run uvicorn movie_service.app.main:app --reload` for instant reloads.
 - Keep pytest green: `uv run pytest movie_service/tests -q`.
 - Use `curl` or `httpie` to hit endpoints exactly as your automated tests do.
 - The faster the loop, the easier it is to spot regressions before moving on.
 
-## Lab 1: Build the Movie API (45 minutes)
+## Part B – Lab 1: Build the Movie API (45 minutes)
+
+**Goals:** Ship an in-memory FastAPI service with health + CRUD endpoints, dependency injection, and clean separation between config, models, repositories, and routes.
+
+**Facilitation tips:**
+- Keep VS Code and the terminal side by side; pause after each file so students catch up before moving on.
+- Continuously connect each file to the earlier request-flow diagram so the mental model stays intact.
+- Remind the cohort that Session 04 swaps the repository for SQLModel, so investing in clean boundaries now pays off later.
 
 Follow these steps to build a working FastAPI application from scratch.
 
@@ -456,18 +471,25 @@ curl -X POST http://localhost:8000/movies \
   -d '{"title": "Inception", "year": 2010, "genre": "sci-fi"}'
 
 # List all movies
-   curl http://localhost:8000/movies
-   
-   # Check health
-   curl http://localhost:8000/health
-   ```
+curl http://localhost:8000/movies
+
+# Check health
+curl http://localhost:8000/health
+```
 
 **Success criteria:**
 - Server starts without errors
 - `/docs` page loads and shows all endpoints
 - Can create and retrieve movies
 
-## Lab 2: Test Everything (45 minutes)
+## Part C – Lab 2: Test Everything (45 minutes)
+
+**Goals:** Turn pytest into a guardrail so every regression is caught before Docker or GitHub.
+
+**Facilitation tips:**
+- Start by running a single failing test to show how fast TestClient feedback arrives.
+- Narrate the purpose of each fixture (state isolation, dependency overrides) before writing assertions.
+- Celebrate the red→green moment, then immediately demonstrate how a removed validator is caught.
 
 ### Step 1: Create Test Fixtures (10 min)
 
