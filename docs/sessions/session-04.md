@@ -3,6 +3,9 @@
 - **Date:** Monday, Nov 24, 2025
 - **Theme:** Replace the in-memory repository with a real SQLite database using SQLModel, per-request sessions, and database-aware tests.
 
+## Session Story
+You begin exactly where Session 03 ended: a FastAPI app that forgets every movie as soon as the process restarts. In this session you will (1) teach FastAPI how to talk to SQLite through SQLModel, (2) rewire the repository and routes so every CRUD action persists real rows, and (3) wrap that work in tests, migrations, and a tiny seed script. The entire flow is intentionally linear so newer students can focus on one idea at a time before seeing how everything fits together.
+
 ## Learning Objectives
 - Model movie data with SQLModel and generate the corresponding SQLite tables.
 - Configure a database engine + session dependency for FastAPI using uv-managed settings.
@@ -11,7 +14,7 @@
 - Update pytest fixtures to spin up an isolated database per test file.
 
 ## What You’ll Build
-- `movie_service/app/models.py` holding SQLModel definitions (`Movie`, `MovieCreate`, `MovieRead`, `MovieUpdate`).
+- `movie_service/app/models.py` holding SQLModel definitions (`Movie`, `MovieCreate`, `MovieRead`) plus a simple `MovieUpdate` stub you can expand during Session 05.
 - `movie_service/app/database.py` that exposes `engine`, `get_session`, and an `init_db()` helper.
 - `movie_service/app/repository_db.py` that performs create/list/get/delete via SQLModel sessions.
 - Updated FastAPI endpoints wired to the new repository while preserving the HTTP contract from Session 03.
@@ -19,6 +22,8 @@
 - pytest fixtures that create/drop the SQLite schema in a temporary directory so tests stay deterministic.
 
 ## Prerequisites
+
+Complete these before students arrive so the first lab can jump straight into coding. Run every command from the `hello-uv/` workspace root unless noted otherwise.
 
 1. **Install extra dependencies** inside `hello-uv`:
    ```bash
@@ -62,26 +67,31 @@
 ## Core Concepts
 
 ### 1. SQLModel = Pydantic + SQLAlchemy
+SQLModel sits between familiar Pydantic models and SQLAlchemy’s database engine, so you keep type hints and validation while gaining persistence.
 - Inherit from `SQLModel`; specify `table=True` for persisted tables.
 - Use `Field(default=None, primary_key=True)` for ids; reuse `Field(ge=..., le=...)` for validation just like Session 03.
 - Create lightweight Pydantic schemas (`MovieCreate`, `MovieRead`) by reusing the same base class.
 
 ### 2. Database Engine & Sessions
+An engine is the shared “wire” to SQLite; a session is a short-lived unit of work that FastAPI opens per request and automatically closes.
 - `engine = create_engine(database_url, echo=False, connect_args={"check_same_thread": False})` for SQLite.
 - Provide sessions with `Session(engine)` inside a dependency generator (FastAPI closes it automatically).
 - One request = one session; repository functions receive the session via dependency injection.
 
 ### 3. Repository Layer Swap
+Instead of dict lookups, the repository now issues SQL queries but keeps the same interface so routes do not change.
 - Replace the in-memory dictionary with SQL queries (`session.exec(select(Movie)).all()`).
 - Keep the FastAPI routes untouched—only the dependency wiring changes.
 - Add helper methods for `update` so Session 05 can introduce PUT/PATCH quickly.
 
 ### 4. Testing with Temporary Databases
+Temporary SQLite files keep each test hermetic: build tables at the start of a module, drop them afterward, and never leak data across runs.
 - Use Python’s `tempfile.TemporaryDirectory` or `pytest` tmp_path fixtures.
 - Create an engine pointing to `sqlite://` (in-memory) or `sqlite:///tmp/test.db`.
 - Create tables before each test module, drop after, ensuring no cross-test leakage.
 
 ### 5. Alembic + Seeds
+Alembic versions the schema; a seed script fills predictable starter rows so dev and tests stay in sync.
 - `alembic init` scaffolds migrations driven by SQLModel metadata.
 - A tiny seed script demonstrates how to reuse the same session dependency outside FastAPI.
 - Even if you skip Alembic locally, document the steps for EX1.
@@ -93,6 +103,10 @@
 4. **Migrations:** Alembic stores schema history; every structural change (new column) gets its own revision.
 
 ## Part B – Lab 1: Wire SQLite (45 minutes)
+
+> Goal: replace the toy in-memory repository with a SQLite-backed SQLModel stack while keeping the HTTP contract untouched.  
+> Files you’ll edit: `movie_service/app/config.py`, `database.py`, `models.py`, `repository_db.py`, `dependencies.py`, `main.py`.  
+> Success check: restart the server, hit `/movies`, and see the rows you created earlier still present.
 
 ### Step 1: Update Settings
 `movie_service/app/config.py`
@@ -116,7 +130,6 @@ class Settings(BaseSettings):
 ### Step 2: Create `database.py`
 `movie_service/app/database.py`
 ````python
-from contextlib import contextmanager
 from typing import Generator
 
 from sqlmodel import SQLModel, create_engine, Session
@@ -147,6 +160,7 @@ init_db()
 print("Created data/movies.db")
 PY
 ```
+Running the helper once up front saves students from a confusing "no such table" error when they hit the POST endpoint for the first time.
 
 ### Step 3: Define SQLModel classes
 `movie_service/app/models.py`
@@ -189,11 +203,11 @@ class MovieRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def list(self) -> Sequence<Movie]:
+    def list(self) -> Sequence[Movie]:
         return self.session.exec(select(Movie)).all()
 
     def create(self, payload: MovieCreate) -> Movie:
-        record = Movie.model_validate(payload, update={})  # copy into SQLModel
+        record = Movie.model_validate(payload)  # copy into SQLModel
         self.session.add(record)
         self.session.commit()
         self.session.refresh(record)
@@ -209,6 +223,8 @@ class MovieRepository:
             self.session.commit()
 ````
 
+`Movie.model_validate(payload)` converts the incoming request object into the SQLModel table class so SQLAlchemy can track it and populate the autogenerated primary key.
+
 ### Step 5: Dependency wiring
 `movie_service/app/dependencies.py`
 ````python
@@ -216,6 +232,7 @@ from collections.abc import Generator
 from typing import Annotated
 
 from fastapi import Depends
+from sqlmodel import Session
 
 from .config import Settings
 from .database import get_session
@@ -226,7 +243,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def get_repository(session=Depends(get_session)) -> MovieRepository:
+def get_repository(session: Session = Depends(get_session)) -> MovieRepository:
     return MovieRepository(session)
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -291,7 +308,13 @@ curl http://localhost:8000/movies
 ```
 Observe that records persist after restarting the server because they now live in `data/movies.db`.
 
+> ✅ Lab 1 complete when: POST returns `201`, `/movies` echoes the new record, and the same record appears after you restart uvicorn.
+
 ## Part C – Lab 2: Tests, Migrations, Seeds (45 minutes)
+
+> Goal: prove the database-backed service is safe to refactor by adding hermetic pytest fixtures, an Alembic migration, and a repeatable seed script.  
+> Files you’ll edit: `movie_service/tests/conftest.py`, Alembic `env.py` + `alembic.ini`, and `movie_service/scripts/seed_db.py`.  
+> Success check: `uv run pytest movie_service/tests -v` passes, `uv run alembic upgrade head` applies cleanly, and the seed script prints that it inserted two movies.
 
 ### Step 1: Database-aware pytest fixtures
 `movie_service/tests/conftest.py`
@@ -343,24 +366,74 @@ By overriding `app.dependency_overrides`, every TestClient call receives the in-
 ### Step 2: Reuse the Session 03 tests
 Most assertions stay the same. Keep them in `movie_service/tests/test_movies.py`; the fixtures now ensure each test runs against a blank SQLite database.
 
+### Alembic 101 (Zero-Experience Primer)
+Think of Alembic as Git for your database schema: every change gets a revision file, environments move “forward” with `upgrade`, and you always know which version a database is running. Instead of manually running `CREATE TABLE` statements, you record each structural change as a **revision** so every developer (and CI) can reproduce the same database.
+
+- **Vocabulary cheat sheet**
+  - **Revision** – one Python file under `migrations/versions/` that knows how to `upgrade()` and `downgrade()` a specific change.
+  - **Head** – the newest revision in the timeline. `upgrade head` moves your database to the latest schema; `downgrade -1` rolls back one step.
+  - **Autogenerate** – Alembic inspects `SQLModel.metadata` and suggests the SQL needed to match your models.
+- **What `alembic init migrations` creates**
+  ````text
+  alembic.ini
+  migrations/
+  ├── env.py          # wires SQLModel metadata into Alembic
+  ├── README          # short usage notes
+  ├── script.py.mako  # template Alembic uses for new revisions
+  └── versions/       # empty folder where revisions land
+  ````
+- **Workflow you’ll repeat**
+  1. Update or add SQLModel classes.
+  2. Run `uv run alembic revision --autogenerate -m "describe change"`.
+  3. Inspect the generated file (it mirrors SQL `CREATE/ALTER TABLE` statements).
+  4. Apply it with `uv run alembic upgrade head`. Your SQLite file now matches the models.
+  5. (Optional) check status with `uv run alembic current` which prints the active revision.
+
 ### Step 3: Alembic initialization
-```bash
-uv run alembic init migrations
-```
-Update `alembic.ini` to use `MOVIE_DATABASE_URL`, then edit `migrations/env.py`:
-````python
-from sqlmodel import SQLModel
+1. **Scaffold Alembic**
+   ```bash
+   uv run alembic init migrations
+   ```
+   This creates `alembic.ini` plus the `migrations/` folder shown in the primer above.
 
-from movie_service.app import models  # noqa: F401 - ensures models register tables
-from movie_service.app.database import engine
+2. **Point Alembic at your SQLite URL + SQLModel metadata**
+   - In `alembic.ini` set the database URL line to use your env var so local/prod can differ:
+     ```ini
+     sqlalchemy.url = ${MOVIE_DATABASE_URL}
+     ```
+   - Replace the default `env.py` contents with:
+     ````python
+     from sqlmodel import SQLModel
 
-target_metadata = SQLModel.metadata
-````
-Generate the first migration:
-```bash
-uv run alembic revision --autogenerate -m "create movies"
-uv run alembic upgrade head
-```
+     from movie_service.app import models  # noqa: F401 - ensures models register tables
+     from movie_service.app.database import engine
+
+     target_metadata = SQLModel.metadata
+     ````
+   Alembic now imports every SQLModel table and reuses the same engine you use in FastAPI.
+
+3. **Generate the first revision (create the `movie` table)**
+   ```bash
+   uv run alembic revision --autogenerate -m "create movies"
+   ```
+   Open the new file under `migrations/versions/` to see the SQL it plans to run. It will look similar to:
+   ````python
+   def upgrade() -> None:
+       op.create_table(
+           "movie",
+           sa.Column("id", sa.Integer(), primary_key=True),
+           sa.Column("title", sa.String(), nullable=False),
+           sa.Column("year", sa.Integer(), nullable=False),
+           sa.Column("genre", sa.String(), nullable=False),
+       )
+   ````
+
+4. **Apply the revision to your dev database**
+   ```bash
+   uv run alembic upgrade head
+   uv run alembic current  # optional: prints the revision hash now stored in data/movies.db
+   ```
+   At this point `data/movies.db` contains a `movie` table that matches the SQLModel definitions.
 
 ### Step 4: Seed script
 `movie_service/scripts/seed_db.py`
@@ -399,6 +472,13 @@ uv run python -m movie_service.scripts.seed_db
 - Introduce pagination + filtering at the SQL layer.
 - Prepare for Postgres by moving `database_url` into `.env` per environment.
 - Revisit Dockerfile (Session 05) to include SQLite volume mounts or alternative databases.
+
+## Facilitation Tips for Newer Students
+- Open each file together before typing so everyone can see where the new code lives (config → database → models → repository → routes).
+- After Step 2, pause and confirm the SQLite file exists to prevent cascading errors during POST tests.
+- Keep pytest green by running `uv run pytest movie_service/tests -k movies` after wiring the fixtures, then expand to `-v` once everything passes.
+- For Alembic, show the generated revision and highlight the mirrored SQL columns; this keeps the migration step from feeling like magic.
+- End the session by re-running the seed script and `/movies` curl so students leave with a visible success moment.
 
 ## Troubleshooting
 - **`sqlite3.OperationalError: attempt to write a readonly database`** → ensure the `data/` directory is writable and not tracked by Git.
