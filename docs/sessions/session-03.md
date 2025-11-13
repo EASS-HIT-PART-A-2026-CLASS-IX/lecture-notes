@@ -1,244 +1,320 @@
 # Session 03 – FastAPI Fundamentals (Movie Service v0)
 
 - **Date:** Monday, Nov 17, 2025
-- **Theme:** Stand up the first FastAPI version of the movie service with dependency injection, validation, and reproducible tests.
+- **Theme:** Build a complete FastAPI movie service with dependency injection, validation, and automated tests.
 
 ## Learning Objectives
-- Map Hypertext Transfer Protocol (HTTP) verbs to FastAPI path operations and enforce validation with Pydantic v2 (`model_validate`, `model_dump`, validators).
-- Use FastAPI dependency injection to share settings and in-memory repositories safely between requests.
-- Propagate `X-Trace-Id` trace identifier (ID) headers from clients (Session 02) through responses and logs to pave the way for observability.
-- Practice red→green testing with `pytest` and `TestClient`, covering both happy-path and error responses.
 
-## Before Class – FastAPI Preflight (Just-in-Time Teaching, JiTT)
-- In `hello-uv`, install the core stack:
-  ```bash
-  uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
-  ```
-  Post any failures in Discord `#helpdesk` using **Problem → Action → Result → Desired**.
-- Create `.env.example` (keep real secrets out of Git):
-  ```ini
-  MOVIE_APP_NAME="Movie Service"
-  MOVIE_DEFAULT_PAGE_SIZE=20
-  MOVIE_FEATURE_PREVIEW=false
-  ```
-- Watch the FastAPI “path operations” video (link in LMS) and write down two validation questions for discussion.
+By the end of this session, you will:
+- Build REST API endpoints with FastAPI using proper HTTP methods and status codes
+- Validate request/response data with Pydantic v2 models and custom validators
+- Implement dependency injection to manage shared resources (settings, repositories)
+- Write automated tests using pytest and TestClient
+- Run the same application locally and in Docker containers
 
-## Minimal FastAPI Reference Example (Calculator API)
-- Folder: `examples/fastapi-calculator`
-- Provides a single-file FastAPI app with `/calc/add|subtract|multiply|divide` JSON endpoints, pytest coverage (FastAPI `TestClient` + httpx `ASGITransport`), and a Dockerfile pinned to Python 3.12.
-- Prep steps (once): `uv python install 3.12.9`
-- Run locally (Python 3.12 via `uv`):
-  ```bash
-  cd examples/fastapi-calculator
-  uv venv --python 3.12 && source .venv/bin/activate
-  uv pip install -r requirements.txt
-  uv run uvicorn app.main:app --reload
-  ```
-  Swagger UI lives at `http://127.0.0.1:8000/docs`. Explain that Swagger is FastAPI’s auto-generated OpenAPI explorer: it documents every route, allows ad-hoc testing, and shows real request/response payloads.
-  Send a quick `curl -X POST http://127.0.0.1:8000/calc/add -d '{"a": 5, "b": 8}' -H 'Content-Type: application/json'` to prove the JSON API works.
-- Tests:
-  ```bash
-  uv run pytest tests -q
-  ```
-  Mention how `tests/test_calculator.py` uses FastAPI’s synchronous `TestClient`, while `tests/test_httpx_client.py` demonstrates `httpx.AsyncClient` with `ASGITransport` to hit the app without starting a server.
-- Dockerize the exact same app:
-  ```bash
-  docker build -t calculator-api examples/fastapi-calculator
-  docker run --rm -p 8000:8000 calculator-api
-  ```
-Use this “calculator” reference during Session 03 whenever the movie service feels too heavy—you can show a concrete FastAPI + pytest + httpx + Docker workflow first, then layer on DI and repositories.
+## What You'll Build
 
-### EX1 Calculator Scaffold (deliverable blueprint, no code)
-Use this checklist when you want students (or an AI pair) to spin up the exact same calculator API from scratch. The idea is to **describe the deliverable with zero hidden steps**, so the EX1 baseline feels tangible.
+A working FastAPI backend that:
+- Stores movies in memory with CRUD operations
+- Validates all incoming data (year ranges, required fields)
+- Returns proper HTTP status codes (200, 201, 404, 422)
+- Includes comprehensive test coverage
+- Runs identically on your machine and in Docker
 
-#### 1. Directory hierarchy
-```
-examples/fastapi-calculator/
-├── README.md
-├── .gitignore
-├── pyproject.toml            # uv-managed project metadata (requires-tool, ruff config)
-├── uv.lock                   # dependency lock (committed)
-├── .env.example              # MOVIE_* / CALC_* vars; never commit real `.env`
-├── Dockerfile                # slim image + uvicorn entrypoint
-├── src/
-│   └── calculator/
-│       ├── __init__.py
-│       ├── config.py         # Pydantic Settings + uv env wiring
-│       ├── models.py         # Pydantic request/response schemas (no string-based types)
-│       ├── routes.py         # APIRouter with `/calc/add|subtract|multiply|divide`
-│       ├── service.py        # Pure functions that implement the arithmetic
-│       └── main.py           # FastAPI app factory + router include + middleware
-├── tests/
-│   ├── test_routes.py        # pytest + FastAPI TestClient coverage (201, 422, trace ID)
-│   └── test_httpx_client.py  # httpx.AsyncClient + ASGITransport smoke test
-└── scripts/
-    └── smoke.py              # optional: one-off script exercising the HTTP client
-```
-- Keep `backend/` naming if you prefer (`backend/src/...`, `backend/tests/...`). The documentation and Docker context must still live at the top level so graders can run commands verbatim.
-- `.gitignore` essentials: `.venv/`, `.ruff_cache/`, `__pycache__/`, `.env`, `uv.lock` backups, `.DS_Store`.
+## Prerequisites
 
-#### 2. Tooling + uv environments
-- **Local dev:** `uv venv --python 3.12 && source .venv/bin/activate`, `uv pip install -e .[dev]` (extras include `pytest`, `httpx`, `ruff`).
-- **Run API:** `uv run uvicorn calculator.main:app --reload`.
-- **Run tests:** `uv run pytest tests -q`.
-- **Lint:** `uv run ruff check src tests` (add `ruff format` if you opt into the formatter).
-- **Dockerized:** build from the project root `docker build -t calculator-api examples/fastapi-calculator` after copying `uv.lock` + `pyproject.toml` into the image and running `uv pip install .`. Entrypoint: `uvicorn calculator.main:app --host 0.0.0.0 --port 8000`.
-- **Multi-env note:** the same uv lockfile drives both local runs and Docker builds—no extra `requirements.txt` is necessary if you rely on `uv pip compile`. If you keep `requirements.txt`, regenerate it via `uv pip compile pyproject.toml -o requirements.txt`.
+Before class, complete these setup steps:
 
-#### 3. API + validation requirements
-- **Routes:** `POST /calc/add|subtract|multiply|divide`. Accept `{ "a": float, "b": float }` requests, respond with `{ "operation": "add", "result": 42.0 }`. Division must raise a `422` with `detail` describing divide-by-zero.
-- **Pydantic models:** use real type hints (`float`, `Literal["add","subtract",...]`, `BaseModel`). Example:
-  ```python
-  class OperationRequest(BaseModel):
-      a: float
-      b: float
-
-  class OperationResponse(BaseModel):
-      operation: Literal["add", "subtract", "multiply", "divide"]
-      result: float
-  ```
-  No string-based type annotations and no untyped dicts. Add a `field_validator("operation")` if you accept free-form operations.
-- **Traceability:** Middleware must propagate `X-Trace-Id` (incoming header or generated UUID) to responses and log entries.
-- **Config:** `Settings` derived from `BaseSettings` (`pydantic-settings`) with fields like `app_name`, `default_precision`, `log_level`. Load `.env` via `SettingsConfigDict(env_file=".env", env_prefix="CALC_")`.
-
-#### 4. Testing & quality gates
-- `tests/test_routes.py` shows synchronous usage with `TestClient` (FastAPI) covering happy path, validation error, and header propagation.
-- `tests/test_httpx_client.py` demonstrates `httpx.AsyncClient` with `ASGITransport` to avoid standing up a server.
-- Document how to run `pytest -q`, `ruff check`, and (optionally) `pytest --maxfail=1 --disable-warnings -q`.
-- Call out that every new calculator operation requires a corresponding test; red→green is part of the grading rubric.
-
-#### 5. README contract
-Your README must, at minimum, answer:
-1. **Setup:** `uv` + Python version, how to create/activate the environment, and how to install dependencies.
-2. **Run locally:** command to start uvicorn, pointing to `calculator.main:app`.
-3. **Run tests & lint:** pytest, ruff, (optional) `uv run python scripts/smoke.py`.
-4. **Docker instructions:** exact `docker build` + `docker run` commands and exposed port.
-5. **API contract:** example request/response payloads or reference to `/docs`.
-6. **AI assistance log:** prompts/tools and how outputs were verified.
-
-Use this starter paragraph when prompting an AI helper:
-```
-Create a FastAPI calculator backend (Python 3.12) with uv/pyproject packaging, Pydantic v2 request/response models, middleware that forwards `X-Trace-Id`, pytest+httpx tests, ruff config, Dockerfile, and README with local/uv/docker instructions. Layout must be:
-- Dockerfile, README.md, .gitignore, .env.example, pyproject.toml, uv.lock
-- src/calculator/{config.py,models.py,service.py,routes.py,main.py}
-- tests/{test_routes.py,test_httpx_client.py}
-```
-Paste the request into your AI tool, inspect the diff, and run the commands listed in the README to verify the scaffold.
-
-## Agenda
-| Segment | Duration | Format | Focus |
-| --- | --- | --- | --- |
-| Recap & intent setting | 7 min | Discussion | Share wins from the Session 02 Typer probe; surface `.env` questions. |
-| FastAPI anatomy & dependency injection (DI) | 18 min | Talk + live coding | Path operations, dependency injection (`Depends`), settings, repositories. |
-| Micro demo: pytest red→green | 3 min | Live demo (≤120 s) | Start from a failing test, make it pass, rerun the suite. |
-| Validation & trace propagation | 17 min | Talk + whiteboard | Pydantic v2 features, 422 errors, `X-Trace-Id` middleware, OpenAPI docs. |
-| **Part B – Lab 1** | **45 min** | **Guided coding** | **Scaffold FastAPI app with settings + repository dependency injection (DI).** |
-| Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
-| **Part C – Lab 2** | **45 min** | **Guided testing** | **TestClient suite, red→green workflow, contract assertions.** |
-| Wrap-up & Exercise 1 (EX1) checklist | 10 min | Questions and Answers (Q&A) | Reinforce deliverables + backlog (pagination, OpenAPI examples, feature flags). |
-
-## Part A – Theory Highlights
-1. **Request flow sketch:** Client (Typer CLI) → FastAPI router → dependency graph → repository → response. Highlight where validation triggers and where trace IDs enter logs.
-2. **Dependency injection primer:** `Depends(get_settings)` returns a singleton `Settings` instance; `Depends(get_repository)` shares the in-memory repo while remaining swappable for SQLite in Session 05.
-3. **Validation vocabulary:** `model_validate`, `model_dump`, `field_validator`, `model_config`. Emphasize descriptive errors (never stack traces).
-4. **Micro demo (≤120 s):**
+1. **Install Python 3.12 with uv:**
    ```bash
-   uv run pytest tests/test_movies.py::test_create_movie_returns_201 -q  # expect red
-   uv run pytest -q                                                     # turn it green
+   # Install uv package manager
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   
+   # Install Python 3.12
+   uv python install 3.12
    ```
-   Call out how quick feedback guides implementation.
-5. **Trace propagation:** If the client sends `X-Trace-Id`, echo it back. Otherwise generate and log it. Preview how Logfire—a hosted structured-logging service from the Pydantic team—will hook into the same context in Session 07 so every request has searchable metadata.
 
-```mermaid
-flowchart LR
-    Env[".env configuration"]
-    Config["config.py\nSettings"]
-    Repo["repository.py\nIn-memory CRUD"]
-    Deps["dependencies.py\nDepends wiring"]
-    App["main.py\nFastAPI routes"]
-    Tests["tests/\nTestClient suites"]
+2. **Create project workspace:**
+   ```bash
+   mkdir hello-uv && cd hello-uv
+   git init
+   ```
 
-    Env --> Config
-    Config --> Deps
-    Repo --> Deps
-    Deps --> App
-    App --> Tests
+3. **Add dependencies:**
+   ```bash
+   uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
+   ```
+
+4. **Create environment template:**
+   Create `.env.example` with:
+   ```ini
+   MOVIE_APP_NAME="Movie Service"
+   MOVIE_DEFAULT_PAGE_SIZE=20
+   MOVIE_FEATURE_PREVIEW=false
+   ```
+   
+   Copy to `.env` for local use:
+   ```bash
+   cp .env.example .env
+   ```
+
+5. **Verify setup:**
+   ```bash
+   uv run python -c "import fastapi, pydantic; print('Ready!')"
+   ```
+
+## Toolkit Snapshot
+- **FastAPI** – async-ready web framework that maps HTTP verbs to Python functions and autogenerates OpenAPI docs.
+- **uv** – Python/packaging manager from Astral; manages Python 3.12 installs, virtual envs, and dependency locking.
+- **Pydantic v2** – data validation library; enforces request/response shapes via type hints and `Field` metadata.
+- **pytest + TestClient** – testing framework plus FastAPI’s HTTP client for asserting status codes and payloads.
+- **httpx** – modern HTTP library (sync/async) you can reuse for CLI checks or future integration tests.
+- **Docker** – optional packaging step that proves the same FastAPI app runs outside your local Python setup.
+
+## Session Agenda
+
+| Time | Activity | Focus |
+|------|----------|-------|
+| 15 min | FastAPI fundamentals | Routes, validation, dependency injection concepts |
+| 10 min | Request flow walkthrough | HTTP → FastAPI → Repository → Response |
+| 45 min | **Lab 1: Build the API** | Settings, repository, routes, middleware |
+| 10 min | Break | — |
+| 45 min | **Lab 2: Test everything** | pytest fixtures, TestClient, red→green workflow |
+| 10 min | Docker deployment | Build and run the containerized app |
+| 10 min | Wrap-up | Review deliverables and next steps |
+
+## Core Concepts
+
+### 1. FastAPI Path Operations
+
+FastAPI maps HTTP methods to Python functions:
+
+```python
+@app.get("/movies")           # GET request - retrieve data
+def list_movies(): ...
+
+@app.post("/movies")          # POST request - create new resource
+def create_movie(): ...
+
+@app.get("/movies/{id}")      # GET with path parameter
+def get_movie(id: int): ...
+
+@app.delete("/movies/{id}")   # DELETE request - remove resource
+def delete_movie(id: int): ...
 ```
 
-## Part B – Hands-on Lab 1 (45 Minutes)
+**Status codes matter:**
+- `200` - Successful GET/PUT/DELETE
+- `201` - Resource created (POST)
+- `204` - Success with no content (DELETE)
+- `404` - Resource not found
+- `422` - Validation error
 
-### Lab timeline
-- **Minutes 0–10** – Create `Settings` and repository scaffolding.
-- **Minutes 10–25** – Wire FastAPI routes with dependency injection.
-- **Minutes 25–35** – Add trace-ID middleware and logging.
-- **Minutes 35–45** – Smoke-test endpoints via Swagger user interface (UI) and `curl`.
-### 1. Create `app/config.py`
+### 2. Pydantic Models for Validation
+
+Pydantic automatically validates request/response data:
+
 ```python
+from pydantic import BaseModel, Field
+
+class MovieCreate(BaseModel):
+    title: str
+    year: int = Field(ge=1900, le=2100)  # Between 1900-2100
+    genre: str
+```
+
+Benefits:
+- Automatic type checking
+- Clear error messages
+- Self-documenting API
+- Auto-generated OpenAPI docs
+
+### 3. Dependency Injection
+
+Share resources across endpoints without globals:
+
+```python
+from fastapi import Depends
+
+def get_repository():
+    return MovieRepository()
+
+@app.post("/movies")
+def create_movie(
+    payload: MovieCreate,
+    repo: MovieRepository = Depends(get_repository)
+):
+    return repo.create(payload)
+```
+
+Why use DI:
+- Easy to test (swap dependencies)
+- No global state issues
+- Clear dependencies in function signatures
+
+### 4. Local Feedback Loops
+
+- Run the API with `uv run uvicorn movie_service.app.main:app --reload` for instant reloads.
+- Keep pytest green: `uv run pytest movie_service/tests -q`.
+- Use `curl` or `httpie` to hit endpoints exactly as your automated tests do.
+- The faster the loop, the easier it is to spot regressions before moving on.
+
+## Lab 1: Build the Movie API (45 minutes)
+
+Follow these steps to build a working FastAPI application from scratch.
+
+### Step 1: Create Project Structure (5 min)
+
+```bash
+cd hello-uv
+mkdir -p movie_service/{app,tests,scripts}
+touch movie_service/__init__.py
+touch movie_service/app/__init__.py
+touch movie_service/tests/__init__.py
+```
+
+Your structure:
+```
+hello-uv/
+├── .env
+├── .env.example
+├── pyproject.toml
+└── movie_service/
+    ├── __init__.py
+    ├── app/
+    │   ├── __init__.py
+    │   ├── config.py
+    │   ├── models.py       # ← new in this session
+    │   ├── repository.py
+    │   ├── dependencies.py
+    │   └── main.py
+    ├── tests/
+    │   └── __init__.py
+    └── scripts/
+```
+
+### Step 2: Configure Settings (5 min)
+
+Create `movie_service/app/config.py`:
+
+````python
+# filepath: movie_service/app/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
     app_name: str = "Movie Service"
     default_page_size: int = 20
     feature_preview: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_prefix="MOVIE_",
-        extra="ignore",
+        env_file=".env",           # Load from .env file
+        env_prefix="MOVIE_",       # Only read MOVIE_* variables
+        extra="ignore",            # Ignore unknown variables
     )
-```
+````
 
-### 2. Create `app/repository.py`
-```python
+**What this does:**
+- Loads configuration from `.env` file
+- Reads variables starting with `MOVIE_` prefix
+- Provides defaults if variables aren't set
+- Type-checks all values
+
+### Step 3: Define Pydantic Models (5 min)
+
+Create `movie_service/app/models.py`:
+
+````python
+# filepath: movie_service/app/models.py
 from __future__ import annotations
-
-from typing import Dict, Iterable
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class Movie(BaseModel):
+class MovieBase(BaseModel):
+    """Shared fields for create/read models."""
+    title: str
+    year: int = Field(ge=1900, le=2100)
+    genre: str
+
+
+class Movie(MovieBase):
+    """Response model that includes the server-generated ID."""
     id: int
-    title: str
-    year: int = Field(ge=1900, le=2100)
-    genre: str
 
 
-class MovieCreate(BaseModel):
-    title: str
-    year: int = Field(ge=1900, le=2100)
-    genre: str
+class MovieCreate(MovieBase):
+    """Incoming payload with validation + normalization."""
 
     @model_validator(mode="after")
-    def normalize_genre(cls, values):
-        values.genre = values.genre.title()
-        return values
+    def normalize_genre(self) -> "MovieCreate":
+        """Title-case the genre: 'sci-fi' → 'Sci-Fi'."""
+        self.genre = self.genre.title()
+        return self
+````
+
+**Why split models from controllers:**
+- Controllers (FastAPI routes) only care about IO contracts.
+- Repositories reuse the same schemas without importing FastAPI.
+- Future persistence swaps (Session 04) can reuse the same models.
+
+### Step 4: Build the Repository (10 min)
+
+Create `movie_service/app/repository.py`:
+
+````python
+# filepath: movie_service/app/repository.py
+from __future__ import annotations
+
+from typing import Dict, Iterable
+
+from .models import Movie, MovieCreate
 
 
 class MovieRepository:
+    """In-memory storage for movies."""
+
     def __init__(self) -> None:
         self._items: Dict[int, Movie] = {}
         self._next_id = 1
 
     def list(self) -> Iterable[Movie]:
+        """Get all movies."""
         return self._items.values()
 
     def create(self, payload: MovieCreate) -> Movie:
+        """Add a new movie and return it with assigned ID."""
         movie = Movie(id=self._next_id, **payload.model_dump())
         self._items[movie.id] = movie
         self._next_id += 1
         return movie
 
     def get(self, movie_id: int) -> Movie | None:
+        """Get a movie by ID, or None if not found."""
         return self._items.get(movie_id)
 
     def delete(self, movie_id: int) -> None:
+        """Remove a movie by ID."""
         self._items.pop(movie_id, None)
-```
 
-### 3. Create `app/dependencies.py`
-```python
+    def clear(self) -> None:
+        """Remove all movies (useful for tests)."""
+        self._items.clear()
+        self._next_id = 1
+````
+
+**Key features:**
+- Repository depends only on the domain models.
+- Controllers can stay lean—no storage details leak into FastAPI handlers.
+- Tests can import `MovieRepository` without touching FastAPI.
+
+### Step 5: Wire Up Dependencies (5 min)
+
+Create `movie_service/app/dependencies.py`:
+
+````python
+# filepath: movie_service/app/dependencies.py
 from collections.abc import Generator
 from typing import Annotated
 
@@ -247,32 +323,46 @@ from fastapi import Depends
 from .config import Settings
 from .repository import MovieRepository
 
+# Create singletons
 _settings = Settings()
 _repository = MovieRepository()
 
 
 def get_settings() -> Settings:
+    """Provide settings to endpoints."""
     return _settings
 
 
 def get_repository() -> Generator[MovieRepository, None, None]:
+    """Provide repository to endpoints."""
     yield _repository
 
+
+# Type aliases for cleaner endpoint signatures
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 RepositoryDep = Annotated[MovieRepository, Depends(get_repository)]
-```
+````
 
-### 4. Build `app/main.py`
-```python
+**Why this pattern:**
+- One instance of Settings shared across all requests
+- One instance of Repository shared across all requests
+- Easy to swap implementations for testing
+- Type hints make code self-documenting
+
+### Step 6: Build the FastAPI App (15 min)
+
+Create `movie_service/app/main.py`:
+
+````python
+# filepath: movie_service/app/main.py
 from __future__ import annotations
 
 import logging
-import uuid
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, status
 
 from .dependencies import RepositoryDep, SettingsDep
-from .repository import Movie, MovieCreate
+from .models import Movie, MovieCreate
 
 logger = logging.getLogger("movie-service")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -280,23 +370,16 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 app = FastAPI(title="Movie Service", version="0.1.0")
 
 
-@app.middleware("http")
-async def add_trace_id(request: Request, call_next):
-    trace_id = request.headers.get("X-Trace-Id", uuid.uuid4().hex[:8])
-    request.state.trace_id = trace_id
-    response = await call_next(request)
-    response.headers["X-Trace-Id"] = trace_id
-    return response
-
-
 @app.get("/health", tags=["diagnostics"])
 def health(settings: SettingsDep) -> dict[str, str]:
+    """Health check endpoint."""
     return {"status": "ok", "app": settings.app_name}
 
 
 @app.get("/movies", response_model=list[Movie], tags=["movies"])
 def list_movies(repository: RepositoryDep) -> list[Movie]:
-    return [movie for movie in repository.list()]
+    """Get all movies."""
+    return list(repository.list())
 
 
 @app.post(
@@ -308,18 +391,16 @@ def list_movies(repository: RepositoryDep) -> list[Movie]:
 def create_movie(
     payload: MovieCreate,
     repository: RepositoryDep,
-    request: Request,
 ) -> Movie:
+    """Create a new movie."""
     movie = repository.create(payload)
-    logger.info(
-        "movie.created",
-        extra={"movie_id": movie.id, "trace_id": request.state.trace_id},
-    )
+    logger.info("movie.created id=%s title=%s", movie.id, movie.title)
     return movie
 
 
 @app.get("/movies/{movie_id}", response_model=Movie, tags=["movies"])
 def read_movie(movie_id: int, repository: RepositoryDep) -> Movie:
+    """Get a specific movie by ID."""
     movie = repository.get(movie_id)
     if movie is None:
         raise HTTPException(
@@ -334,136 +415,460 @@ def read_movie(movie_id: int, repository: RepositoryDep) -> Movie:
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["movies"],
 )
-def delete_movie(movie_id: int, repository: RepositoryDep, request: Request) -> None:
+def delete_movie(movie_id: int, repository: RepositoryDep) -> None:
+    """Delete a movie by ID."""
     if repository.get(movie_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Movie not found",
         )
     repository.delete(movie_id)
-    logger.info(
-        "movie.deleted",
-        extra={"movie_id": movie_id, "trace_id": request.state.trace_id},
-    )
-```
+    logger.info("movie.deleted id=%s", movie_id)
+````
 
-### 5. Run the service
+**Controller responsibility stays thin:** FastAPI handlers import the Pydantic models for type safety but let the repository enforce storage rules and business logic.
+
+### Step 7: Run the API (5 min)
+
+Start the server:
 ```bash
-uv run uvicorn app.main:app --reload
+cd hello-uv
+uv run uvicorn movie_service.app.main:app --reload
 ```
-Navigate to `http://localhost:8000/docs` and show how the OpenAPI schema reflects response models and error codes. Point out the `X-Trace-Id` header in the Response tab.
 
-> 🎉 **Quick win:** Seeing `/health` return `{"status": "ok", "app": "Movie Service"}` confirms your DI wiring and middleware are behaving.
-
-### 6. Optional: seed feature-preview data
-Add `scripts/seed.py`:
-```python
-from app.dependencies import get_repository, get_settings
-from app.repository import MovieCreate
-
-settings = get_settings()
-repo = next(get_repository())
-
-if settings.feature_preview:
-    repo.create(MovieCreate(title="Interstellar", year=2014, genre="sci-fi"))
-    repo.create(MovieCreate(title="Arrival", year=2016, genre="sci-fi"))
-    print("Seeded preview movies")
-else:
-    print("Feature preview disabled")
+You'll see:
 ```
-Run `uv run python scripts/seed.py` after toggling `MOVIE_FEATURE_PREVIEW=true` in `.env` to demo feature flags.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process
+```
 
-## Part C – Hands-on Lab 2 (45 Minutes)
+**Test it works:**
 
-### Lab timeline
-- **Minutes 0–10** – Configure `TestClient` and baseline tests.
-- **Minutes 10–25** – Add 201/404/validation cases with headers.
-- **Minutes 25–35** – Practice red→green by breaking/restoring validation logic.
-- **Minutes 35–45** – Export OpenAPI schema and discuss contract testing.
-### 1. Create tests with `TestClient`
-`tests/test_movies.py`:
-```python
+1. **Visit the docs:** Open `http://127.0.0.1:8000/docs` in your browser
+   - See all endpoints with request/response schemas
+   - Try creating a movie directly in the UI
+
+2. **Test with curl:**
+```bash
+# Create a movie
+curl -X POST http://localhost:8000/movies \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Inception", "year": 2010, "genre": "sci-fi"}'
+
+# List all movies
+   curl http://localhost:8000/movies
+   
+   # Check health
+   curl http://localhost:8000/health
+   ```
+
+**Success criteria:**
+- Server starts without errors
+- `/docs` page loads and shows all endpoints
+- Can create and retrieve movies
+
+## Lab 2: Test Everything (45 minutes)
+
+### Step 1: Create Test Fixtures (10 min)
+
+Create `movie_service/tests/conftest.py`:
+
+````python
+# filepath: movie_service/tests/conftest.py
+import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from movie_service.app.main import app
+from movie_service.app.dependencies import get_repository
 
-client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def clear_repository():
+    """Clear repository before and after each test."""
+    repo = next(get_repository())
+    repo.clear()
+    yield
+    repo.clear()
 
 
-def test_health_includes_app_name():
+@pytest.fixture
+def client():
+    """Provide a TestClient for making requests."""
+    return TestClient(app)
+````
+
+**What fixtures do:**
+- `clear_repository` - Prevents tests from affecting each other
+- `client` - Lets you make HTTP requests to your app
+- `autouse=True` - Runs automatically before every test
+
+### Step 2: Write Comprehensive Tests (25 min)
+
+Create `movie_service/tests/test_movies.py`:
+
+````python
+# filepath: movie_service/tests/test_movies.py
+
+def test_health_includes_app_name(client):
+    """Health endpoint returns status and app name."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "app": "Movie Service"}
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["app"] == "Movie Service"
 
 
-def test_create_movie_returns_201_and_trace_id():
+def test_create_movie_returns_201_and_payload(client):
+    """Creating a movie returns 201 with normalized payload."""
     response = client.post(
         "/movies",
         json={"title": "The Matrix", "year": 1999, "genre": "sci-fi"},
-        headers={"X-Trace-Id": "demo-1234"},
     )
     assert response.status_code == 201
     payload = response.json()
-    assert payload["genre"] == "Sci-Fi"
-    assert response.headers["X-Trace-Id"] == "demo-1234"
+    assert payload["title"] == "The Matrix"
+    assert payload["year"] == 1999
+    assert payload["genre"] == "Sci-Fi"  # normalized by validator
+    assert payload["id"] == 1
 
 
-def test_missing_movie_returns_404():
-    response = client.get("/movies/4242")
+def test_movie_ids_increment(client):
+    """Repository assigns sequential IDs."""
+    first = client.post(
+        "/movies",
+        json={"title": "Blade Runner", "year": 1982, "genre": "sci-fi"},
+    ).json()["id"]
+    second = client.post(
+        "/movies",
+        json={"title": "Blade Runner 2049", "year": 2017, "genre": "sci-fi"},
+    ).json()["id"]
+    assert second == first + 1
+
+
+def test_list_movies_returns_empty_array_initially(client):
+    """Empty repository returns empty array."""
+    response = client.get("/movies")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_movies_returns_created_movie(client):
+    """Can retrieve movies after creating them."""
+    client.post(
+        "/movies",
+        json={"title": "Dune", "year": 2021, "genre": "sci-fi"},
+    )
+    
+    response = client.get("/movies")
+    assert response.status_code == 200
+    movies = response.json()
+    assert len(movies) == 1
+    assert movies[0]["title"] == "Dune"
+
+
+def test_get_movie_by_id(client):
+    """Can retrieve specific movie by ID."""
+    create_response = client.post(
+        "/movies",
+        json={"title": "Arrival", "year": 2016, "genre": "sci-fi"},
+    )
+    movie_id = create_response.json()["id"]
+    
+    response = client.get(f"/movies/{movie_id}")
+    assert response.status_code == 200
+    movie = response.json()
+    assert movie["title"] == "Arrival"
+    assert movie["id"] == movie_id
+
+
+def test_get_missing_movie_returns_404(client):
+    """Requesting non-existent movie returns 404."""
+    response = client.get("/movies/9999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Movie not found"
-```
-Run `uv run pytest -q` and celebrate the green dots.
 
-> 🎉 **Quick win:** Green dots mean your API contract survived a full test run—commit the suite before moving to migrations.
 
-### 2. Red→green ritual
-- Comment out the `normalize_genre` validator → rerun tests (expect failure) → restore it.
-- Capture a screenshot of the failing assertion to emphasize evidence-based debugging.
+def test_delete_movie(client):
+    """Can delete a movie and it's gone afterwards."""
+    create_response = client.post(
+        "/movies",
+        json={"title": "Interstellar", "year": 2014, "genre": "sci-fi"},
+    )
+    movie_id = create_response.json()["id"]
+    
+    response = client.delete(f"/movies/{movie_id}")
+    assert response.status_code == 204
+    
+    get_response = client.get(f"/movies/{movie_id}")
+    assert get_response.status_code == 404
 
-### 3. Export API contract
+
+def test_delete_missing_movie_returns_404(client):
+    """Deleting non-existent movie returns 404."""
+    response = client.delete("/movies/9999")
+    assert response.status_code == 404
+
+
+def test_create_movie_rejects_year_too_old(client):
+    """Year before 1900 is rejected with 422."""
+    response = client.post(
+        "/movies",
+        json={"title": "Metropolis", "year": 1800, "genre": "sci-fi"},
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert any("year" in str(err).lower() for err in detail)
+
+
+def test_create_movie_rejects_year_too_new(client):
+    """Year after 2100 is rejected with 422."""
+    response = client.post(
+        "/movies",
+        json={"title": "Future Film", "year": 2200, "genre": "sci-fi"},
+    )
+    assert response.status_code == 422
+
+
+def test_create_movie_rejects_missing_title(client):
+    """Missing required field returns 422."""
+    response = client.post(
+        "/movies",
+        json={"year": 2020, "genre": "drama"},
+    )
+    assert response.status_code == 422
+````
+
+### Step 3: Run the Tests (5 min)
+
 ```bash
-uv run python - <<'PY'
-from pathlib import Path
-from fastapi.encoders import jsonable_encoder
-from fastapi.openapi.utils import get_openapi
-
-from app.main import app
-
-schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
-Path("docs/contracts/openapi.json").write_text(jsonable_encoder(schema, by_alias=True))
-print("Wrote docs/contracts/openapi.json")
-PY
+cd hello-uv
+uv run pytest movie_service/tests -v
 ```
-Share that Schemathesis (Session 02 stretch) can now target the real schema.
 
-## Wrap-up & EX1 Checklist
-- ✅ FastAPI CRUD skeleton with DI, settings, trace propagation, and tests.
-- Add before next week: `PUT /movies/{id}`, pagination parameters (`skip`, `limit` defaults from `Settings`), error normalization matching Session 02 spec, and README updates.
-- Remind students to log AI usage, keep `.env.example` updated, and push often.
-- Point everyone to the full brief in [docs/exercises.md](../exercises.md#ex1--fastapi-foundations) to double-check rubric expectations.
+You should see:
+```
+test_health_includes_app_name PASSED
+test_create_movie_returns_201_and_payload PASSED
+test_movie_ids_increment PASSED
+...
+==================== 13 passed in 0.45s ====================
+```
+
+**If tests fail:**
+1. Read the error message carefully
+2. Check which assertion failed
+3. Print the response: `print(response.json())`
+4. Fix the code, rerun the test
+
+### Step 4: Practice Red→Green Testing (5 min)
+
+**Live demonstration of test-driven development:**
+
+1. **Break something** - Comment out the genre validator:
+   ```python
+   # @model_validator(mode="after")
+   # def normalize_genre(self):
+   #     self.genre = self.genre.title()
+   #     return self
+   ```
+
+2. **Run tests** - See them fail:
+   ```bash
+   uv run pytest movie_service/tests::test_create_movie_returns_201_and_payload -v
+   ```
+   Output: `AssertionError: assert 'sci-fi' == 'Sci-Fi'`
+
+3. **Restore the validator** - Uncomment the code
+
+4. **Run tests again** - See them pass
+
+**The lesson:** Tests catch regressions immediately. Always run tests before committing code.
+
+## Docker Deployment (10 minutes)
+
+Run the exact same application in a container.
+
+### Create Dockerfile
+
+Create `movie_service/Dockerfile`:
+
+````dockerfile
+# filepath: movie_service/Dockerfile
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Install dependencies
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --system fastapi uvicorn pydantic pydantic-settings httpx
+
+# Copy application code
+COPY movie_service ./movie_service
+
+EXPOSE 8000
+CMD ["uv", "run", "uvicorn", "movie_service.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+````
+
+### Build and Run
+
+```bash
+# Build the image (from hello-uv directory)
+docker build -t movie-service -f movie_service/Dockerfile .
+
+# Run the container
+docker run --rm -p 8000:8000 --name movie-service movie-service
+```
+
+**Test it:**
+- Visit `http://127.0.0.1:8000/docs`
+- Same API, same behavior, different environment
+- Stop with Ctrl+C
+
+**Key insight:** Docker ensures your app runs the same way everywhere—your laptop, a teammate's machine, production servers.
+
+## Export API Contract
+
+Document your API with OpenAPI schema.
+
+Create `movie_service/scripts/export_openapi.py`:
+
+````python
+# filepath: movie_service/scripts/export_openapi.py
+import json
+from pathlib import Path
+
+from movie_service.app.main import app
+
+schema = app.openapi()
+
+contracts_dir = Path("docs/contracts")
+contracts_dir.mkdir(parents=True, exist_ok=True)
+
+output_path = contracts_dir / "movie-service-openapi.json"
+output_path.write_text(json.dumps(schema, indent=2))
+
+print(f"Exported OpenAPI schema to {output_path}")
+print(f"Title: {schema['info']['title']}")
+print(f"Version: {schema['info']['version']}")
+print(f"Endpoints: {len(schema['paths'])}")
+````
+
+Run it:
+```bash
+uv run python -m movie_service.scripts.export_openapi
+```
+
+**What this gives you:**
+- Machine-readable API contract
+- Can generate client code automatically
+- Can validate API behavior with schema testing tools
+- Living documentation that never gets outdated with your code
+
+## Wrap-Up & Deliverables
+
+### What You Built
+
+- FastAPI application with CRUD operations  
+- Pydantic validation with custom validators  
+- Dependency injection for settings and repositories  
+- Comprehensive test suite with 13 passing tests  
+- Docker containerization  
+- OpenAPI schema export  
+
+### Complete Checklist
+
+Before moving forward, ensure:
+
+- [ ] All tests pass: `uv run pytest movie_service/tests -v`
+- [ ] Server runs locally: `uv run uvicorn movie_service.app.main:app --reload`
+- [ ] Docker build succeeds: `docker build -t movie-service -f movie_service/Dockerfile .`
+- [ ] API docs load at `/docs`
+- [ ] Can create, list, get, and delete movies
+- [ ] Validation errors return 422 with details
+- [ ] OpenAPI schema exports successfully
+
+### Next Steps
+
+**Enhancements to add:**
+1. `PUT /movies/{id}` endpoint for updates
+2. Pagination with `skip` and `limit` parameters
+3. Search/filter endpoints
+4. More comprehensive error handling
+5. Update README with setup instructions
+
+**Future sessions will add:**
+- Database persistence (PostgreSQL/SQLite)
+- Authentication and authorization
+- Async operations
+- Production deployment
+- Monitoring and logging
 
 ## Troubleshooting
-- **ImportError for `BaseSettings`:** verify `pydantic-settings` is installed; rerun `uv add pydantic-settings` if needed.
-- **State bleeding between tests:** temporarily call cleanup methods in tests; Session 07 introduces fixtures for isolation.
-- **OpenAPI docs not reloading:** ensure `uvicorn` is running with `--reload` and refresh the browser.
 
-### Common pitfalls
-- **Global state leaks** – avoid mutating module-level dictionaries in tests; create fixtures to reset state.
-- **Trace-ID missing in responses** – middleware must run before routes; double-check it’s added near app definition.
-- **Validation errors hard to read** – use `response.json()` in tests to assert `detail` values explicitly.
+**Server won't start:**
+```bash
+# Verify dependencies
+uv run python -c "import fastapi; print('OK')"
 
-## Student Success Criteria
+# Check for port conflicts
+lsof -i :8000
+```
 
-By the end of Session 03, every student should be able to:
+**Tests failing:**
+```bash
+# Run single test with verbose output
+uv run pytest movie_service/tests::test_create_movie_returns_201_and_payload -vv
 
-- [ ] Configure FastAPI with dependency-injected settings and repositories.
-- [ ] Expose CRUD endpoints that propagate `X-Trace-Id` headers.
-- [ ] Run pytest suites covering happy paths and 404/422 error paths.
+# Print response in test
+def test_something(client):
+    response = client.post("/movies", json={...})
+    print(response.json())  # Add this line
+    assert ...
+```
 
-**If any box remains unchecked, schedule a mentor session before Session 04.**
+**Import errors:**
+```bash
+# Ensure you're in the right directory
+pwd  # Should show .../hello-uv
 
-## AI Prompt Seeds
-- “Generate FastAPI endpoints that use dependency injection for settings and in-memory repositories.”
-- “Write a Pydantic v2 validator that title-cases a genre field.”
-- “Add middleware that reads an `X-Trace-Id` header, propagates it, and logs the value.”
+# Run with proper module path
+uv run python -m movie_service.app.main
+```
+
+**Docker build fails:**
+```bash
+# Build with verbose output
+docker build --progress=plain -t movie-service -f movie_service/Dockerfile .
+
+# Check if files exist
+ls movie_service/app/main.py
+```
+
+## Key Takeaways
+
+1. **FastAPI is productive**: Routes, validation, and docs are automatic
+2. **Pydantic validates everything**: Catch errors before they cause problems
+3. **Dependency injection is powerful**: Easy to test, easy to swap implementations
+4. **Tests give confidence**: Run them often, commit when green
+5. **Docker provides consistency**: Same behavior everywhere
+6. **OpenAPI is free documentation**: Always up-to-date with your code
+
+## Success Criteria
+
+You're ready to move on when you can:
+
+- [x] Explain how a request flows through FastAPI (middleware → route → dependencies → handler)
+- [x] Create new endpoints with proper HTTP methods and status codes
+- [x] Add Pydantic validation rules and custom validators
+- [x] Write tests that cover happy paths and error cases
+- [x] Use dependency injection to share resources
+- [x] Run the same code locally and in Docker
+- [x] Export and understand the OpenAPI schema
+
+**Schedule a mentor session if any box remains unchecked.**
