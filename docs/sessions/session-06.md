@@ -1,89 +1,123 @@
-# Session 06 – Movie Dashboards with Streamlit & React Bridges
+# Session 06 – Streamlit Dashboards + JavaScript Preview
 
 - **Date:** Monday, Dec 8, 2025
-- **Theme:** Stand up a Streamlit dashboard for quick insights, sketch the React alternative, and add developer user experience (UX) niceties (Typer helpers, rich progress bars, caching).
+- **Theme:** Build a Streamlit + Typer interface on top of the Postgres-backed FastAPI API, then preview the JavaScript/TypeScript concepts that power Session 07’s Vite/React stretch.
+
+## Session Story
+With Session 05’s PostgreSQL upgrade complete, the backend is durable enough to support real interfaces. Session 06 gives every team a demoable UI: a Streamlit dashboard for quick wins, cached API calls, forms that mutate data, and Typer/Rich helpers for operators. We close with a JavaScript/TypeScript primer so students walk into Session 07 ready to tackle Vite/React without feeling rusty.
 
 ## Learning Objectives
-- Consume the FastAPI backend from Streamlit using typed client functions and local caching against the application programming interface (API).
-- Prototype a React front end (or extend Streamlit) that respects API contracts and trace identifiers (IDs).
-- Add Typer command-line interface (CLI) commands and Rich progress bars for data seeding/extract-transform-load (ETL) tasks.
-- Organize assets and dependency installs with `uv` so Exercise 2 (EX2) teams can choose Streamlit **or** React confidently.
+- Consume the FastAPI API from Streamlit using typed `httpx` clients, shared env vars, and cache invalidation.
+- Build dashboards, filters, and forms that POST back to FastAPI while honoring trace identifiers (IDs).
+- Automate seed/reset workflows with Typer + Rich on top of the Postgres repository.
+- Preview key JavaScript/TypeScript concepts (modules, fetch, async/await, typing) that underpin next session’s Vite lab.
 
-## Before Class – Frontend Preflight (Just-in-Time Teaching, JiTT)
-- Install dashboard tooling:
-  ```bash
-  uv add streamlit rich typer httpx
-  ```
-- Clone the Exercise 2 (EX2) starter repo (link on the Learning Management System (LMS)) or copy the provided `frontend/` skeleton into your project.
-- Run the micro demo “Typer: hello --name Alice” to warm up on command-line interface (CLI) user experience (UX).
-- Optional: install Node 20 + pnpm if you plan to attempt the React stretch during class.
+## What You’ll Build
+- `frontend/client.py` – typed `httpx` helpers (`list_movies`, `create_movie`, `delete_movie`) with cached responses.
+- `frontend/dashboard.py` – Streamlit UI that renders KPIs, tables, filters, charts, and creation forms.
+- `scripts/ui.py` – Typer CLI for seeding, wiping, and exporting movies with Rich progress bars.
+- `docs/runbooks/streamlit.md` – optional runbook snippet describing concurrent FastAPI + Streamlit workflows.
+
+## Prerequisites
+1. Session 05’s PostgreSQL setup must be running (`docker compose up -d db`) and `uv run pytest` should pass against Postgres.
+2. Ensure `.env` contains `MOVIE_DATABASE_URL` and `MOVIE_API_BASE_URL=http://localhost:8000` (used by Streamlit client).
+3. Install UI dependencies:
+   ```bash
+   uv add streamlit rich typer httpx python-dotenv pandas
+   ```
+4. Confirm FastAPI server runs locally (`uv run uvicorn movie_service.app.main:app --reload`).
+
+### Pre-class Setup (JiTT)
+1. Create a `frontend/` package with `client.py` + `__init__.py`.
+2. Copy the Streamlit “hello world” snippet from the LMS, run `uv run streamlit run frontend/dashboard.py`, and verify the placeholder renders.
+3. Pull the latest movies from Postgres (`SELECT COUNT(*) FROM movie;`) so you can confirm the dashboard is reading real data.
+4. Skim the JavaScript primer slide deck; jot down one question to discuss during the preview section.
+
+## Toolkit Snapshot
+- **Streamlit** – Python-first UI framework for data dashboards and forms.
+- **httpx** – typed HTTP client reused by Streamlit and Typer flows.
+- **Typer + Rich** – CLI + terminal UX combo for seed/reset tasks.
+- **PostgreSQL** – data source from Session 05; Streamlit only talks to FastAPI, not the DB directly.
+- **Python-dotenv** – shares env vars between FastAPI, Streamlit, and Typer commands.
+- **JavaScript/TypeScript primer** – short module to prep for Session 07’s Vite/React build.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Recap & intent | 7 min | Discussion | Backlog highlights from Exercise 1 (EX1), expectations for Exercise 2 (EX2) choices. |
-| Streamlit + API primer | 18 min | Talk + live coding | How Streamlit hits FastAPI, session state, caching, trace identifiers (IDs). |
-| Micro demo: Typer hello | 3 min | Live demo (≤120 s) | `uv run python -m scripts.cli hello --name Alice`. |
-| React overview & contract discipline | 17 min | Talk + slides | When to choose React, component/service split, Cross-Origin Resource Sharing (CORS), rate limiting reminder. |
-| **Part B – Lab 1** | **45 min** | **Guided coding** | **Streamlit dashboard + cached API calls + Rich progress.** |
-| Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
-| **Part C – Lab 2** | **45 min** | **Guided build** | **React (or Streamlit extension) + end-to-end checks + Typer seeding.** |
-| Wrap-up & EX2 launch | 10 min | Questions and Answers (Q&A) | Deliverables, testing expectations, backlog (pagination, charts). |
+| Recap & intent | 10 min | Discussion | Why Postgres unlocks real UIs + EX2 expectations. |
+| Streamlit + API primer | 20 min | Talk + live demo | Typed clients, caching, trace IDs, CORS. |
+| **Part B – Lab 1** | **45 min** | **Guided coding** | **Client helpers + dashboard list view.** |
+| Break | 10 min | — | Encourage cache questions, share Typer/Rich ideas. |
+| **Part C – Lab 2** | **45 min** | **Guided build** | **Forms, admin CLI, README/run-book updates.** |
+| Part D – JS/TS preview | 15 min | Talk + mini-demo | Syntax walkthrough + “hello fetch” bridging to Session 07. |
+| Wrap-up & Vite runway | 10 min | Q&A | Checklist + next-session prep. |
 
 ## Part A – Theory Highlights
-1. **Architecture sketch:** Streamlit client → FastAPI `/movies` → SQLite. Emphasize consistency with the Representational State Transfer (REST) contract built in Sessions 02–05.
-2. **Caching patterns:** Use `functools.lru_cache` or Streamlit’s `@st.cache_data` to avoid redundant API calls; handle invalidation when data changes.
-3. **Cross-Origin Resource Sharing (CORS) and rate limiting:** Remind students the API must support front-end origins; preview `slowapi` from Session 10 for rate limiting.
-4. **Developer UX:** Typer commands orchestrate seeding tasks; Rich progress bars give visual feedback during longer extract-transform-load (ETL) operations.
+1. **Architecture reminder:** Streamlit communicates with FastAPI → repository → Postgres. No direct DB calls so we preserve tests and logging from earlier sessions.
+2. **Typed clients reduce UI drift:** centralize headers (`X-Trace-Id`), base URLs, and response parsing. When the API changes, you update `frontend/client.py` once.
+3. **Caching trade-offs:** pair Streamlit's `st.cache_data` with explicit invalidation after POST/DELETE requests.
+4. **Trace identifiers (IDs):** Session 05 added X-Trace-Id middleware to FastAPI. Carry these IDs from Streamlit forms and Typer commands so you can correlate UI actions with backend logs. Session 07 will wire Logfire to visualize these traces.
 
 ```mermaid
 flowchart LR
-    API["FastAPI API\n(Session 03 + 05)"]
-    DB["SQLite Storage\n(SQLModel)"]
-    Streamlit["Streamlit Dashboard\n(Part B)"]
-    ReactApp["React/Vite Frontend\n(Part C)"]
-    Typer["Typer & Rich CLI\n(Seeding/ETL)"]
-    Cache["Caching Layers\nst.cache_data + lru_cache + Redis (Session 10)"]
-
-    Streamlit -->|"GET /movies"| API
-    ReactApp -->|"fetch('/movies')"| API
-    Typer -->|"Seed & admin"| API
-    API --> DB
-    Typer --> DB
-    API --> Cache
-    Cache --> Streamlit
-    Cache --> ReactApp
+    Streamlit["Streamlit Dashboard"] -->|"GET/POST /movies"| API["FastAPI API"]
+    API --> Repo["Repository\n(SQLModel + Postgres)"]
+    Repo --> DB[(PostgreSQL)]
+    TyperCLI["Typer CLI"] -->|"Seed/cleanup"| API
+    TyperCLI --> Repo
 ```
 
-### FastAPI CORS configuration (copy/paste before class)
-Add this middleware near the top of `app/main.py` so both Streamlit and Vite development servers can reach the API:
+### FastAPI CORS and Trace ID Setup
+
+**Already configured in Session 05!** Your `main.py` should already have:
+- CORS middleware allowing `localhost:8501` (Streamlit) and `localhost:5173` (Vite)
+- X-Trace-Id middleware that preserves or generates trace IDs
+
+If you skipped Session 05 or need to verify, check that `movie_service/app/main.py` includes:
 ```python
-from fastapi.middleware.cors import CORSMiddleware
+# CORS middleware
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8501", "http://localhost:5173"], ...)
 
-app = FastAPI(title="Movie Service", version="0.2.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8501",  # Streamlit
-        "http://localhost:5173",  # Vite (default)
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Trace ID middleware
+@app.middleware("http")
+async def add_trace_id(request: Request, call_next): ...
 ```
-Encourage students to add their own dev origin if they change ports or hostnames.
 
-## Part B – Hands-on Lab 1 (45 Minutes)
+## Part B – Lab 1: Typed client + dashboard (45 minutes)
+Goal: ship a Streamlit page that lists Postgres-backed movies, shows KPIs, and caches API calls.
 
-### Lab timeline
-- **Minutes 0–5** – Confirm API is running with CORS middleware.
-- **Minutes 5–20** – Implement the typed `httpx` client and caching helper.
-- **Minutes 20–35** – Build the Streamlit dashboard, add Rich progress, celebrate quick win.
-- **Minutes 35–45** – Experiment with caching invalidation and plan user interface (UI) backlog items.
+### Step 0 – Confirm API and database are ready
 
-### 1. Build typed API client (`frontend/client.py`)
+**Verify FastAPI is running with CORS and trace middleware** (added in Session 05):
+```bash
+# Keep this running in a separate terminal
+uv run uvicorn movie_service.app.main:app --reload
+
+# Test CORS headers:
+curl -H "Origin: http://localhost:8501" \
+     -H "Access-Control-Request-Method: GET" \
+     -H "Access-Control-Request-Headers: X-Trace-Id" \
+     -X OPTIONS http://localhost:8000/movies -v
+# Should see Access-Control-Allow-Origin in response
+
+# Test trace ID propagation:
+curl -H "X-Trace-Id: streamlit-test" http://localhost:8000/healthz -v
+# Should see X-Trace-Id: streamlit-test echoed back
+```
+
+### Step 1 – Confirm database has data
+Keep FastAPI running via `uv run uvicorn movie_service.app.main:app --reload` in one terminal.
+
+In another terminal, verify you have movies in Postgres:
+```bash
+# If no movies exist, seed some:
+uv run python scripts/db.py bootstrap --sample 5
+
+# Verify via API:
+curl http://localhost:8000/movies
+```
+
+### Step 2 – Build the typed client (`frontend/client.py`)
 ```python
 from __future__ import annotations
 
@@ -91,184 +125,239 @@ from functools import lru_cache
 from typing import Any
 
 import httpx
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-API_BASE_URL = "http://localhost:8000"
+
+class UISettings(BaseSettings):
+    api_base_url: str = "http://localhost:8000"
+
+    model_config = SettingsConfigDict(env_prefix="MOVIE_", env_file=".env", extra="ignore")
+
+
+settings = UISettings()
 
 
 @lru_cache(maxsize=1)
 def _client() -> httpx.Client:
-    return httpx.Client(base_url=API_BASE_URL, timeout=5.0)
+    return httpx.Client(
+        base_url=settings.api_base_url,
+        headers={"X-Trace-Id": "ui-streamlit"},
+        timeout=5.0,
+    )
 
 
-def list_movies() -> list[dict[str, Any]]:
-    response = _client().get("/movies", headers={"X-Trace-Id": "ui-streamlit"})
+def list_movies(*, genre: str | None = None) -> list[dict[str, Any]]:
+    params = {"genre": genre} if genre else None
+    response = _client().get("/movies", params=params)
     response.raise_for_status()
     return response.json()
 ```
+> Tip: expose genre filtering parameters now so Session 07's React client can reuse the same API contract.
 
-### 2. Streamlit dashboard (`frontend/dashboard.py`)
+### Step 3 – First Streamlit view (`frontend/dashboard.py`)
 ```python
 import streamlit as st
-from rich.progress import track
 
-from client import list_movies
+from frontend.client import list_movies
 
 st.set_page_config(page_title="Movie Pulse", layout="wide")
 st.title("Movie Service Dashboard")
+st.caption("Data source: FastAPI + PostgreSQL")
 
 with st.spinner("Fetching movies..."):
     movies = list_movies()
 
 if not movies:
-    st.info("No movies yet. Add some via the API or the seeding CLI.")
+    st.info("No movies yet. Add some via the Typer CLI or API.")
 else:
     st.metric("Total movies", len(movies))
-    for movie in track(movies, description="Rendering cards"):
-        with st.expander(f"{movie['title']} ({movie['year']})"):
-            st.write(movie)
+    st.dataframe(movies)
 ```
-Run `uv run streamlit run frontend/dashboard.py` and show the live dashboard. Point out how Rich progress pairs with Streamlit (console + UI spinner).
+Run `uv run streamlit run frontend/dashboard.py` and celebrate your first full-stack demo.
 
-> 🎉 **Quick win:** When the dashboard renders `Total movies`, the full stack (FastAPI → SQLite → Streamlit) is talking end-to-end.
+### Step 4 – Cache + filter
+```python
+import streamlit as st
 
-### 3. Discuss caching + invalidation
-- Modify one movie via API, rerun Streamlit, and talk about cache busting (`st.cache_data.clear()`) vs. background refresh.
-- Note: for React we’ll implement caching with React Query or stale-while-revalidate (SWR); capture this as backlog.
+@st.cache_data(ttl=30)
+def cached_movies(genre: str | None = None) -> list[dict[str, Any]]:
+    return list_movies(genre=genre)
 
-## Part C – Lab 2 (45 Minutes)
-Pick the path that matches your students:
+with st.spinner("Fetching movies..."):
+    movies = cached_movies()
+```
+Replace the original `list_movies()` call from Step 3 with `cached_movies()` so the first render also benefits from caching.
+Add UI controls:
+```python
+selected = st.multiselect("Genre", options=sorted({m["genre"] for m in movies}))
+displayed = cached_movies(selected[0] if selected else None)
+if st.button("Refresh data"):
+    cached_movies.clear()
+```
 
-### Lab timeline
-- **Minutes 0–10** – Scaffold Vite (or identify Streamlit extension path).
-- **Minutes 10–20** – Build `services/movies.ts` and verify fetch in browser.
-- **Minutes 20–35** – Layer UI components, handle error states, and run `pnpm dev`.
-- **Minutes 35–45** – Implement Typer seeding CLI and document usage.
+### Step 5 – Show richer insights
+- Use `st.columns` for per-genre counts.
+- Build `pandas.DataFrame` + `st.bar_chart` for ratings or release-year histograms.
+- Surface trace IDs/log links so students can connect UI clicks to Logfire later.
 
-### Option A – React focus (group work)
-1. Scaffold (if using pnpm):
-   ```bash
-   pnpm create vite frontend-react --template react-ts
-   cd frontend-react
-   pnpm add axios
-   ```
-2. Configure `.env.local` with `VITE_API_BASE_URL=http://localhost:8000`.
-3. Create `src/services/movies.ts`:
-   ```typescript
-   import axios from "axios";
+> 🎉 **Quick win:** With caching + filters, Streamlit proves Postgres survives reloads and future clients can share the same API contract.
 
-   const client = axios.create({
-     baseURL: import.meta.env.VITE_API_BASE_URL,
-     headers: { "X-Trace-Id": "ui-react" },
-   });
+## Part C – Lab 2: Forms, CLI, documentation (45 minutes)
+Goal: mutate data from the UI, add Typer admin tools, and document the workflow.
 
-   export async function listMovies() {
-     const response = await client.get("/movies");
-     return response.data;
+### Step 1 – Extend the client for POST/DELETE
+```python
+import httpx
+
+
+def create_movie(*, title: str, year: int, genre: str) -> dict[str, Any]:
+    response = _client().post("/movies", json={"title": title, "year": year, "genre": genre})
+    response.raise_for_status()
+    return response.json()
+
+
+def delete_movie(movie_id: int) -> None:
+    response = _client().delete(f"/movies/{movie_id}")
+    response.raise_for_status()
+```
+
+### Step 2 – Streamlit forms
+```python
+from frontend.client import create_movie, delete_movie
+
+with st.expander("Add movie"):
+    with st.form("create_movie"):
+        title = st.text_input("Title")
+        year = st.number_input("Year", min_value=1900, max_value=2100, value=2024)
+        genre = st.text_input("Genre", value="sci-fi")
+        submitted = st.form_submit_button("Create")
+
+    if submitted:
+        try:
+            movie = create_movie(title=title, year=year, genre=genre)
+            cached_movies.clear()
+            st.success(f"Created {movie['title']}")
+        except httpx.HTTPStatusError as exc:
+            st.error(f"Failed: {exc.response.text}")
+```
+Whenever you add delete buttons or other mutating actions, call `cached_movies.clear()` after the API call so Streamlit reloads fresh data.
+
+### Step 3 – Typer CLI for operators (`scripts/ui.py`)
+```python
+import typer
+from rich.progress import track
+from sqlmodel import Session
+
+from movie_service.app.database import engine, init_db
+from movie_service.app.models import MovieCreate
+from movie_service.app.repository_db import MovieRepository
+
+app = typer.Typer(help="UI helpers")
+
+
+@app.command()
+def seed(sample: int = 5) -> None:
+    init_db()
+    with Session(engine) as session:
+        repo = MovieRepository(session)
+        for idx in track(range(sample), description="Seeding movies"):
+            repo.create(MovieCreate(title=f"Sample {idx}", year=2000 + idx, genre="sci-fi"))
+    typer.secho("Seed complete", fg=typer.colors.GREEN)
+
+
+@app.command()
+def wipe() -> None:
+    with Session(engine) as session:
+        repo = MovieRepository(session)
+        deleted = repo.delete_all()
+    typer.secho(f"Deleted {deleted} movies", fg=typer.colors.RED)
+```
+Run `uv run python scripts/ui.py seed --sample 3`, refresh Streamlit, and verify data appears instantly.
+
+### Step 4 – Document the workflow
+- README additions: how to run FastAPI + Streamlit simultaneously, required env vars, Typer commands.
+- Link to Logfire dashboards (Session 07) to encourage tracing UI actions.
+- Record a short Loom/clip for your EX2 progress update.
+
+> 🎉 **Quick win:** Streamlit + Typer provide a fully demoable interface before you ever touch JavaScript.
+
+## Part D – JavaScript & TypeScript Preview (15 minutes)
+Use the final segment to demystify next week’s Vite lab.
+
+### Topics to hit
+1. **Module syntax:** `import { listMovies } from "./services/movies";` vs. CommonJS.
+2. **Async/await + fetch:**
+   ```ts
+   type Movie = { id: number; title: string; year: number; genre: string };
+
+   async function listMovies(): Promise<Movie[]> {
+     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/movies`, {
+       headers: { "X-Trace-Id": "ui-react" },
+     });
+     if (!response.ok) throw new Error("Failed to load movies");
+     return response.json();
    }
    ```
-4. Replace `src/App.tsx` with a quick dashboard:
-   ```tsx
-   import { useEffect, useState } from "react";
-   import { listMovies } from "./services/movies";
+3. **Type annotations:** unions (`string | undefined`), utility types (`Omit<Movie, "id">`).
+4. **Dev tooling:** Node 20 + pnpm, Vite dev server, React dev tools.
 
-   type Movie = {
-     id: number;
-     title: string;
-     year: number;
-     genre: string;
-   };
+### Mini exercise
+- Show how to call `listMovies` from a Node REPL or simple TypeScript script.
+- Discuss how caching strategies map from Streamlit (`st.cache_data`) to React Query/TanStack.
+- Highlight homework: install Node/pnpm, scaffold `frontend-react/` before Session 07 if possible.
 
-   export default function App() {
-     const [movies, setMovies] = useState<Movie[]>([]);
-     const [error, setError] = useState<string | null>(null);
+## Wrap-up & Next Steps
+- ✅ Backend now runs on Postgres; ✅ Streamlit/Typer deliver EX2-ready UI; ✅ JavaScript preview removes the cliff for React.
+- 📌 Homework: capture screenshots/video of the dashboard, make sure `.env` covers Streamlit + FastAPI, and install Node/pnpm.
 
-     useEffect(() => {
-       listMovies()
-         .then(setMovies)
-         .catch((err) => setError(err.message));
-     }, []);
+## Session 07 Preview – React/TypeScript + Reliability:
 
-     if (error) {
-       return <p role="alert">Failed to load movies: {error}</p>;
-     }
+**Dual Track:** Session 07 adds a TypeScript/React UI *and* hardens the entire stack with deeper testing.
 
-     return (
-       <main>
-         <h1>Movie Pulse</h1>
-         <p>Total movies: {movies.length}</p>
-         <ul>
-           {movies.map((movie) => (
-             <li key={movie.id}>
-               {movie.title} ({movie.year}) – {movie.genre}
-             </li>
-           ))}
-         </ul>
-       </main>
-     );
-   }
-   ```
-   Run `pnpm dev` and confirm the Vite dev server displays your API data. Suggest **Vitest** (Vite’s built-in JavaScript test runner) or **Playwright** (browser automation for end-to-end checks) as stretch testing goals so frontend coverage keeps pace with the backend.
+| Component | Session 06 (Current) | Session 07 (Next) | Changes? |
+|-----------|---------------------|-------------------|----------|
+| UI Options | Streamlit only | + Vite/React (TypeScript) | 🆕 NEW |
+| Frontend | `frontend/` (Python) | + `frontend-react/` (TS) | 🆕 NEW |
+| Testing | Basic pytest | + Hypothesis, snapshots, coverage | ✅ Enhanced |
+| Observability | Trace IDs only | + Logfire integration | 🆕 NEW |
+| Profiling | None | + cProfile, benchmarks | 🆕 NEW |
 
-### Option B – Streamlit extensions
-- Add filters (genre/year) with `st.multiselect`; call `/movies?genre=Sci-Fi` once backend supports it.
-- Plot ratings distribution using `pandas` + `st.bar_chart`.
-- Add “create movie” form that `POST`s to the API (include validation + trace ID headers).
+**What you'll learn:**
+1. Modern TypeScript (modules, async/await, React hooks)
+2. Vite dev server + React Query for API calls
+3. Property-based testing with Hypothesis
+4. Distributed tracing with Logfire
+5. Performance profiling techniques
 
-### Dev UX Enhancements (all teams)
-1. Update Typer CLI to seed movies/ratings with Rich progress:
-   ```python
-   import random
-   from rich.progress import track
-   import typer
+**Prerequisites for Session 07:**
+- Node.js ≥ 20 with corepack enabled
+- pnpm installed (`corepack enable && corepack prepare pnpm@latest --activate`)
+- Backend deps: `uv add pytest-cov hypothesis`
+- Optional: Review JavaScript/TypeScript syntax (MDN Web Docs)
 
-   from app.dependencies import get_repository
+**Action items before Session 07:**
+1. Verify Node/pnpm: `node --version && pnpm --version`
+2. Confirm Streamlit dashboard works end-to-end
+3. Run `uv run pytest --cov=movie_service` to baseline coverage
+4. Skim React hooks documentation (useState, useEffect, custom hooks)
 
-   app = typer.Typer(help="Admin utilities")
-
-
-   @app.command()
-   def seed(sample: int = 5) -> None:
-     repo = next(get_repository())
-     for _ in track(range(sample), description="Seeding movies"):
-         repo.create(title=f"Sample {_}", year=2000 + _, genre="sci-fi")
-     typer.echo("Seed complete")
-
-
-   if __name__ == "__main__":
-       app()
-   ```
-   Run `uv run python scripts/admin.py seed --sample 3` and confirm movies appear in the dashboard.
-   > 🎉 **Quick win:** When the CLI reports “Seed complete,” refresh Streamlit/React to see instant content with no manual data entry.
-2. Document CLI usage in README and remind students to log artificial intelligence (AI) assistance.
-
-## Wrap-up & EX2 Launch
-- Exercise 2 (EX2) – Friendly Interface assigned today, due **Tue Dec 23**. Choose Streamlit or a Typer CLI for the required deliverable; React remains an optional stretch path for teams who want browser UI practice.
-- Checklist: API integration with trace identifiers (IDs), caching strategy, Typer admin tooling, README updates, optional Streamlit/React testing harness.
-- Backlog ideas: pagination controls, comma-separated values (CSV) export button (Session 10), feature flags to toggle beta UI, embed OpenAPI responses for doc parity.
-- Full rubric lives in [docs/exercises.md](../exercises.md#ex2--friendly-interface). Review the “must have” vs. “stretch” criteria before students pick their stack.
-
-### Common pitfalls
-- **CORS still blocked** – verify the exact origin (including port) matches `allow_origins`. For quick testing, temporarily set `allow_origins=["*"]` then tighten again.
-- **Streamlit stuck on old data** – call `st.cache_data.clear()` after POST/DELETE requests or add a “Refresh” button that invalidates cache.
-- **pnpm dev fails** – ensure Node ≥ 20 and run `corepack enable`; on macOS, install via `brew install node`.
-- **Rich progress bar not visible** – confirm you run Streamlit via `uv run`; standard `streamlit run` may not pick up your uv-managed dependencies.
+🔜 Session 07 opens with a JS/TS + Vite build, then layers in the reliability tooling (tests/logfire/profiling) introduced earlier.
 
 ## Troubleshooting
-- **CORS errors** → ensure FastAPI enables CORS (`from fastapi.middleware.cors import CORSMiddleware`) with allowed origins covering Streamlit/React hosts.
-- **Streamlit caching stale** → call `st.cache_data.clear()` after mutations or pass unique keys.
-- **pnpm install issues** → check Node version (>=20) and run `corepack enable`.
+- **CORS errors** → confirm both origins (Streamlit + Vite) are present in `allow_origins`.
+- **Streamlit caching stale** → call `cached_movies.clear()` after mutations or add a “Refresh data” button.
+- **`httpx.ConnectError`** → ensure FastAPI server is running and `MOVIE_API_BASE_URL` matches the port.
+- **Typer CLI fails** → run via `uv run python scripts/ui.py ...` so uv-managed dependencies load.
 
 ## Student Success Criteria
+- [ ] Streamlit loads live movie data from FastAPI/Postgres, complete with caching + KPIs.
+- [ ] Streamlit forms (or Typer CLI) can create/delete movies and invalidate caches.
+- [ ] README/runbook documents how to run FastAPI + Streamlit + Typer simultaneously.
+- [ ] JavaScript/TypeScript preview slides or notes are complete so Session 07 starts fast.
 
-By the end of Session 06, every student should be able to:
-
-- [ ] Display live movie data in Streamlit using a typed API client with caching.
-- [ ] Scaffold a Vite/React app that loads movies via an `axios` service and handles error states.
-- [ ] Use a Typer CLI to seed sample data while tracking progress with Rich.
-
-**If a student misses any box, book a pairing session before Session 07 to keep EX2 on track.**
+Schedule mentoring time if any box is unchecked before the Vite + reliability deep dive.
 
 ## AI Prompt Seeds
-- “Write a Streamlit dashboard that calls a FastAPI `/movies` endpoint and displays metrics.”
-- “Produce a React service module that adds `X-Trace-Id` headers to outgoing requests.”
-- “Draft a Typer CLI command that seeds sample data with a Rich progress bar.”
+- “Generate a Streamlit page that lists movies from `GET /movies`, includes filters, and clears caches after POST/DELETE calls.”
+- “Write a typed `httpx` client + Typer CLI that seed/wipe data via FastAPI while logging trace identifiers.”
+- “Summarize the TypeScript features web developers need before building a Vite + React client for the Movie API.”

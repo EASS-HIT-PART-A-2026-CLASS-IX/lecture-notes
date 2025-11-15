@@ -25,9 +25,9 @@ A working FastAPI backend that:
 
 - This session **is the EX1 deliverable**: students leave class with a FastAPI backend, pytest suite, Docker packaging, and REST client scripts that satisfy the HTTP API portion of the exercise—even if data only lives in memory for now. Think of it as microservice #1 in the eventual EX3 stack.
 - In-memory storage is intentional at this checkpoint; it keeps the focus on HTTP verbs, validation, dependency injection, and smoke testing. Everyone can demo the service (curl, REST Client, Docker) without juggling SQL yet.
-- Preview the roadmap: **Session 04 adds SQLModel + SQLite** so the same API talks to a real database. That persistence layer becomes non‑negotiable before EX3, where teams will run at least three cooperating services (FastAPI backend, persistence, and a UI/automation surface).
+- Preview the roadmap: **Session 04 adds SQLModel + SQLite**, **Session 05 upgrades to PostgreSQL**, **Session 06 layers on Streamlit/Typer UIs**, and **Session 07 introduces Vite/React plus reliability tooling**. By EX3 every team will juggle at least three cooperating services (FastAPI backend, persistence, and a UI/automation surface), so today’s clean architecture pays compounding dividends.
 - Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app, just service hardening that prepares the multi-service system you expect by the final exercise.
-- **Architecture decision**: We use `Movie` as both the domain model and response model today. Session 04 will introduce `MovieRead` to distinguish SQLModel tables from API responses, but the HTTP contract stays identical.
+- **Architecture decision**: We use `MovieBase` + `Movie` + `MovieCreate` pattern from day one. Session 04 will add `table=True` to `Movie` and optionally introduce `MovieRead` for cleaner response serialization, but the HTTP contract and model fields remain identical.
 
 ## Live Build Strategy (No Pre-Solved Example)
 
@@ -263,7 +263,12 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class MovieBase(BaseModel):
-    """Shared fields for create/read models."""
+    """Shared fields for create/read models.
+    
+    This base class will carry forward unchanged to Session 04 when we add
+    SQLModel. The split between MovieBase/Movie/MovieCreate establishes the
+    pattern we'll reuse throughout the course.
+    """
     title: str
     year: int = Field(ge=1900, le=2100)
     genre: str
@@ -272,22 +277,22 @@ class MovieBase(BaseModel):
 class Movie(MovieBase):
     """Response model that includes the server-generated ID.
     
-    Note: In Session 04, we'll split this into `Movie` (table) and 
-    `MovieRead` (response), but the HTTP contract stays the same.
+    Session 04 will add `table=True` to this class to make it a SQLModel
+    table while keeping the HTTP contract identical.
     """
     id: int
 
 
 class MovieCreate(MovieBase):
-    """Incoming payload with validation + normalization."""
+    """Incoming payload with validation + normalization.
+    
+    This validator carries forward unchanged to Session 04's SQLModel version,
+    demonstrating how validation rules survive persistence layer swaps.
+    """
 
     @model_validator(mode="after")
     def normalize_genre(self) -> "MovieCreate":
-        """Title-case the genre: 'sci-fi' → 'Sci-Fi'.
-        
-        This validator will carry forward to Session 04's SQLModel version,
-        demonstrating how validation rules survive persistence layer swaps.
-        """
+        """Title-case the genre: 'sci-fi' → 'Sci-Fi'."""
         self.genre = self.genre.title()
         return self
 ````
@@ -325,8 +330,9 @@ class MovieRepository:
     def list(self) -> list[Movie]:
         """Get all movies.
         
-        Returns list for now; Session 04 changes to Sequence[Movie]
-        to match SQLModel's query results.
+        Returns list[Movie] throughout all sessions for consistency.
+        Session 04's SQLModel queries return sequences, but we convert
+        with list() to maintain this interface.
         """
         return list(self._items.values())
 
@@ -869,6 +875,27 @@ Before moving forward, ensure:
 3. Search/filter endpoints
 4. More comprehensive error handling
 5. Update README with setup instructions
+
+**Session 04 Preview – What Changes:**
+
+⚠️ **Before starting Session 04**, understand what will change:
+
+| Component | Session 03 (Current) | Session 04 (Next) | Breaking? |
+|-----------|---------------------|-------------------|----------|
+| `models.py` | MovieBase + Movie + MovieCreate | Adds `table=True` to Movie, adds MovieRead | ✅ Safe |
+| `repository.py` | In-memory dict | → `repository_db.py` with SQLModel | ✅ Interface stays same |
+| `database.py` | Doesn't exist | NEW: engine + get_session | ✅ New file |
+| `dependencies.py` | Returns singleton | Returns session-scoped repo | ✅ Routes unchanged |
+| `main.py` routes | Uses Movie for response | Uses MovieRead for response | ⚠️ Import change |
+| Tests | Uses clear() between tests | Uses temp SQLite per test | ✅ Better isolation |
+
+**Key insight:** The repository interface (`list/create/get/delete`) stays identical by design. Only the *implementation* changes from dict to SQL. This is the architectural payoff for the abstraction work you did today.
+
+**Action items before Session 04:**
+1. Commit your Session 03 code
+2. Tag it as `session-03-complete` for easy rollback
+3. Run full test suite and verify all 13+ tests pass
+4. Review the Session 04 prerequisites (install `sqlmodel` + `alembic`)
 
 **Session 04 will upgrade this exact service with:**
 - SQLModel + SQLite persistence (data survives restarts)

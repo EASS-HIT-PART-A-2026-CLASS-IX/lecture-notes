@@ -1,146 +1,302 @@
-# Session 07 – Testing, Logging, and Profiling Foundations
+# Session 07 – React/Vite Foundations + Reliability Upgrades
 
 - **Date:** Monday, Dec 15, 2025
-- **Theme:** Deepen reliability by expanding the test suite, capturing structured telemetry (Logfire + trace identifiers (IDs)), and measuring performance.
+- **Theme:** Finish the UI runway with a Vite/React (TypeScript) client, then harden the platform with deeper testing, observability, and profiling.
+
+## Session Story
+Session 06 delivered Streamlit + Typer and previewed modern JavaScript. Session 07 takes that preview to completion: you’ll scaffold a Vite + React project, consume the same FastAPI/Postgres API, and practice TypeScript patterns (hooks, service modules, React Query). Once the UI is talking to the backend, we pivot back to reliability—expanding pytest coverage, wiring Logfire, and capturing profiling data so EX2 demos stay solid.
 
 ## Learning Objectives
-- Use pytest fixtures and Hypothesis to cover happy, sad, and edge cases with minimal duplication.
-- Instrument FastAPI with Pydantic Logfire to capture timings, errors, and trace identifiers (IDs) without drowning in logs.
-- Generate coverage reports (`pytest --cov`), snapshot JavaScript Object Notation (JSON) responses, and gate pull requests on quality metrics.
-- Run quick performance probes (`timeit`, `cProfile`) to catch regressions before Exercise 2 (EX2) demos.
+- Refresh essential JavaScript/TypeScript syntax (modules, async/await, generics, JSX) for Python-first teams.
+- Scaffold a Vite React app with pnpm, configure API clients, and ship list/create flows matching the FastAPI contract.
+- Layer automated checks for the frontend (lint, Vitest) and integrate them into the existing uv/dev workflow.
+- Deepen backend reliability via parametrized pytest suites, Hypothesis property tests, Logfire tracing, and lightweight profiling.
 
-## Before Class – Quality Preflight (Just-in-Time Teaching, JiTT)
-- Install testing/observability tools:
-  ```bash
-  uv add pytest-cov hypothesis logfire
-  ```
-- Ensure `pytest` succeeds locally (`uv run pytest -q`) before class so we focus on improvements, not broken baselines.
-- Skim the Logfire quickstart (link in the Learning Management System (LMS)) and note one question about dashboards or retention.
-- Verify Exercise 1 (EX1) test suite still passes after your latest refactor (`uv run pytest -q`).
+## What You’ll Build
+- `frontend-react/` Vite project (`pnpm create vite ... --template react-ts`) colocated with the FastAPI codebase.
+- `src/lib/api.ts`, `src/services/movies.ts`, and `src/hooks/useMovies.ts` centralizing TypeScript clients.
+- `src/App.tsx` (or feature modules) featuring filters, totals, and create forms with React Query invalidation.
+- Frontend tooling scripts: ESLint, Prettier (optional), Vitest + Testing Library, Playwright smoke test (stretch).
+- Backend reliability upgrades: improved fixtures, Hypothesis tests, snapshot stores, Logfire instrumentation, and profiling notes.
+
+## Prerequisites
+1. **Session 05 Postgres + Session 06 Streamlit/Typer are complete**; FastAPI is running on `http://localhost:8000`.
+2. **Node.js ≥ 20 with corepack and pnpm installed.** Verify:
+   ```bash
+   node --version   # Should be v20.x or higher
+   corepack enable
+   corepack prepare pnpm@latest --activate
+   pnpm --version   # Should be v8.x or higher
+   ```
+3. **Install backend reliability dependencies** (if not already from earlier sessions):
+   ```bash
+   uv add pytest-cov hypothesis logfire
+   ```
+4. **Optional but helpful:** Clone the JS primer repo linked in the LMS and run `pnpm install && pnpm test` to warm up on TypeScript syntax.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Warm-up & bug stories | 8 min | Discussion | Share one bug caught by tests since Session 05; Logfire expectations. |
-| Testing depth tour | 17 min | Talk + whiteboard | Fixtures, parametrization, Hypothesis, snapshot testing strategy. |
-| Micro demo: Logfire in 60s | 3 min | Live demo (≤120 s) | Capture one FastAPI request in Logfire dashboard. |
-| Observability patterns | 17 min | Talk + code walkthrough | Structured logs, trace identifiers (IDs), error capture, log levels. |
-| **Part B – Lab 1** | **45 min** | **Guided testing** | **Fixtures, parametrized tests, Hypothesis property checks.** |
-| Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
-| **Part C – Lab 2** | **45 min** | **Guided observability** | **Logfire integration, coverage reports, lightweight profiling.** |
-| Wrap-up & EX2 sprint | 10 min | Questions and Answers (Q&A) | Game plan for Exercise 2 (EX2) demos, coverage gates, open office hours.
+| Recap & JS/TS warm-up | 15 min | Talk + mini-demo | Module syntax, async/await, typing cheat sheet. |
+| Vite architecture primer | 15 min | Slides + code walkthrough | Project layout, env vars, React Query, trace IDs. |
+| **Part B – Lab 1** | **45 min** | **Guided coding** | **Scaffold Vite + build movie services/hooks/UI.** |
+| Break | 10 min | — | Encourage pnpm install fixes + React Q&A. |
+| **Part C – Lab 2** | **45 min** | **Guided reliability** | **Fixtures, Hypothesis, Logfire, coverage, profiling.** |
+| Wrap-up & EX2 planning | 10 min | Discussion | Deployment, combined UI options, quality gates before demos. |
 
-## Part A – Theory Highlights
-1. **Pytest architecture:** fixtures (function vs session scope), parametrization (`@pytest.mark.parametrize`), factories for realistic payloads.
-2. **Property-based testing:** use Hypothesis to generate inputs for validators and ensure invariants hold.
-3. **Snapshot testing:** capture JavaScript Object Notation (JSON) responses (store under `tests/snapshots/`) and enforce stable contracts.
-4. **Observability levels:** application logs (FastAPI + Logfire—Pydantic’s structured logging and tracing service), metrics later (Session 09/10), tracing with trace identifiers (IDs).
-5. **Performance probes:** run `time.perf_counter()` or `uv run python -m cProfile` as a quick sanity check; mention `py-spy` for offline analysis.
+## Part A – JavaScript/TypeScript Warm-up
+1. **Modules & imports:**
+   ```ts
+   import { listMovies } from "./services/movies";
+   export type Movie = { id: number; title: string; year: number; genre: string };
+   ```
+2. **Async/await:**
+   ```ts
+   export async function listMovies(): Promise<Movie[]> {
+     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/movies`, {
+       headers: { "X-Trace-Id": "ui-react" },
+     });
+     if (!response.ok) throw new Error("Failed to load movies");
+     return response.json();
+   }
+   ```
+3. **Typing essentials:** unions (`string | undefined`), utility helpers (`Omit<Movie, "id">`), React component props with generics.
+4. **Tooling expectations:** Node 20 + pnpm, Vite dev server (port 5173), TypeScript compiler inside Vite, ESLint/Prettier, Vitest for unit tests.
 
-```mermaid
-flowchart LR
-    Change["Code change\n(pull request (PR) or commit)"]
-    Tests["pytest suite\nparametrize + Hypothesis"]
-    Snapshots["Snapshot baselines\n(JSON diff)"]
-    Coverage["Coverage report\npytest --cov"]
-    Observability["Logfire traces\nX-Trace-Id"]
-    Profiling["Quick profiling\n(timeit & cProfile)"]
-    Gate["Quality gate\n(ready for merge)"]
+> 🔁 Encourage students to map Streamlit constructs to React equivalents (e.g., `st.cache_data` ↔ React Query, forms ↔ controlled components). The API contract stays identical, so Postgres-backed data flows seamlessly between UIs.
 
-    Change --> Tests --> Coverage --> Gate
-    Tests --> Snapshots
-    Tests --> Observability
-    Observability --> Profiling --> Gate
+## Part B – Lab 1: Scaffold Vite + service layer (45 minutes)
+Goal: run `pnpm dev`, fetch movies, and create new entries from React.
+
+### Step 0 – Align repo structure
+```bash
+cd hello-uv
+pnpm create vite frontend-react --template react-ts
+cd frontend-react
+pnpm install
+```
+Add `.env.local`:
+```ini
+VITE_API_BASE_URL=http://localhost:8000
+VITE_TRACE_ID=ui-react
+```
+Commit `node_modules` to `.gitignore` if not already.
+
+### Step 1 – Install runtime deps
+```bash
+pnpm add axios @tanstack/react-query
+pnpm add -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin vitest @testing-library/react @testing-library/jest-dom
 ```
 
-## Part B – Hands-on Lab 1 (45 Minutes)
+### Step 2 – Service utilities
+`src/lib/api.ts`:
+```ts
+import axios from "axios";
+
+export const client = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  headers: {
+    "X-Trace-Id": import.meta.env.VITE_TRACE_ID ?? "ui-react",
+  },
+  timeout: 5000,
+});
+
+export async function get<T>(url: string, params?: Record<string, unknown>) {
+  const response = await client.get<T>(url, { params });
+  return response.data;
+}
+
+export async function post<T>(url: string, body: unknown) {
+  const response = await client.post<T>(url, body);
+  return response.data;
+}
+```
+
+### Step 3 – Domain services & hooks
+`src/services/movies.ts`:
+```ts
+export type Movie = {
+  id: number;
+  title: string;
+  year: number;
+  genre: string;
+};
+
+import { get, post } from "../lib/api";
+
+export function listMovies(genre?: string) {
+  return get<Movie[]>("/movies", genre ? { genre } : undefined);
+}
+
+export function createMovie(payload: Omit<Movie, "id">) {
+  return post<Movie>("/movies", payload);
+}
+```
+
+`src/hooks/useMovies.ts`:
+```ts
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createMovie, listMovies, Movie } from "../services/movies";
+
+export function useMovies(genre?: string) {
+  const queryClient = useQueryClient();
+
+  const listQuery = useQuery({
+    queryKey: ["movies", genre],
+    queryFn: () => listMovies(genre),
+  });
+
+  const create = useMutation({
+    mutationFn: (payload: Omit<Movie, "id">) => createMovie(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["movies"] });
+    },
+  });
+
+  return { ...listQuery, create };
+}
+```
+Wrap the app in `QueryClientProvider` (update `main.tsx`).
+
+### Step 4 – Replace `src/App.tsx`
+```tsx
+import { FormEvent, useState } from "react";
+import "./App.css";
+import { useMovies } from "./hooks/useMovies";
+
+export default function App() {
+  const [genre, setGenre] = useState<string | undefined>(undefined);
+  const { data, isLoading, isError, create } = useMovies(genre);
+
+  if (isLoading) return <p>Loading movies…</p>;
+  if (isError) return <p role="alert">Failed to load movies.</p>;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    create.mutate({
+      title: String(formData.get("title")),
+      year: Number(formData.get("year")),
+      genre: String(formData.get("genre")),
+    });
+    event.currentTarget.reset();
+  };
+
+  return (
+    <main>
+      <header>
+        <h1>Movie Pulse</h1>
+        <p>Total movies: {data?.length ?? 0}</p>
+        <label>
+          Genre filter
+          <input
+            value={genre ?? ""}
+            onChange={(event) => setGenre(event.target.value || undefined)}
+          />
+        </label>
+      </header>
+
+      <section>
+        <form onSubmit={handleSubmit}>
+          <input name="title" placeholder="Title" required />
+          <input name="year" type="number" min={1900} max={2100} required />
+          <input name="genre" placeholder="Genre" defaultValue="sci-fi" />
+          <button type="submit" disabled={create.isLoading}>
+            {create.isLoading ? "Saving…" : "Add movie"}
+          </button>
+        </form>
+      </section>
+
+      <ul>
+        {data?.map((movie) => (
+          <li key={movie.id}>
+            {movie.title} ({movie.year}) – {movie.genre}
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+Run `pnpm dev` → hit `http://localhost:5173` → confirm Postgres-backed data flows end-to-end with the same trace identifiers Streamlit used.
+
+### Step 5 – Frontend tests/lint (stretch)
+- Add `"lint": "eslint src --ext .ts,.tsx"` and `"test": "vitest"` to `package.json`.
+- Create `src/components/MovieList.test.tsx` with Testing Library assertions.
+- Optional: `pnpm create playwright@latest` for smoke tests hitting the dev server (requires FastAPI running).
+
+> 🎉 **Quick win:** When both Streamlit and Vite show the same movies (seeded via Typer or Postgres), EX2 teams can choose their preferred UI stack with confidence.
+
+## Part C – Lab 2: Reliability & Observability (45 minutes)
+Goal: keep quality high now that multiple clients exist.
 
 ### Lab timeline
-- **Minutes 0–10** – Wire autouse fixtures and dependency overrides.
-- **Minutes 10–25** – Add parametrized tests covering happy/sad paths.
-- **Minutes 25–35** – Introduce Hypothesis property checks.
-- **Minutes 35–45** – Capture snapshots and review failures via Logfire.
-### 1. Enhance fixtures (`tests/conftest.py`)
+- **Minutes 0–10** – Wire autouse fixtures + dependency overrides for Postgres.
+- **Minutes 10–25** – Add parametrized + Hypothesis tests.
+- **Minutes 25–35** – Capture snapshots, run coverage, wire Logfire.
+- **Minutes 35–45** – Profile hot paths and correlate traces with Vite/Streamlit actions.
+
+### 1. Enhance pytest fixtures (`tests/conftest.py`)
+
+**Note:** Session 05 already created Postgres test fixtures. We'll enhance them here with additional features.
+
+**Review what Session 05 gave us:**
+- `_create_db()` and `_drop_db()` helpers for temporary databases
+- `session_url` fixture that creates/destroys test databases
+- `repo` fixture that overrides FastAPI dependencies
+
+**Enhancements for Session 07:**
+
+Add to your existing `tests/conftest.py`:
 ```python
-from collections.abc import Generator
-from pathlib import Path
-from typing import Any, Callable
+# ...existing Session 05 fixture code above...
 
 import pytest
-from sqlmodel import Session, SQLModel, create_engine
+from fastapi.testclient import TestClient
 
-from app.dependencies import get_repository
-from app.main import app
-from app.repository import MovieRepository
+from movie_service.app.main import app
 
-TEST_DB = "sqlite:///./test_movies.db"
-engine = create_engine(TEST_DB, connect_args={"check_same_thread": False})
+
+@pytest.fixture
+def client(repo) -> TestClient:
+    """TestClient with Postgres-backed repository.
+    
+    The repo fixture already overrides dependencies,
+    so this client uses the test database.
+    """
+    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def _reset_db(tmp_path: Path) -> Generator[None, None, None]:
-    SQLModel.metadata.create_all(engine)
+def reset_db_state(repo):
+    """Clear all data between tests for isolation."""
     yield
-    SQLModel.metadata.drop_all(engine)
-
-
-@pytest.fixture
-def repo(monkeypatch: pytest.MonkeyPatch) -> Generator[MovieRepository, None, None]:
-    def _override_repo() -> Generator[MovieRepository, None, None]:
-        with Session(engine) as session:
-            yield MovieRepository(session)
-
-    monkeypatch.setattr("app.dependencies.get_repository", _override_repo)
-    with Session(engine) as session:
-        yield MovieRepository(session)
-
-
-@pytest.fixture
-def client(repo: MovieRepository) -> Generator[Any, None, None]:
-    from fastapi.testclient import TestClient
-
-    with TestClient(app) as test_client:
-        yield test_client
+    # Clean up after each test
+    deleted = repo.delete_all()
+    print(f"\nCleaned up {deleted} test records")
 ```
-Explain how autouse fixture guarantees clean state and why we override the dependency for deterministic tests.
 
-### 2. Parametrized & property-based tests (`tests/test_movies.py`)
-Remember the generic parametrization pattern:
-```python
-import pytest
+Explain how the fixture parallels the runtime Postgres config so tests match production.
 
-@pytest.mark.parametrize(
-    ("a", "b", "expected"),
-    [
-        (2, 2, 4),
-        (0, 5, 5),
-        (-1, 1, 0),
-    ],
-)
-def test_addition(a: int, b: int, expected: int) -> None:
-    assert a + b == expected
-```
-Reuse the structure below for FastAPI payloads.
+### 2. Parametrized + property-based tests (`tests/test_movies.py`)
 ```python
 import pytest
 from hypothesis import given, strategies as st
 
-
-def test_create_movie_variants(client):
-    payloads = [
+@pytest.mark.parametrize(
+    "payload",
+    [
         {"title": "Arrival", "year": 2016, "genre": "sci-fi"},
         {"title": "Dune", "year": 2021, "genre": "Sci-Fi"},
-    ]
-    for payload in payloads:
-        response = client.post("/movies", json=payload, headers={"X-Trace-Id": "test"})
-        assert response.status_code == 201
-        assert response.json()["genre"].istitle()
-
-
-@pytest.mark.parametrize(
-    "bad_year",
-    [1800, 2150],
+    ],
 )
+def test_create_movie_variants(client, payload):
+    response = client.post("/movies", json=payload, headers={"X-Trace-Id": "pytest"})
+    assert response.status_code == 201
+    assert response.json()["genre"].istitle()
+
+
+@pytest.mark.parametrize("bad_year", [1800, 2150])
 def test_create_movie_rejects_out_of_range_year(client, bad_year):
     response = client.post(
         "/movies",
@@ -150,7 +306,7 @@ def test_create_movie_rejects_out_of_range_year(client, bad_year):
 
 
 @given(st.text(min_size=1, max_size=40))
-def test_title_is_preserved_round_trip(client, title):
+def test_title_round_trip(client, title):
     response = client.post(
         "/movies",
         json={"title": title, "year": 2000, "genre": "Drama"},
@@ -160,108 +316,86 @@ def test_title_is_preserved_round_trip(client, title):
         fetched = client.get(f"/movies/{movie_id}").json()
         assert fetched["title"] == title
 ```
-Highlight that Hypothesis automatically explores edge characters; log failures for easier debugging.
+Call out Hypothesis shrink reports and how to fix flaky inputs.
 
-### 3. Snapshot JSON responses
-Use `pytest-datadir` or simple fixture:
+### 3. Snapshot + coverage + Logfire
 ```python
 from pathlib import Path
 
 SNAPSHOT_DIR = Path("tests/snapshots")
-SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
-
+SNAPSHOT_DIR.mkdir(exist_ok=True)
 
 def test_movies_list_snapshot(client):
-    # Seed two movies first or reuse previous helper
     client.post("/movies", json={"title": "Interstellar", "year": 2014, "genre": "Sci-Fi"})
     client.post("/movies", json={"title": "Blade Runner", "year": 1982, "genre": "Sci-Fi"})
 
     response = client.get("/movies")
-    assert response.status_code == 200
-
-    snapshot_path = SNAPSHOT_DIR / "movies_list.json"
-    if not snapshot_path.exists():
-        snapshot_path.write_text(response.text)
-    assert response.text == snapshot_path.read_text()
+    snapshot = SNAPSHOT_DIR / "movies_list.json"
+    if not snapshot.exists():
+        snapshot.write_text(response.text)
+    assert response.text == snapshot.read_text()
 ```
-Explain review process: snapshot updates require human approval.
+- Run `uv run pytest --cov=movie_service --cov-report=term-missing`.
+- Wire Logfire (or structured logging) in `app/main.py` to capture request/response traces with `X-Trace-Id` so frontends can share IDs.
+- Use `logfire.instrument_fastapi(app)` (see service docs) and demo one trace triggered from Streamlit + Vite.
 
-## Part C – Hands-on Lab 2 (45 Minutes)
+**Mini Logfire demo**
 
-### Lab timeline
-- **Minutes 0–10** – Instrument FastAPI with Logfire.
-- **Minutes 10–25** – Run coverage reports and address gaps.
-- **Minutes 25–35** – Collect profiling data (`timeit`, `cProfile`).
-- **Minutes 35–45** – Correlate Logfire traces with Hypothesis failures.
-### 1. Wire Logfire into FastAPI
-Install (already done) and configure `logfire` in `app/observability.py`:
-```python
-import logfire
-from fastapi import FastAPI
+1. Add instrumentation in `movie_service/app/main.py` right after creating the FastAPI app:
+   ```python
+   import os
+   import logfire
 
+   logfire.configure(
+       send_to_logfire=bool(os.getenv("LOGFIRE_API_KEY")),
+       service_name="movie-service",
+   )
+   logfire.instrument_fastapi(app)
+   ```
+   Set `LOGFIRE_API_KEY` in `.env` if you want to stream to Logfire’s SaaS; otherwise the logs stay local but still show trace IDs.
 
-def init_app(app: FastAPI) -> None:
-    logfire.configure(
-        service_name="movie-service",
-        send_to_logfire=True,  # set False for offline demos
-    )
-    logfire.instrument_fastapi_app(app)
-```
-In `app/main.py`:
-```python
-from . import observability
+2. Run a tiny script to emit a counter and hit the health endpoint:
+   ```python
+   # filepath: movie_service/scripts/demo_logfire.py
+   import httpx
+   import logfire
 
-observability.init_app(app)
-```
-Add structured logging inside routes (replace previous `logger.info` if desired):
-```python
-from logfire import log
+   logfire.configure(send_to_logfire=False, service_name="movie-service-demo")
+   logfire.counter("demo.run", tags={"env": "local"})
 
-log.info("movie.created", movie_id=movie.id, trace_id=request.state.trace_id)
-```
-Run the micro demo: `uv run uvicorn app.main:app --reload` → make a request → open the Logfire web UI to visualize traces.
+   response = httpx.get("http://localhost:8000/healthz", headers={"X-Trace-Id": "logfire-demo"})
+   logfire.info("health.response", status=response.status_code, body=response.json())
+   print(response.json())
+   ```
+   Execute with `uv run python -m movie_service.scripts.demo_logfire` while FastAPI is running. In the Logfire dashboard (or terminal output), you’ll see the `X-Trace-Id` plus the counter/s structured logs—proof that observability is wired up before EX2.
 
-### 2. Coverage gates
-```bash
-uv run pytest --cov=app --cov-report=term-missing
-```
-Interpret missing lines, add tests, rerun. Document how to wire into GitHub Actions (Session 10).
+### 4. Profiling quick wins
+- Use `uv run python -m cProfile -o profile.out movie_service/scripts/load.py` or simple `time.perf_counter()` wrappers around repository methods to ensure Postgres queries stay performant.
+- Encourage teams to measure `pnpm test` + `uv run pytest` runtime to set CI budgets.
 
-> 🎉 **Quick win:** Hitting 80%+ coverage with a clean report means EX2 submissions can ship with confidence—screenshot the terminal for your README.
+> 🎉 **Quick win:** When React + Streamlit share the same backend and the reliability suite stays green, EX2 deliverables feel production-ready.
 
-### 3. Lightweight profiling
-- Wrap a repository call with `time.perf_counter()` before/after; log duration.
-- Optional: `uv run python -m cProfile -o profile.out app/scripts/seed.py` and open with `snakeviz` (install if desired).
-
-### 4. Observability + testing synergy
-- Show that trace IDs appear in Logfire, Docker logs, and test headers.
-- Capture failing Hypothesis example and review the correlated Logfire event.
-
-## Wrap-up & EX2 Sprint
-- ✅ Fixtures, parametrization, Hypothesis, snapshots, Logfire instrumentation, coverage.
-- Between now and Session 08: finish EX2 UI features, enforce `pytest --cov` in CI, snapshot any critical responses, and log outstanding performance questions.
+## Wrap-up & Next Steps
+- Choose the UI (Streamlit, React, or both) that best fits your EX2 backlog and document how to run it.
+- Maintain the Postgres + pytest fixtures so regressions are caught before demos.
+- Plan deployment targets (Railway, Fly, Render) that can host FastAPI + Postgres + frontend assets.
+- Preview Session 08 (AI tools / advanced integrations) knowing your stack already spans backend, database, and multiple UIs.
 
 ## Troubleshooting
-- **Hypothesis health check warnings** → adjust strategies or increase `deadline=None` for slower tests.
-- **Logfire authentication** → ensure environment variable `LOGFIRE_API_KEY` is set; fall back to `send_to_logfire=False` for offline demo.
-- **Coverage missing modules** → check `__init__.py` files and ensure tests import the modules under test.
-
-### Common pitfalls
-- **Flaky Hypothesis tests** – cap `max_examples` temporarily and log failing seeds for deterministic reruns.
-- **Snapshot drift** – update snapshots only after code review; commit baseline fixtures alongside code.
-- **Logfire noise** – set `send_to_logfire=False` during load testing to avoid rate limits, then re-enable for demos.
+- **`pnpm dev` cannot reach API** → verify FastAPI runs on port 8000 and CORS allows `http://localhost:5173`.
+- **TypeScript errors referencing `process.env`** → switch to `import.meta.env` (Vite convention).
+- **pytest fixture fails to drop DB** → ensure connections are terminated before `DROP DATABASE`; check for `psycopg.errors.ObjectInUse`.
+- **Logfire missing traces** → confirm `X-Trace-Id` headers are forwarded from Streamlit/React clients and Logfire API key is in `.env`.
 
 ## Student Success Criteria
+- [ ] Vite dev server loads movies from FastAPI/Postgres and can create new entries (trace IDs intact).
+- [ ] Frontend lint/tests run locally (`pnpm lint`, `pnpm test` or Playwright).
+- [ ] Backend pytest suite includes parametrized cases, Hypothesis, snapshots, and coverage reporting.
+- [ ] Logfire (or equivalent) captures traces correlated with Streamlit + React requests; profiling notes are documented.
 
-By the end of Session 07, every student should be able to:
-
-- [ ] Use parametrized and property-based tests to exercise FastAPI endpoints.
-- [ ] Generate coverage reports and interpret missing-line output.
-- [ ] Instrument the app with Logfire, correlating trace IDs across logs and tests.
-
-**If a box is unchecked, host a testing tune-up before Session 08.**
+Book a pairing session if any checkbox is missing before heading into Session 08.
 
 ## AI Prompt Seeds
-- “Write pytest fixtures that override FastAPI dependencies with a temporary SQLite database.”
-- “Generate property-based tests using Hypothesis for a FastAPI endpoint that normalizes genres.”
-- “Instrument FastAPI with Pydantic Logfire to record request timings and trace IDs.”
+- “Generate a TypeScript axios client + React Query hook for `/movies`, complete with create/list functions and cache invalidation.”
+- “Write pytest fixtures that create/drop temporary Postgres databases per test and override FastAPI dependencies.”
+- “Show how to instrument a FastAPI app with Logfire so React/Streamlit `X-Trace-Id` headers appear in traces.”
