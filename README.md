@@ -29,6 +29,7 @@ Key documents:
   - **EX1** (due Tue 2 Dec 2025, 23:59 Israel time): ship the FastAPI CRUD service from Session 03 with tests/Docker; adopt Session 04’s SQLite upgrade as soon as you’re ready so persistence is solved before EX3.
   - **EX2** (due Tue 23 Dec 2025, 23:59 Israel time): deliver a Streamlit dashboard **or** Typer CLI that talks to the EX1 API.
   - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): integrate the API, dedicated persistence layer, and interface into a local multi-service stack (3+ cooperating processes), add one thoughtful improvement, and document the runbook. Everything runs locally; cloud, Docker, and security work are optional extras only.
+  - **Choose your own domain:** the live sessions use a movie catalogue as the teaching example, but students pick any narrow theme (recipes, books, robotics gear, etc.) and keep it for all three exercises.
 
 ## 🌱 Future-facing Engineering Archetypes
 Modern software careers are coalescing around four builder profiles, and every lab in this repo intentionally hits each archetype so students can imagine their next role:
