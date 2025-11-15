@@ -1,0 +1,1387 @@
+---
+title: "EASS 8 Episode — Instructor Playbook"
+version: "2025.11"
+summary: "Live teaching script + AI/copilot spec for all 12 sessions."
+audience: "Instructors, Cursor/Copilot agents"
+---
+
+# EASS 8 Episode — Instructor Playbook
+
+This document is the complete, self-contained guide for running the elevated Applied Software Systems (EASS) course. Every session is broken into three 45‑minute blocks: **PART A** (motivation + theory), **PART B** (hands-on build), and **PART C** (hands-on deepening). The flow, scripts, commands, code, and talking points live here—no external decks or resources required. The vibe should feel like the best MIT/Harvard systems courses: relentlessly practical, intellectually sharp, and delivered with live coding fluency.
+
+---
+
+## 0. Course Vision
+
+- **Mindset:** ship small, composable systems; reason about trade-offs; cultivate command-line mastery; understand every abstraction we use.
+- **Stack:** Linux/WSL/macOS terminals only. Tooling is Python 3.12+, `uv`, FastAPI, SQLModel, Pydantic, Typer, httpx, pytest, pytest-asyncio, coverage, ruff, mypy, uvicorn, Docker, Docker Compose, optional Streamlit, optional Playwright.
+- **Cohort promise:** every graded artifact runs locally, offline, reproducibly. Docker & cloud are demos and optional extensions.
+- **Project continuity:** students pick a tiny domain (movies, recipes, robotics gear, etc.) during Meeting 1 and keep that storyline through EX1–EX3; the live-coded movie service is simply the canonical example.
+- **Progression:** EX1 = backend microservice + tests/Docker, EX2 = interface that talks to that service, EX3 = multi-service integration (backend + persistence + interface + optional AI/automation sidecar).
+- **Legendary energy:** narrate the “why” before the “how”, connect each technique to real engineering moments, and insist on clean, documented, tested software.
+
+---
+
+## 1. Calendar & Logistics
+
+- **Meeting cadence:** 12 Mondays, 3 × 45-minute segments each meeting. Suggested dates (adjust as needed, keep order):
+  1. Nov 3
+  2. Nov 10
+  3. Nov 17
+  4. Nov 24
+  5. Dec 1
+  6. Dec 8
+  7. Dec 15
+  8. Dec 22
+  9. Dec 29
+  10. Jan 5
+  11. Jan 12
+  12. Jan 19 (administrative final day Tue Jan 20)
+
+- **Exercise schedule (all Tuesday deadlines):**
+  - **EX1 — FastAPI Foundations:** assigned Meeting 2 (Nov 10), due Tue Dec 2.
+  - **EX2 — Interface & Interaction (Streamlit or Typer):** assigned Meeting 5 (Dec 1), due Tue Dec 23.
+  - **EX3 — Capstone Integration:** assigned Meeting 9 (Dec 29), in-class milestone Tue Jan 20, final due Tue Feb 10.
+
+- **Assessment rubric (shared with students):**
+  - *Craft (30%)* — readability, separation of concerns, docstrings, typing.
+  - *Correctness (30%)* — tests pass, acceptance path works, data persisted.
+  - *Empathy (20%)* — CLI/UX clarity, README onboarding, graceful error messages.
+  - *Resilience (20%)* — tests cover key failure modes, modular design enables change.
+
+- **Foundational tooling checklist (complete before Meeting 1):**
+  - Verify `python3.11`, `uv`, Git, Docker Desktop (for macOS) or docker-cli (Linux/WSL).
+  - Prepare course repo skeleton: `fastapi-sqlmodel-starter` with `src/app`, `tests`, `pyproject.toml`.
+  - Create GitHub Classroom or private Git templates for EX1, EX2, EX3.
+  - Confirm VS Code is installed with Python, Pylance, Dev Containers, REST Client extensions.
+
+---
+
+## 2. Standard Project Layout
+
+All sessions assume a repo shaped like:
+
+```
+.
+├── pyproject.toml
+├── uv.lock
+├── src/
+│   └── app/
+│       ├── main.py
+│       ├── api/
+│       │   ├── __init__.py
+│       │   └── v1/
+│       │       ├── __init__.py
+│       │       └── routes_items.py
+│       ├── core/
+│       │   ├── config.py
+│       │   └── logging.py
+│       ├── db/
+│       │   ├── base.py
+│       │   ├── session.py
+│       │   └── seed.py
+│       ├── models/
+│       │   └── item.py
+│       ├── schemas/
+│       │   └── item.py
+│       └── services/
+│           └── inventory.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   └── api/
+│       └── test_items.py
+├── scripts/
+│   └── profile.sh
+├── docker-compose.yml
+└── README.md
+```
+
+Feel free to trim or expand per session, but keep this as the mental model.
+
+---
+
+## 3. Session Blueprints
+
+Each meeting details below includes:
+
+- **Part A — Theory & Motivation (45 min)**: whiteboard talk, story-driven, conceptual anchors, Q&A checkpoints.
+- **Part B — Hands-on Build (45 min)**: live coding start-to-finish with commentary. Students pair on same flow.
+- **Part C — Hands-on Deep Dive (45 min)**: extend, refactor, or explore advanced angle; students implement alongside you.
+
+Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task runner, `pytest -q` for tests, `ruff check .` and `mypy` for verification where specified.
+
+---
+
+## Meeting 1 — Systems Fluency & Environment Mastery (Mon Nov 3)
+
+**Outcome:** Students can set up `uv`, run tests, understand the local-first philosophy, and navigate the shell confidently.
+
+### PART A (45 min): Motivation, Toolchain, Operating Footing
+- Tell the story of legendary systems courses emphasizing owning the stack end-to-end.
+- Draw a three-layer diagram: shell → Python runtime → FastAPI application.
+- Explain why `uv` replaces `pip + venv`: hermetic, fast, reproducible.
+- Introduce the project repository layout (Section 2).
+- Emphasize Git etiquette: commit hygiene, message structure (`type: scope - summary`).
+- Cover terminal usage expectations: tmux/zellij optional, but students must be fluent with `ls`, `rg`, `sed`, `watch`, `jq`, `curl`.
+- Discuss evaluation: craftsmanship over features, tests as contracts, pair debugging culture.
+
+### PART B (45 min): Bootstrap the Sandbox
+1. **Create course workspace**
+   ```bash
+   mkdir -p ~/projects/eass && cd ~/projects/eass
+   git clone git@github.com:instructor/eass-sandbox.git && cd eass-sandbox
+   uv venv
+   source .venv/bin/activate
+   uv pip install --upgrade pip
+   uv add fastapi uvicorn[standard] sqlmodel pydantic typing_extensions httpx pytest pytest-asyncio ruff mypy typer rich
+   ```
+2. **Scaffold `src/app/main.py`**
+   ```python
+   from fastapi import FastAPI
+
+   app = FastAPI(title="EASS Sandbox", version="0.1.0")
+
+
+   @app.get("/health")
+   async def health_check() -> dict[str, str]:
+       return {"status": "ok"}
+   ```
+3. **Add `tests/api/test_health.py`**
+   ```python
+   import pytest
+   from httpx import AsyncClient
+
+   from app.main import app
+
+   @pytest.mark.asyncio
+   async def test_health_check() -> None:
+       async with AsyncClient(app=app, base_url="http://test") as client:
+           response = await client.get("/health")
+           assert response.status_code == 200
+           assert response.json() == {"status": "ok"}
+   ```
+4. **Run baseline commands**
+   ```bash
+   uv run pytest -q
+   uv run uvicorn app.main:app --reload
+   curl -s localhost:8000/health | jq
+   ```
+5. **Commit**
+   ```bash
+   git add src/app/main.py tests/api/test_health.py pyproject.toml uv.lock
+   git commit -m "feat: bootstrap sandbox health endpoint"
+   ```
+
+### PART C (45 min): Shell & Editor Drills
+- Guided terminal tour:
+  ```bash
+  rg "status" -n
+  sed -n '1,20p' src/app/main.py
+  uv run python - <<'PY'
+  import sys
+  print(f"Python {sys.version}")
+  PY
+  ```
+- Configure VS Code tasks: create `.vscode/tasks.json` with `uv run pytest`.
+- Quick tmux session (optional): split panes, run server + tests simultaneously.
+- Students rehearse common flows: edit → format (`uv run ruff check --fix`), run tests, stage, commit.
+- Exit ticket: every student has repo, test green, comfortable toggling between shell and editor.
+
+---
+
+## Meeting 2 — Network Interfaces & HTTP Clients (Mon Nov 10)
+
+**Outcome:** Students internalize HTTP layers and craft robust clients with httpx. EX1 assigned.
+
+### PART A: HTTP Anatomy & Resilient Client Patterns
+- Draw request/response lifecycle with headers, body, status codes.
+- Compare synchronous vs async client usage.
+- Introduce resilience tactics: retries, timeouts, structured logging.
+- Explain JSON schema validation using Pydantic models on the client side.
+- Preview EX1: build CRUD FastAPI service with tests; highlight expectations.
+
+### PART B: Build an Async httpx Client
+1. **Add dependencies (already installed) and create `src/app/clients/ping.py`**
+   ```python
+   from __future__ import annotations
+
+   from typing import Any
+
+   import httpx
+   from pydantic import BaseModel, HttpUrl, PositiveInt, ValidationError
+
+
+   class PingResult(BaseModel):
+       url: HttpUrl
+       status_code: PositiveInt
+       payload: dict[str, Any]
+
+
+   async def fetch_ping(base_url: str = "https://httpbin.org") -> PingResult:
+       async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
+           response = await client.get(f"{base_url}/get", params={"ping": "pong"})
+           response.raise_for_status()
+           try:
+               return PingResult(url=response.url, status_code=response.status_code, payload=response.json())
+           except ValidationError as exc:
+               raise RuntimeError("Invalid response schema") from exc
+   ```
+2. **Test `tests/clients/test_ping.py`**
+   ```python
+   import pytest
+
+   from app.clients.ping import fetch_ping
+
+
+   @pytest.mark.asyncio
+   async def test_fetch_ping_round_trip(monkeypatch):
+       result = await fetch_ping()
+       assert result.status_code == 200
+       assert result.payload["args"] == {"ping": "pong"}
+   ```
+3. **Run tests & lint**
+   ```bash
+   uv run pytest tests/clients/test_ping.py -q
+   uv run ruff check src/app/clients tests/clients
+   ```
+
+### PART C: Instrumentation & CLI Wrapper
+1. **Logging helper `src/app/core/logging.py`**
+   ```python
+   import logging
+
+   LOGGER_NAME = "eass"
+
+
+   def configure_logging() -> logging.Logger:
+       logging.basicConfig(
+           level=logging.INFO,
+           format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+       )
+       return logging.getLogger(LOGGER_NAME)
+   ```
+2. **Typer CLI `src/app/cli.py`**
+   ```python
+   import asyncio
+
+   import typer
+
+   from app.clients.ping import fetch_ping
+   from app.core.logging import configure_logging
+
+   cli = typer.Typer(help="Diagnostics and utilities for the EASS sandbox.")
+
+
+   @cli.command()
+   def ping(base_url: str = "https://httpbin.org") -> None:
+       """Fetch a ping response and print key fields."""
+       logger = configure_logging()
+       result = asyncio.run(fetch_ping(base_url))
+       logger.info("Ping success | %s | %s", result.status_code, result.url)
+       typer.echo(result.payload)
+
+
+   if __name__ == "__main__":
+       cli()
+   ```
+3. **Run CLI**
+   ```bash
+   uv run python -m app.cli ping
+   ```
+4. **Assign EX1**
+   - Deliverable: FastAPI service with `/items` CRUD, SQLModel persistence (SQLite), Pydantic schemas, 80% pytest coverage, README with setup commands.
+   - Encourage students to recycle client patterns for tests.
+
+---
+
+## Meeting 3 — FastAPI Surface & Routing Mastery (Mon Nov 17)
+
+**Outcome:** Build a structured FastAPI app with routers, dependency injection, and type-safe responses.
+
+### PART A: API Design Principles
+- Discuss REST resource modeling: nouns, verbs, relationships.
+- Explain FastAPI dependency injection, response models, error handling.
+- Introduce `SQLModel` as hybrid of SQLAlchemy + Pydantic.
+- Outline request validation vs business logic separation.
+
+### PART B: Create Item Router
+1. **Model definitions `src/app/models/item.py`**
+   ```python
+   from __future__ import annotations
+
+   from sqlmodel import Field, SQLModel
+
+
+   class Item(SQLModel, table=True):
+       id: int | None = Field(default=None, primary_key=True)
+       name: str = Field(index=True, max_length=80)
+       description: str | None = Field(default=None, max_length=255)
+       quantity: int = Field(default=0, ge=0)
+   ```
+2. **Schemas `src/app/schemas/item.py`**
+   ```python
+   from __future__ import annotations
+
+   from pydantic import BaseModel, Field
+
+
+   class ItemCreate(BaseModel):
+       name: str = Field(min_length=1, max_length=80)
+       description: str | None = Field(default=None, max_length=255)
+       quantity: int = Field(default=0, ge=0)
+
+
+   class ItemRead(ItemCreate):
+       id: int = Field(gt=0)
+   ```
+3. **Database session `src/app/db/session.py`**
+   ```python
+   from __future__ import annotations
+
+   import os
+   from contextlib import contextmanager
+   from pathlib import Path
+
+   from sqlmodel import Session, SQLModel, create_engine
+
+   DEFAULT_DB_PATH = Path("data/app.db")
+
+
+   def _sqlite_url() -> str:
+       override = os.getenv("SQLMODEL_DATABASE")
+       candidate = Path(override) if override else DEFAULT_DB_PATH
+       candidate.parent.mkdir(parents=True, exist_ok=True)
+       return f"sqlite:///{candidate}"
+
+
+   DATABASE_URL = os.getenv("DATABASE_URL")
+   if DATABASE_URL:
+       engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+   else:
+       engine = create_engine(_sqlite_url(), echo=False, connect_args={"check_same_thread": False})
+
+
+   def init_db() -> None:
+       SQLModel.metadata.create_all(engine)
+
+
+   @contextmanager
+   def get_session() -> Session:
+       with Session(engine) as session:
+           yield session
+   ```
+4. **Router `src/app/api/v1/routes_items.py`**
+   ```python
+   from __future__ import annotations
+
+   from fastapi import APIRouter, Depends, HTTPException, status
+   from sqlmodel import Session, select
+
+   from app.db.session import get_session
+   from app.models.item import Item
+   from app.schemas.item import ItemCreate, ItemRead
+
+   router = APIRouter(prefix="/items", tags=["items"])
+
+
+   def session_dependency() -> Session:
+       with get_session() as session:
+           yield session
+
+
+   @router.post("/", response_model=ItemRead, status_code=status.HTTP_201_CREATED)
+   def create_item(payload: ItemCreate, session: Session = Depends(session_dependency)) -> Item:
+       item = Item.model_validate(payload, update={"id": None})
+       session.add(item)
+       session.commit()
+       session.refresh(item)
+       return item
+
+
+   @router.get("/", response_model=list[ItemRead])
+   def list_items(session: Session = Depends(session_dependency)) -> list[Item]:
+       return session.exec(select(Item)).all()
+
+
+   @router.get("/{item_id}", response_model=ItemRead)
+   def get_item(item_id: int, session: Session = Depends(session_dependency)) -> Item:
+       item = session.get(Item, item_id)
+       if not item:
+           raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Item {item_id} not found")
+       return item
+   ```
+5. **Wire router in `src/app/main.py`**
+   ```python
+   from fastapi import FastAPI
+
+   from app.api.v1.routes_items import router as items_router
+   from app.db.session import init_db
+
+   app = FastAPI(title="EASS Sandbox", version="0.2.0")
+
+
+   @app.on_event("startup")
+   async def startup_event() -> None:
+       init_db()
+
+
+   app.include_router(items_router)
+   ```
+6. **Tests `tests/api/test_items.py`**
+   ```python
+   import pytest
+   from httpx import AsyncClient
+
+   from app.main import app
+
+
+   @pytest.mark.asyncio
+   async def test_create_and_fetch_item(tmp_path, monkeypatch):
+       db_dir = tmp_path / "data"
+       monkeypatch.setenv("SQLMODEL_DATABASE", str(db_dir / "app.db"))
+
+       async with AsyncClient(app=app, base_url="http://test") as client:
+           create_resp = await client.post("/items/", json={"name": "Adapter", "description": "USB-C", "quantity": 5})
+           assert create_resp.status_code == 201
+           item = create_resp.json()
+           fetch_resp = await client.get(f"/items/{item['id']}")
+           assert fetch_resp.status_code == 200
+           assert fetch_resp.json()["name"] == "Adapter"
+   ```
+   (Instructor note: this test relies on `SQLMODEL_DATABASE`; remind students the session util already respects it.)
+
+### PART C: Validation & Error Handling
+- Add update & delete endpoints, include 404 and 409 scenarios.
+- Extend tests for empty list, duplicate prevention.
+- Introduce custom exception handler for `ValidationError`.
+- Students implement `PUT /items/{id}` and `DELETE /items/{id}`, run tests, add coverage.
+
+---
+
+## Meeting 4 — Persistence & Testing Depth (Mon Nov 24)
+
+**Outcome:** Students master SQLModel relationships, fixtures, and transaction-safe tests.
+
+### PART A: Data Modeling Stories
+- Explain why relational data still matters; show item-category relationship.
+- Discuss test isolation strategies: in-memory DB vs temporary file vs transactional rollbacks.
+- Introduce property-based testing for constraints.
+
+### PART B: Add Category Model & Relationship
+1. **Model `src/app/models/category.py`**
+   ```python
+   from __future__ import annotations
+
+   from typing import Optional
+
+   from sqlmodel import Field, Relationship, SQLModel
+
+   from app.models.item import Item
+
+
+   class Category(SQLModel, table=True):
+       id: int | None = Field(default=None, primary_key=True)
+       name: str = Field(index=True, unique=True, max_length=40)
+       description: Optional[str] = Field(default=None, max_length=200)
+       items: list[Item] = Relationship(back_populates="category")
+   ```
+2. **Back-reference in `Item`**
+   ```python
+   from typing import Optional
+   from sqlmodel import Field, Relationship, SQLModel
+
+
+   class Item(SQLModel, table=True):
+       id: int | None = Field(default=None, primary_key=True)
+       name: str = Field(index=True, max_length=80)
+       description: Optional[str] = Field(default=None, max_length=255)
+       quantity: int = Field(default=0, ge=0)
+       category_id: int | None = Field(default=None, foreign_key="category.id")
+       category: Optional["Category"] = Relationship(back_populates="items")
+   ```
+3. **Schema updates `src/app/schemas/item.py`**
+   ```python
+   class ItemCreate(BaseModel):
+       name: str = Field(min_length=1, max_length=80)
+       description: str | None = Field(default=None, max_length=255)
+       quantity: int = Field(default=0, ge=0)
+       category_id: int | None = Field(default=None, ge=1)
+   ```
+4. **Categories router `src/app/api/v1/routes_categories.py`**
+   ```python
+   from fastapi import APIRouter, Depends, HTTPException, status
+   from sqlmodel import Session, select
+
+   from app.db.session import get_session
+   from app.models.category import Category
+
+   router = APIRouter(prefix="/categories", tags=["categories"])
+
+
+   def session_dependency():
+       with get_session() as session:
+           yield session
+
+
+   @router.post("/", response_model=Category, status_code=status.HTTP_201_CREATED)
+   def create_category(category: Category, session: Session = Depends(session_dependency)) -> Category:
+       existing = session.exec(select(Category).where(Category.name == category.name)).one_or_none()
+       if existing:
+           raise HTTPException(status_code=409, detail="Category already exists")
+       session.add(category)
+       session.commit()
+       session.refresh(category)
+       return category
+   ```
+   Update `main.py` to include the router: `app.include_router(categories_router)`.
+5. **Fixture `tests/conftest.py`**
+   ```python
+   import pytest
+   from httpx import AsyncClient
+
+   from app.db.session import init_db
+   from app.main import app
+
+
+   @pytest.fixture(autouse=True)
+   def _prepare_db(tmp_path, monkeypatch):
+       monkeypatch.setenv("SQLMODEL_DATABASE", str(tmp_path / "app.db"))
+       init_db()
+
+
+   @pytest.fixture
+   async def client():
+       async with AsyncClient(app=app, base_url="http://test") as async_client:
+           yield async_client
+   ```
+6. **Tests `tests/api/test_categories.py`:**
+   ```python
+   import pytest
+   from httpx import AsyncClient
+
+   @pytest.mark.asyncio
+   async def test_item_associated_to_category(client: AsyncClient):
+       category_resp = await client.post("/categories/", json={"name": "Hardware"})
+       assert category_resp.status_code == 201
+       category_id = category_resp.json()["id"]
+
+       item_resp = await client.post(
+           "/items/",
+           json={"name": "Soldering Iron", "quantity": 2, "category_id": category_id},
+       )
+       assert item_resp.status_code == 201
+       fetched = await client.get(f"/items/{item_resp.json()['id']}")
+       assert fetched.json()["category_id"] == category_id
+   ```
+
+### PART C: Testing Excellence
+- Introduce `pytest.mark.parametrize` for input matrices.
+- Show property-based approach using `hypothesis` (optional).
+- Students add failure mode tests (e.g., negative quantity yields 422).
+- Run coverage:
+  ```bash
+  uv run coverage run -m pytest
+  uv run coverage report -m
+  ```
+
+---
+
+## Meeting 5 — Service Architecture & EX2 Launch (Mon Dec 1)
+
+**Outcome:** Students design service layers, enforce business rules, and ship Typer CLI automation. EX2 assigned.
+
+### PART A: Layered Architecture Motivation
+- Draw onion: API → service layer → domain → persistence.
+- Emphasize separation between FastAPI request handling and business logic.
+- Introduce domain validation beyond schema validation.
+- Preview EX2: students choose Streamlit dashboard or Typer CLI for admin tasks.
+
+### PART B: Service Layer Implementation
+1. **Create `src/app/services/inventory.py`**
+   ```python
+   from __future__ import annotations
+
+   from contextlib import AbstractContextManager
+   from typing import Callable
+
+   from sqlmodel import Session, select
+
+   from app.models.item import Item
+   from app.schemas.item import ItemCreate
+
+
+   SessionFactory = Callable[[], AbstractContextManager[Session]]
+
+
+   class InventoryService:
+       def __init__(self, session_factory: SessionFactory) -> None:
+           self._session_factory = session_factory
+
+       def create_item(self, payload: ItemCreate) -> Item:
+           with self._session_factory() as session:
+               existing = session.exec(select(Item).where(Item.name == payload.name)).one_or_none()
+               if existing:
+                   raise ValueError(f"Item with name '{payload.name}' already exists.")
+               item = Item.model_validate(payload, update={"id": None})
+               session.add(item)
+               session.commit()
+               session.refresh(item)
+               return item
+
+       def list_items(self) -> list[Item]:
+           with self._session_factory() as session:
+               return session.exec(select(Item)).all()
+
+       def adjust_quantity(self, item_id: int, delta: int) -> Item:
+           with self._session_factory() as session:
+               item = session.get(Item, item_id)
+               if not item:
+                   raise ValueError(f"Item {item_id} not found.")
+               item.quantity += delta
+               session.commit()
+               session.refresh(item)
+               return item
+   ```
+2. **Update `routes_items.py` to depend on the service**
+   ```python
+   from fastapi import Depends, HTTPException
+
+   from app.services.inventory import InventoryService
+
+
+   def get_service() -> InventoryService:
+       return InventoryService(get_session)
+
+
+   @router.post("/", response_model=ItemRead, status_code=status.HTTP_201_CREATED)
+   def create_item(payload: ItemCreate, service: InventoryService = Depends(get_service)) -> Item:
+       try:
+           return service.create_item(payload)
+       except ValueError as exc:
+           raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+   @router.get("/", response_model=list[ItemRead])
+   def list_items(service: InventoryService = Depends(get_service)) -> list[Item]:
+       return service.list_items()
+   ```
+3. **Unit tests `tests/services/test_inventory.py`** verifying duplication guard.
+
+### PART C: Typer Admin CLI
+1. Build Typer command `python -m app.cli seed --file data/seed_items.json`.
+   ```python
+   import json
+   from pathlib import Path
+
+   from app.db.session import get_session
+   from app.schemas.item import ItemCreate
+   from app.services.inventory import InventoryService
+
+   @cli.command()
+   def seed(file: Path = typer.Argument(Path("data/seed_items.json"), exists=True)) -> None:
+       """Seed the database with items from a JSON file."""
+       payloads = json.loads(file.read_text())
+       service = InventoryService(get_session)
+       for raw in payloads:
+           service.create_item(ItemCreate(**raw))
+       typer.secho(f"Seeded {len(payloads)} items", fg=typer.colors.GREEN)
+   ```
+2. JSON sample:
+   ```json
+   [
+     {"name": "Notebook", "description": "Dot grid A5", "quantity": 12},
+     {"name": "Soldering Kit", "description": "Adjustable temp soldering iron", "quantity": 3}
+   ]
+   ```
+3. Students add CLI coverage test using `CliRunner`:
+   ```python
+   from typer.testing import CliRunner
+
+   from app.cli import cli
+
+
+   def test_seed_command(tmp_path, monkeypatch):
+       seed_file = tmp_path / "seed.json"
+       seed_file.write_text('[{"name": "Calipers", "quantity": 1}]', encoding="utf-8")
+       monkeypatch.setenv("SQLMODEL_DATABASE", str(tmp_path / "app.db"))
+       runner = CliRunner()
+       result = runner.invoke(cli, ["seed", str(seed_file)])
+       assert result.exit_code == 0
+       assert "Seeded 1 items" in result.stdout
+   ```
+- Run `uv run python -m app.cli seed data/seed_items.json`.
+- Assign **EX2** with requirements:
+  - Option A: Streamlit view listing items, editing quantity.
+  - Option B: Typer multi-command tool for inventory auditors.
+  - Must reuse service layer; includes tests or minimal e2e script.
+
+---
+
+## Meeting 6 — Async Work & Background Tasks (Mon Dec 8)
+
+**Outcome:** Students leverage async endpoints, background tasks, and concurrency primitives.
+
+### PART A: Async Foundations
+- Explain event loop, `await`, concurrency vs parallelism.
+- Diagram FastAPI request handling pipeline for async endpoints.
+- Discuss background tasks vs Celery vs external queues; we focus on FastAPI background tasks for simplicity.
+
+### PART B: Async search endpoint
+1. Install supporting dependency: `uv add anyio`.
+2. Extend service with async search `src/app/services/inventory.py`:
+   ```python
+   import anyio
+   from sqlmodel import select
+
+   class InventoryService:
+       def __init__(self, session_factory: SessionFactory) -> None:
+           self._session_factory = session_factory
+
+       def create_item(self, payload: ItemCreate) -> Item:
+           with self._session_factory() as session:
+               existing = session.exec(select(Item).where(Item.name == payload.name)).one_or_none()
+               if existing:
+                   raise ValueError(f"Item with name '{payload.name}' already exists.")
+               item = Item.model_validate(payload, update={"id": None})
+               session.add(item)
+               session.commit()
+               session.refresh(item)
+               return item
+
+       def list_items(self) -> list[Item]:
+           with self._session_factory() as session:
+               return session.exec(select(Item)).all()
+
+       async def search_items(self, term: str) -> list[Item]:
+           def _query() -> list[Item]:
+               with self._session_factory() as session:
+                   statement = select(Item).where(Item.name.ilike(f"%{term}%"))
+                   return session.exec(statement).all()
+
+           return await anyio.to_thread.run_sync(_query)
+   ```
+3. Add endpoint in `routes_items.py`:
+   ```python
+   from fastapi import Query
+
+   @router.get("/search", response_model=list[ItemRead])
+   async def search_items(q: str = Query(min_length=1), service: InventoryService = Depends(get_service)) -> list[Item]:
+       return await service.search_items(q)
+   ```
+   (Define `get_service` returning `InventoryService(get_session)`.)
+4. Demonstrate streaming response:
+   ```python
+   import json
+   from fastapi.responses import StreamingResponse
+
+   @router.get("/stream")
+   async def stream_items(service: InventoryService = Depends(get_service)) -> StreamingResponse:
+       async def item_generator():
+           for item in await service.search_items(""):
+               payload = ItemRead.model_validate(item).model_dump()
+               yield (json.dumps(payload) + "\n").encode("utf-8")
+
+       return StreamingResponse(item_generator(), media_type="application/x-ndjson")
+   ```
+5. Tests `tests/api/test_items_search.py`:
+   ```python
+   import pytest
+
+   @pytest.mark.asyncio
+   async def test_search_returns_filtered_results(client):
+       resp = await client.get("/items/search", params={"q": "adapter"})
+       assert resp.status_code == 200
+       assert any(item["name"] == "Adapter" for item in resp.json())
+
+
+   @pytest.mark.asyncio
+   async def test_stream_endpoint_yields_lines(client):
+       resp = await client.get("/items/stream")
+       body = await resp.aread()
+       lines = [line for line in body.decode().splitlines() if line]
+       assert lines
+   ```
+
+### PART C: Background Task for audit logging
+1. Add background writer in router:
+   ```python
+   import os
+   from pathlib import Path
+   from fastapi import BackgroundTasks
+
+   def resolve_audit_path() -> Path:
+       override = os.getenv("AUDIT_LOG_PATH", "logs/audit.log")
+       path = Path(override)
+       path.parent.mkdir(parents=True, exist_ok=True)
+       return path
+
+
+   def write_audit_line(item_id: int, action: str) -> None:
+       path = resolve_audit_path()
+       with path.open("a", encoding="utf-8") as handle:
+           handle.write(f"{item_id},{action}\n")
+
+
+   @router.post("/items/{item_id}/audit", status_code=202)
+   async def trigger_audit(item_id: int, background: BackgroundTasks) -> dict[str, str]:
+       background.add_task(write_audit_line, item_id, "viewed")
+       return {"status": "scheduled"}
+   ```
+2. Test with `AnyIO`:
+   ```python
+   import anyio
+   import pytest
+
+   @pytest.mark.asyncio
+   async def test_audit_task_runs(tmp_path, monkeypatch, client):
+       audit_file = tmp_path / "audit.log"
+       monkeypatch.setenv("AUDIT_LOG_PATH", str(audit_file))
+       response = await client.post("/items/1/audit")
+       assert response.status_code == 202
+       await anyio.sleep(0)
+       assert audit_file.read_text().startswith("1,viewed")
+   ```
+3. Discuss race conditions, idempotency, and how to scale with external queues if needed.
+
+---
+
+## Meeting 7 — Interfaces: Streamlit + Typer Synthesis (Mon Dec 15)
+
+**Outcome:** Students craft interactive front-ends leveraging the API.
+
+### PART A: UX & Developer Empathy
+- Discuss CLI vs GUI trade-offs, progressive disclosure, accessibility.
+- Define shape of EX2 deliverables: small, purposeful, delightful.
+
+### PART B: Streamlit dashboard
+1. Install UI dependency: `uv add streamlit`.
+2. **Create `streamlit_app.py`**
+   ```python
+   import httpx
+   import streamlit as st
+
+   API_BASE = "http://localhost:8000"
+
+
+   def fetch_items() -> list[dict]:
+       with httpx.Client(timeout=5) as client:
+           response = client.get(f"{API_BASE}/items")
+           response.raise_for_status()
+           return response.json()
+
+
+   def main() -> None:
+       st.title("Inventory Pulse")
+       items = fetch_items()
+       st.table(items)
+       with st.form("add_item"):
+           name = st.text_input("Name")
+           quantity = st.number_input("Quantity", min_value=0)
+           submitted = st.form_submit_button("Add")
+           if submitted:
+               with httpx.Client(timeout=5) as client:
+                   resp = client.post(f"{API_BASE}/items/", json={"name": name, "quantity": quantity})
+                   if resp.is_success:
+                       st.success("Item created")
+                   else:
+                       st.error(resp.json())
+
+
+   if __name__ == "__main__":
+       main()
+   ```
+3. **Run:** `uv run streamlit run streamlit_app.py`.
+
+### PART C: Typer multi-command CLI
+1. Extend `app/cli.py` with nested Typer command group:
+   ```python
+   inventory_app = typer.Typer(help="Inventory operations")
+   cli.add_typer(inventory_app, name="inventory")
+
+
+   @inventory_app.command("list")
+   def list_cmd() -> None:
+       service = InventoryService(get_session)
+       items = service.list_items()
+       for item in items:
+           typer.echo(f"{item.id}: {item.name} ({item.quantity})")
+
+
+   @inventory_app.command("adjust")
+   def adjust_cmd(item_id: int = typer.Option(...), delta: int = typer.Option(...)) -> None:
+       service = InventoryService(get_session)
+       try:
+           item = service.adjust_quantity(item_id, delta)
+       except ValueError as exc:
+           typer.secho(str(exc), fg=typer.colors.RED)
+           raise typer.Exit(code=1) from exc
+       typer.echo(f"Quantity updated -> {item.quantity}")
+   ```
+   (Optionally surface an `adjust_quantity` method on `InventoryService` for elegance.)
+2. Add tests:
+   ```python
+   def test_inventory_list_command(tmp_path, monkeypatch):
+       monkeypatch.setenv("SQLMODEL_DATABASE", str(tmp_path / "app.db"))
+       seed_file = tmp_path / "seed.json"
+       seed_file.write_text('[{"name": "Widget", "quantity": 4}]', encoding="utf-8")
+       runner = CliRunner()
+       runner.invoke(cli, ["seed", str(seed_file)])
+       result = runner.invoke(cli, ["inventory", "list"])
+       assert result.exit_code == 0
+       assert "Widget" in result.stdout
+
+
+   def test_inventory_adjust_command(tmp_path, monkeypatch):
+       monkeypatch.setenv("SQLMODEL_DATABASE", str(tmp_path / "app.db"))
+       seed_file = tmp_path / "seed.json"
+       seed_file.write_text('[{"name": "Widget", "quantity": 4}]', encoding="utf-8")
+       runner = CliRunner()
+       runner.invoke(cli, ["seed", str(seed_file)])
+       result = runner.invoke(cli, ["inventory", "adjust", "--item-id", "1", "--delta", "-1"])
+       assert result.exit_code == 0
+       assert "Quantity updated" in result.stdout
+   ```
+3. Demonstrate `uv run python -m app.cli inventory list` and `uv run python -m app.cli inventory adjust --item-id 1 --delta -1`.
+
+---
+
+## Meeting 8 — Observability & Instrumentation (Mon Dec 22)
+
+**Outcome:** Logging, metrics, tracing fundamentals with local tooling.
+
+### PART A: Why Observability Matters
+- Introduce three pillars: logs, metrics, traces.
+- Emphasize contextual logging (structured). Provide sample log schema.
+- Show how slow queries appear, talk about budget constraints.
+
+### PART B: Structured logging with `structlog`
+1. Install `uv add structlog`.
+2. Configure logger `src/app/core/logging.py`:
+   ```python
+   import logging
+   from uuid import uuid4
+
+   import structlog
+   import structlog.contextvars as structlog_context
+
+
+   def configure_logging() -> None:
+       logging.basicConfig(
+           format="%(message)s",
+           stream=None,
+           level=logging.INFO,
+       )
+       structlog.configure(
+           processors=[
+               structlog_context.merge_contextvars,
+               structlog.processors.add_log_level,
+               structlog.processors.TimeStamper(fmt="iso"),
+               structlog.processors.JSONRenderer(),
+           ],
+           wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+           cache_logger_on_first_use=True,
+       )
+
+
+   def get_logger():
+       return structlog.get_logger("eass")
+
+
+   def request_id() -> str:
+       return uuid4().hex
+   ```
+3. Add middleware in `main.py`:
+   ```python
+   from fastapi import Request
+   import structlog.contextvars as structlog_context
+   from app.core.logging import configure_logging, get_logger, request_id
+
+
+   configure_logging()
+   logger = get_logger()
+
+
+   @app.middleware("http")
+   async def add_log_context(request: Request, call_next):
+       rid = request_id()
+       structlog_context.bind_contextvars(request_id=rid, path=str(request.url.path))
+       logger.info("request.start", method=request.method)
+       response = await call_next(request)
+       logger.info("request.end", status=response.status_code)
+       structlog_context.clear_contextvars()
+       return response
+   ```
+4. Demonstrate logs by hitting `curl -s localhost:8000/items | jq`.
+
+### PART C: Metrics & Profiling
+1. Install `uv add prometheus-client snakeviz`.
+2. Create `src/app/core/metrics.py`:
+   ```python
+   from prometheus_client import Counter, Histogram
+
+   REQUEST_COUNT = Counter("eass_requests_total", "Total requests", ["method", "path"])
+   REQUEST_LATENCY = Histogram("eass_request_latency_seconds", "Request latency", ["path"])
+   ```
+3. Instrument middleware in `main.py`:
+   ```python
+   import time
+   from fastapi import Response
+   from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
+   from app.core.metrics import REQUEST_COUNT, REQUEST_LATENCY
+
+
+   @app.middleware("http")
+   async def capture_metrics(request: Request, call_next):
+       start = time.perf_counter()
+       response = await call_next(request)
+       duration = time.perf_counter() - start
+       REQUEST_COUNT.labels(request.method, request.url.path).inc()
+       REQUEST_LATENCY.labels(request.url.path).observe(duration)
+       return response
+
+
+   @app.get("/metrics")
+   async def metrics_endpoint() -> Response:
+       return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+   ```
+4. Add profiling script `scripts/load_test.py`:
+   ```python
+   import asyncio
+   import httpx
+
+
+   async def hit_api() -> None:
+       async with httpx.AsyncClient(timeout=5.0) as client:
+           for _ in range(100):
+               await client.get("http://localhost:8000/items")
+
+
+   if __name__ == "__main__":
+       asyncio.run(hit_api())
+   ```
+5. Profiling script `scripts/profile.sh`:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   uv run python -m cProfile -o profile.out scripts/load_test.py
+   uv run snakeviz profile.out
+   ```
+   Make executable: `chmod +x scripts/profile.sh`.
+6. Students run `uv run python scripts/load_test.py`, view `/metrics`, and tune slow queries (e.g., add `selectinload` to service).
+
+---
+
+## Meeting 9 — Automation & Continuous Quality (Mon Dec 29)
+
+**Outcome:** Set up pipelines, enforce quality gates, launch EX3.
+
+### PART A: Quality Systems
+- Discuss CI philosophy, pre-commit hooks, static analysis synergy.
+- Outline minimal pipeline: lint, test, type-check.
+
+### PART B: Local automation
+1. Create `Makefile` or `taskfile.yml` with targets:
+   ```make
+   lint:
+   	uv run ruff check .
+   	uv run mypy src
+
+   test:
+   	uv run pytest -q
+
+   check: lint test
+   ```
+2. Add `pre-commit` configuration (optional) and install hooks.
+
+### PART C: EX3 Kickoff
+- Describe capstone: integrate everything into cohesive service with Compose option.
+- Requirements:
+  - REST API with items & categories.
+  - Async background processing for audit trail.
+  - Typer/Streamlit interface.
+  - Observability endpoints.
+  - Compose file wiring app + PostgreSQL (optional but recommended).
+- Provide milestone expectations for Tue Jan 20 demo.
+
+---
+
+## Meeting 10 — Containerization & Compose (Mon Jan 5)
+
+**Outcome:** Students containerize app, orchestrate with Compose, manage env vars.
+
+### PART A: Container Mental Model
+- Explain image layers, build context, Dockerfile anatomy.
+- Discuss secrets management, environment parity, Compose networks.
+
+### PART B: Dockerize FastAPI app
+1. **Dockerfile**
+   ```dockerfile
+   FROM ghcr.io/astral-sh/uv:python3.11-slim AS builder
+   WORKDIR /app
+   COPY pyproject.toml uv.lock ./
+   RUN uv sync --frozen --no-dev
+   COPY src ./src
+
+   FROM python:3.11-slim
+   WORKDIR /app
+   ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+   COPY --from=builder /app/.venv /app/.venv
+   COPY src ./src
+   ENV PATH="/app/.venv/bin:${PATH}"
+   CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+   ```
+2. **Build & run**
+   ```bash
+   docker build -t eass-app .
+   docker run --rm -p 8000:8000 eass-app
+   ```
+
+### PART C: Compose with Postgres
+- `docker-compose.yml`
+  ```yaml
+  version: "3.9"
+  services:
+    api:
+      build: .
+      ports:
+        - "8000:8000"
+      environment:
+        DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/eass
+      depends_on:
+        - db
+    db:
+      image: postgres:16-alpine
+      environment:
+        POSTGRES_DB: eass
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+  volumes:
+    pgdata: {}
+  ```
+- Update `db/session.py` to read `DATABASE_URL`.
+- Run `docker compose up --build`.
+- Students test API via `curl` from host.
+
+---
+
+## Meeting 11 — Resilience, Security, Hardening (Mon Jan 12)
+
+**Outcome:** Students add auth layer, rate limiting, and graceful degradation.
+
+### PART A: Security & Reliability Primer
+- Discuss threat modeling basics, minimal viable auth, defense in depth.
+- Introduce rate limiting, input sanitization, safe secrets handling.
+
+### PART B: Auth with API Keys
+1. Add security dependency `src/app/core/security.py`:
+   ```python
+   import os
+   from fastapi import HTTPException, Security, status
+   from fastapi.security import APIKeyHeader
+
+   api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+   async def require_api_key(provided_key: str = Security(api_key_header)) -> None:
+       expected = os.getenv("EASS_API_KEY", "dev-secret")
+       if not provided_key or provided_key != expected:
+           raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+   ```
+2. Protect routes in `routes_items.py`:
+   ```python
+   from app.core.security import require_api_key
+
+   router = APIRouter(
+       prefix="/items",
+       tags=["items"],
+       dependencies=[Depends(require_api_key)],
+   )
+   ```
+   (Use router-level dependency so every endpoint requires the key.)
+3. Tests `tests/api/test_security.py`:
+   ```python
+   import pytest
+
+   @pytest.mark.asyncio
+   async def test_list_items_requires_api_key(client, monkeypatch):
+       monkeypatch.setenv("EASS_API_KEY", "top-secret")
+       response = await client.get("/items/")
+       assert response.status_code == 401
+       authed = await client.get("/items/", headers={"X-API-Key": "top-secret"})
+       assert authed.status_code == 200
+   ```
+4. When running locally, start the server with `EASS_API_KEY=top-secret uv run uvicorn app.main:app --reload`.
+
+### PART C: Circuit Breakers & Rate Limiting
+1. Create `src/app/core/rate_limiter.py`:
+   ```python
+   import asyncio
+   import time
+   from collections import deque
+   from typing import Deque
+
+
+   class SlidingWindowLimiter:
+       def __init__(self, limit: int, window_seconds: float) -> None:
+           self.limit = limit
+           self.window = window_seconds
+           self._timestamps: Deque[float] = deque()
+           self._lock = asyncio.Lock()
+
+       async def allow(self) -> bool:
+           async with self._lock:
+               now = time.monotonic()
+               while self._timestamps and now - self._timestamps[0] > self.window:
+                   self._timestamps.popleft()
+               if len(self._timestamps) >= self.limit:
+                   return False
+               self._timestamps.append(now)
+               return True
+   ```
+2. Add dependency in router (replace the earlier audit endpoint body):
+   ```python
+   limiter = SlidingWindowLimiter(limit=10, window_seconds=60.0)
+
+
+   @router.post("/items/{item_id}/audit", status_code=202)
+   async def trigger_audit(item_id: int, background: BackgroundTasks):
+       if not await limiter.allow():
+           raise HTTPException(status_code=429, detail="Too many audit requests")
+       background.add_task(write_audit_line, item_id, "viewed")
+       return {"status": "scheduled"}
+   ```
+3. Circuit breaker pattern for external call:
+   ```python
+   import httpx
+
+   class ExternalService:
+       def __init__(self) -> None:
+           self._failures = 0
+           self._threshold = 3
+
+       async def fetch(self) -> dict[str, str]:
+           if self._failures >= self._threshold:
+               return {"status": "degraded"}
+           try:
+       async with httpx.AsyncClient(timeout=2.0) as client:
+                   response = await client.get("https://httpbin.org/delay/1")
+                   response.raise_for_status()
+                   self._failures = 0
+                   return response.json()
+           except httpx.HTTPError:
+               self._failures += 1
+               return {"status": "fallback"}
+   ```
+4. Add endpoint using the circuit breaker:
+   ```python
+   external_service = ExternalService()
+
+
+   @router.get("/external-status")
+   async def external_status():
+       return await external_service.fetch()
+   ```
+5. Tests ensure throttling works:
+   ```python
+   @pytest.mark.asyncio
+   async def test_rate_limiter_blocks_when_limit_hit(client, monkeypatch):
+       for _ in range(10):
+           resp = await client.post("/items/1/audit")
+           assert resp.status_code == 202
+       blocked = await client.post("/items/1/audit")
+       assert blocked.status_code == 429
+
+
+   @pytest.mark.asyncio
+   async def test_external_service_fallback(client, monkeypatch):
+       # Force circuit breaker trips without real network by monkeypatching httpx
+       async def boom(*args, **kwargs):
+           raise httpx.HTTPError("boom")
+
+       monkeypatch.setattr(httpx.AsyncClient, "get", boom)
+       resp = await client.get("/external-status")
+       assert resp.status_code == 200
+       assert resp.json()["status"] in {"fallback", "degraded"}
+   ```
+
+---
+
+## Meeting 12 — Capstone Polish & Showcase (Mon Jan 19)
+
+**Outcome:** Final integration rehearsal, performance tuning, reflection.
+
+### PART A: Storytelling & Rubric Alignment
+- Coach students on articulating architecture choices.
+- Checklist for final submission: README clarity, scripts, tests, coverage, acceptance run.
+
+### PART B: Performance Clinic
+- Run `scripts/load_test.py` to simulate 100 RPS.
+- Profile slow endpoints, apply query optimizations, adjust indexes.
+- Teach caching option with `functools.lru_cache` for metadata endpoints.
+
+### PART C: Demo Dry Run
+- Teams present 5-minute demos: CLI + API + UI.
+- Peer feedback using sticky metrics (clarity, resilience, delight).
+- Remind final deadline Tue Feb 10. Provide submission instructions (push repo, tag `v1.0`, include CI badge).
+
+---
+
+## 4. Instructor Weekly Rituals
+
+- **Before each meeting:** rehearse live coding once, run `uv run pytest`, refresh Docker images.
+- **During session:** screen-share terminal + editor, verbalize every command, invite student narrators to explain reasoning.
+- **After session:** push updated example repo branch, post meeting summary + TODOs on LMS.
+
+---
+
+## 5. Student Support Patterns
+
+- Encourage debugging clinics: `uv run python -m pdb`, `print(sqlmodel.__version__)`, `sqlite3 data/app.db`.
+- Provide office hour scripts: replicate session flow, review failing tests, review Git history.
+- Share cheat sheet:
+  - `uv run fastapi dev src/app/main.py`
+  - `uv run pytest tests/api -q`
+  - `uv run ruff check --fix`
+  - `uv run mypy src`
+  - `docker compose up --build`
+
+---
+
+## 6. Capstone Evaluation Matrix (EX3)
+
+| Dimension | Excellent (A) | Strong (B) | Developing (C) |
+|-----------|---------------|------------|----------------|
+| Architecture | Clear layering, justified trade-offs, CI & scripts documented | Layers exist but thin documentation | Monolithic, fragile, unclear boundaries |
+| Data & State | SQLModel migrations or seeds, safe concurrency, idempotent ops | Persists correctly, minor race risks | In-memory or inconsistent data |
+| Interfaces | CLI/Streamlit polished, error states handled gracefully | Functional but rough edges | Hard to use or missing |
+| Observability | Structured logs, metrics endpoint, profiling notes | Logs present, metrics partial | Minimal logging |
+| Testing | >85% coverage, critical paths scenario-tested | 70–85% coverage, some gaps | <70%, missing failure cases |
+
+---
+
+## 7. Legendary Delivery Notes
+
+- Speak to the “why” with every command. “We’re adding structured logs because production incidents need context.”
+- Celebrate curiosity: when students explore beyond scope, invite mini lightning talks.
+- Reference real-world war stories: downtime triage, scaling headaches, schema migrations gone right.
+- Maintain inclusive energy: check-in every 10 minutes, rotate student drivers when pair programming.
+
+---
+
+## 8. Quick Reference Appendix
+
+- **Start dev server:** `uv run uvicorn app.main:app --reload`
+- **Run tests:** `uv run pytest -q`
+- **Run Streamlit UI:** `uv run streamlit run streamlit_app.py`
+- **Execute CLI:** `uv run python -m app.cli --help`
+- **Format & lint:** `uv run ruff check --fix .`
+- **Type check:** `uv run mypy src`
+- **Build container:** `docker build -t eass-app .`
+- **Compose up:** `docker compose up --build`
+- **Check logs:** `docker compose logs -f api`
+
+Carry this guide into every session, annotate with your observations, and keep refining. Legendary courses are animated by instructors who treat every minute as intentional, every snippet as teachable, and every student question as a portal to mastery. Let’s ship greatness.
