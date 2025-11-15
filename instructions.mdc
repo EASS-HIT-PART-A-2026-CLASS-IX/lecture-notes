@@ -111,6 +111,8 @@ Each meeting details below includes:
 
 Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task runner, `pytest -q` for tests, `ruff check .` and `mypy` for verification where specified.
 
+**Code example policy:** keep canonical examples embedded inside the session markdown files (`docs/sessions/*.md`). Do not commit standalone example directories or repos—students should copy snippets from the session scripts.
+
 ---
 
 ## Meeting 1 — Systems Fluency & Environment Mastery (Mon Nov 3)
