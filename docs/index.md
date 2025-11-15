@@ -69,7 +69,7 @@ gantt
 1. [Session 01 – Kickoff and Environment Setup](sessions/session-01.md)
 2. [Session 02 – Introduction to HTTP and REST](sessions/session-02.md)
 3. [Session 03 – FastAPI Fundamentals](sessions/session-03.md)
-4. [Session 04 – Docker Basics and Reverse Proxy Demo](sessions/session-04.md)
+4. [Session 04 – Persisting the Movie Service (SQLite + SQLModel)](sessions/session-04.md)
 5. [Session 05 – Movie Service Persistence with SQLite](sessions/session-05.md)
 6. [Session 06 – Movie Dashboards with Streamlit & React](sessions/session-06.md)
 7. [Session 07 – Testing, Logging, and Profiling Basics](sessions/session-07.md)
@@ -84,9 +84,9 @@ gantt
 - [DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md) for students who want a local analytics sandbox that complements Session 05.
 
 ## Exercises at a Glance
-- **EX1 – FastAPI Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build a tiny CRUD API with SQLModel + SQLite and tests.
+- **EX1 – FastAPI Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build the FastAPI CRUD API + tests from Session 03; add Session 04’s SQLite persistence as soon as you’re ready so the service is EX3-ready.
 - **EX2 – Friendly Interface**: assigned Mon Dec 1 · due Tue Dec 23, 2025. Add a Streamlit dashboard or Typer CLI that calls the EX1 API.
-- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate API + interface, add one small improvement, document the runbook. Everything stays local—no cloud, Docker, or security features required.
+- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate the API, dedicated persistence layer, and interface into a multi-service stack, add one small improvement, and document the runbook. Everything stays local—no cloud, Docker, or security features required.
 - Optional deep dives (Sessions 9–11) exist for curiosity and portfolio stretching; they do **not** add scope to the graded exercises.
 
 ## Teaching Philosophy

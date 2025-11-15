@@ -21,14 +21,14 @@ Key documents:
 
 ## 🧠 Course Highlights
 
-- Sessions 01–04: developer environment (Linux/WSL/macOS), HTTP/REST, FastAPI fundamentals, practical packaging with uv.
+- Sessions 01–04: developer environment (Linux/WSL/macOS), HTTP/REST, FastAPI fundamentals, and the first persistence swap (SQLite via SQLModel) with uv-powered packaging.
 - Sessions 05–08: movie service persistence, Streamlit & Typer interfaces, testing/logging, and AI-assisted coding habits.
 - Sessions 09–11: optional deep dives (async refreshers, Compose concepts, security vocabulary) for curious students—deliverables stay simple even if you browse these.
 - Session 12: polish, demos, and tool-friendly API patterns.
 - Exercises pace with the storyline:
-  - **EX1** (due Tue 2 Dec 2025, 23:59 Israel time): ship a FastAPI + SQLModel CRUD API with a tiny SQLite database and tests.
+  - **EX1** (due Tue 2 Dec 2025, 23:59 Israel time): ship the FastAPI CRUD service from Session 03 with tests/Docker; adopt Session 04’s SQLite upgrade as soon as you’re ready so persistence is solved before EX3.
   - **EX2** (due Tue 23 Dec 2025, 23:59 Israel time): deliver a Streamlit dashboard **or** Typer CLI that talks to the EX1 API.
-  - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): integrate the API and interface, add one thoughtful improvement, document the runbook. Everything runs locally; cloud, Docker, and security work are optional extras only.
+  - **EX3** (assigned Mon 5 Jan 2026, final due Tue 10 Feb 2026, 23:59 Israel time): integrate the API, dedicated persistence layer, and interface into a local multi-service stack (3+ cooperating processes), add one thoughtful improvement, and document the runbook. Everything runs locally; cloud, Docker, and security work are optional extras only.
 
 ## 🌱 Future-facing Engineering Archetypes
 Modern software careers are coalescing around four builder profiles, and every lab in this repo intentionally hits each archetype so students can imagine their next role:

@@ -22,11 +22,23 @@ You begin exactly where Session 03 ended: a FastAPI app that forgets every movie
 - pytest fixtures that create/drop the SQLite schema in a temporary directory so tests stay deterministic.
 
 ### Persistence Runway (Prep for EX3)
-- Session 03 already satisfied the EX1 brief (HTTP contract, validation, tests, Docker). Today we **extend that same service with SQLModel + SQLite** so the data finally survives process restarts and students can rehearse the upgrade path they will need before EX3.
+- Session 03 already satisfied the EX1 brief (HTTP contract, validation, tests, Docker). Today we **extend that same service with SQLModel + SQLite** so the data finally survives process restarts and teams rehearse the upgrade path they must finish before EX3.
+- Make the expectation explicit: EX3 combines at least three cooperating services (FastAPI backend, persistence layer, and a UI/automation interface—with many teams adding a fourth AI or background worker). This lab is where the backend learns how to talk to its dedicated database service.
 - Position this as a gradual mastery track: students can keep EX1 submissions in-memory if they need to prioritize fundamentals, while advanced teams can merge today’s DB layer immediately to reduce EX3 stress.
 - Emphasize architecture boundaries: **Session 03 kept storage behind a repository interface** for exactly this reason. All new database touch points stay inside `repository_db.py` / `database.py`, so future swaps (Session 05’s PostgreSQL stretch, Session 07 diagnostics, Session 08 AI tools) stay surgical.
 
 ## Prerequisites
+
+**Before starting, verify your Session 03 baseline works:**
+
+```bash
+cd hello-uv
+uv run pytest movie_service/tests -v  # Should see 13 passing tests
+uv run uvicorn movie_service.app.main:app --reload  # Server starts cleanly
+curl http://localhost:8000/movies  # Returns empty array or existing movies
+```
+
+If any command fails, revisit Session 03 before proceeding. Session 04 builds on top of that exact codebase.
 
 Complete these before students arrive so the first lab can jump straight into coding. Run every command from the `hello-uv/` workspace root unless noted otherwise.
 
@@ -72,10 +84,11 @@ Complete these before students arrive so the first lab can jump straight into co
 ## Core Concepts
 
 ### 1. SQLModel = Pydantic + SQLAlchemy
-SQLModel sits between familiar Pydantic models and SQLAlchemy’s database engine, so you keep type hints and validation while gaining persistence.
+SQLModel sits between familiar Pydantic models and SQLAlchemy's database engine, so you keep type hints and validation while gaining persistence.
 - Inherit from `SQLModel`; specify `table=True` for persisted tables.
 - Use `Field(default=None, primary_key=True)` for ids; reuse `Field(ge=..., le=...)` for validation just like Session 03.
 - Create lightweight Pydantic schemas (`MovieCreate`, `MovieRead`) by reusing the same base class.
+- **Key insight:** `MovieBase` holds shared fields, `Movie(table=True)` is the SQLAlchemy-tracked table, and `MovieRead` is the Pydantic response model. This keeps validation (Pydantic) separate from persistence (SQLAlchemy).
 
 ### 2. Database Engine & Sessions
 An engine is the shared “wire” to SQLite; a session is a short-lived unit of work that FastAPI opens per request and automatically closes.
@@ -170,33 +183,64 @@ Running the helper once up front saves students from a confusing "no such table"
 ### Step 3: Define SQLModel classes
 `movie_service/app/models.py`
 ````python
+# filepath: movie_service/app/models.py
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
+from pydantic import model_validator
 
 
 class MovieBase(SQLModel):
+    """Shared fields for create/read models.
+    
+    Inherits from SQLModel (not BaseModel) so we can reuse these
+    fields in both the table definition and Pydantic response models.
+    """
     title: str
     year: int = Field(ge=1900, le=2100)
     genre: str
 
 
 class Movie(MovieBase, table=True):
+    """SQLAlchemy-tracked table definition.
+    
+    The `table=True` parameter tells SQLModel to create a database table.
+    SQLAlchemy will auto-generate the `id` primary key when we insert rows.
+    """
     id: Optional[int] = Field(default=None, primary_key=True)
 
 
 class MovieCreate(MovieBase):
-    pass
+    """Incoming payload with validation + normalization.
+    
+    Same validator from Session 03 carries forward unchanged—
+    proof that validation rules survive persistence layer swaps.
+    """
+
+    @model_validator(mode="after")
+    def normalize_genre(self) -> "MovieCreate":
+        """Title-case the genre: 'sci-fi' → 'Sci-Fi'."""
+        self.genre = self.genre.title()
+        return self
 
 
 class MovieRead(MovieBase):
+    """Response model for API endpoints.
+    
+    Separated from `Movie` because:
+    - API responses should be Pydantic models (fast serialization)
+    - Table models need SQLAlchemy tracking (session.add/commit)
+    - Keeps concerns separated (HTTP vs persistence)
+    """
     id: int
 ````
-Add `MovieUpdate` later when you introduce PUT/PATCH.
+
+**Migration note:** Session 03 used `Movie` for both domain logic and responses. We now split it into `Movie` (table) and `MovieRead` (response), but the HTTP contract stays identical—FastAPI serializes `Movie` instances into `MovieRead` automatically.
 
 ### Step 4: Database-backed repository
 `movie_service/app/repository_db.py`
 ````python
+# filepath: movie_service/app/repository_db.py
 from typing import Sequence
 
 from sqlmodel import Session, select
@@ -205,13 +249,40 @@ from .models import Movie, MovieCreate
 
 
 class MovieRepository:
+    """SQLite-backed storage for movies.
+    
+    Compare to Session 03's in-memory version:
+    - `list()` was `return list(self._items.values())`
+      Now: `return self.session.exec(select(Movie)).all()`
+    - `create()` was `movie = Movie(...); self._items[movie.id] = movie`
+      Now: `session.add(record); session.commit(); session.refresh(record)`
+    - `get()` was `return self._items.get(movie_id)`
+      Now: `return self.session.get(Movie, movie_id)`
+    - `delete()` was `self._items.pop(movie_id, None)`
+      Now: `session.delete(record); session.commit()`
+    
+    The function signatures stayed identical—only the internals changed.
+    """
+
     def __init__(self, session: Session) -> None:
         self.session = session
 
     def list(self) -> Sequence[Movie]:
+        """Get all movies.
+        
+        Changed from `list[Movie]` to `Sequence[Movie]` because SQLModel's
+        `.all()` returns a sequence. Routes still work because FastAPI
+        serializes sequences into JSON arrays automatically.
+        """
         return self.session.exec(select(Movie)).all()
 
     def create(self, payload: MovieCreate) -> Movie:
+        """Add a new movie and return it with assigned ID.
+        
+        `model_validate` converts the Pydantic `MovieCreate` into the
+        SQLModel `Movie` table class so SQLAlchemy can track it.
+        `refresh` populates the auto-generated `id` after commit.
+        """
         record = Movie.model_validate(payload)  # copy into SQLModel
         self.session.add(record)
         self.session.commit()
@@ -219,9 +290,18 @@ class MovieRepository:
         return record
 
     def get(self, movie_id: int) -> Movie | None:
+        """Get a movie by ID, or None if not found.
+        
+        `session.get(Model, pk)` is SQLAlchemy shorthand for
+        `session.exec(select(Movie).where(Movie.id == movie_id)).first()`.
+        """
         return self.session.get(Movie, movie_id)
 
     def delete(self, movie_id: int) -> None:
+        """Remove a movie by ID.
+        
+        Must commit to persist the deletion to the database file.
+        """
         record = self.get(movie_id)
         if record:
             self.session.delete(record)
@@ -372,12 +452,14 @@ By overriding `app.dependency_overrides`, every TestClient call receives the in-
 Most assertions stay the same. Keep them in `movie_service/tests/test_movies.py`; the fixtures now ensure each test runs against a blank SQLite database.
 
 ### Alembic 101 (Zero-Experience Primer)
-Think of Alembic as Git for your database schema: every change gets a revision file, environments move “forward” with `upgrade`, and you always know which version a database is running. Instead of manually running `CREATE TABLE` statements, you record each structural change as a **revision** so every developer (and CI) can reproduce the same database.
+Think of Alembic as Git for your database schema: every change gets a revision file, environments move "forward" with `upgrade`, and you always know which version a database is running. Instead of manually running `CREATE TABLE` statements, you record each structural change as a **revision** so every developer (and CI) can reproduce the same database.
 
 - **Vocabulary cheat sheet**
   - **Revision** – one Python file under `migrations/versions/` that knows how to `upgrade()` and `downgrade()` a specific change.
   - **Head** – the newest revision in the timeline. `upgrade head` moves your database to the latest schema; `downgrade -1` rolls back one step.
   - **Autogenerate** – Alembic inspects `SQLModel.metadata` and suggests the SQL needed to match your models.
+  - **Why bother?** – Lets teams coordinate schema changes without manually syncing SQL scripts. Essential for EX3 where you'll deploy to Azure with versioned migrations.
+  
 - **What `alembic init migrations` creates**
   ````text
   alembic.ini
@@ -402,20 +484,40 @@ Think of Alembic as Git for your database schema: every change gets a revision f
    This creates `alembic.ini` plus the `migrations/` folder shown in the primer above.
 
 2. **Point Alembic at your SQLite URL + SQLModel metadata**
-   - In `alembic.ini` set the database URL line to use your env var so local/prod can differ:
-     ```ini
-     sqlalchemy.url = ${MOVIE_DATABASE_URL}
-     ```
-   - Replace the default `env.py` contents with:
-     ````python
-     from sqlmodel import SQLModel
-
-     from movie_service.app import models  # noqa: F401 - ensures models register tables
-     from movie_service.app.database import engine
-
-     target_metadata = SQLModel.metadata
-     ````
-   Alembic now imports every SQLModel table and reuses the same engine you use in FastAPI.
+   
+   Edit `alembic.ini` to use your environment variable:
+   ```ini
+   # Replace the static sqlalchemy.url line with:
+   # sqlalchemy.url = driver://user:pass@localhost/dbname
+   
+   # Comment out or remove the above, then Alembic will read from env.py
+   ```
+   
+   Edit `migrations/env.py` to connect to your engine and metadata:
+   ````python
+   # filepath: migrations/env.py
+   from logging.config import fileConfig
+   from sqlalchemy import engine_from_config, pool
+   from alembic import context
+   
+   # Import your SQLModel metadata
+   from sqlmodel import SQLModel
+   from movie_service.app import models  # noqa: F401 - registers tables
+   from movie_service.app.config import Settings
+   
+   config = context.config
+   
+   # Override sqlalchemy.url with your settings
+   settings = Settings()
+   config.set_main_option("sqlalchemy.url", settings.database_url)
+   
+   if config.config_file_name is not None:
+       fileConfig(config.config_file_name)
+   
+   target_metadata = SQLModel.metadata
+   
+   # ...existing code for run_migrations_offline and run_migrations_online...
+   ````
 
 3. **Generate the first revision (create the `movie` table)**
    ```bash

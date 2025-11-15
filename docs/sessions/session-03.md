@@ -23,10 +23,11 @@ A working FastAPI backend that:
 
 ### EX1 Baseline (In-Memory Only)
 
-- This session **is the EX1 deliverable**: students leave class with a FastAPI backend, pytest suite, and Docker packaging that satisfy the HTTP API portion of the exercise—even if data only lives in memory for now.
+- This session **is the EX1 deliverable**: students leave class with a FastAPI backend, pytest suite, Docker packaging, and REST client scripts that satisfy the HTTP API portion of the exercise—even if data only lives in memory for now. Think of it as microservice #1 in the eventual EX3 stack.
 - In-memory storage is intentional at this checkpoint; it keeps the focus on HTTP verbs, validation, dependency injection, and smoke testing. Everyone can demo the service (curl, REST Client, Docker) without juggling SQL yet.
-- Preview the roadmap: **Session 04 adds SQLModel + SQLite** as an optional upgrade path the moment students feel ready (or when they begin prepping for EX3). Because the files are already modular (config/models/repository/routes/tests), persistence becomes a drop-in swap instead of a rewrite.
-- Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app.
+- Preview the roadmap: **Session 04 adds SQLModel + SQLite** so the same API talks to a real database. That persistence layer becomes non‑negotiable before EX3, where teams will run at least three cooperating services (FastAPI backend, persistence, and a UI/automation surface).
+- Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app, just service hardening that prepares the multi-service system you expect by the final exercise.
+- **Architecture decision**: We use `Movie` as both the domain model and response model today. Session 04 will introduce `MovieRead` to distinguish SQLModel tables from API responses, but the HTTP contract stays identical.
 
 ## Live Build Strategy (No Pre-Solved Example)
 
@@ -269,7 +270,11 @@ class MovieBase(BaseModel):
 
 
 class Movie(MovieBase):
-    """Response model that includes the server-generated ID."""
+    """Response model that includes the server-generated ID.
+    
+    Note: In Session 04, we'll split this into `Movie` (table) and 
+    `MovieRead` (response), but the HTTP contract stays the same.
+    """
     id: int
 
 
@@ -278,7 +283,11 @@ class MovieCreate(MovieBase):
 
     @model_validator(mode="after")
     def normalize_genre(self) -> "MovieCreate":
-        """Title-case the genre: 'sci-fi' → 'Sci-Fi'."""
+        """Title-case the genre: 'sci-fi' → 'Sci-Fi'.
+        
+        This validator will carry forward to Session 04's SQLModel version,
+        demonstrating how validation rules survive persistence layer swaps.
+        """
         self.genre = self.genre.title()
         return self
 ````
@@ -296,39 +305,62 @@ Create `movie_service/app/repository.py`:
 # filepath: movie_service/app/repository.py
 from __future__ import annotations
 
-from typing import Dict, Iterable
+from typing import Dict
 
 from .models import Movie, MovieCreate
 
 
 class MovieRepository:
-    """In-memory storage for movies."""
+    """In-memory storage for movies.
+    
+    Session 04 will replace this implementation with SQLModel + SQLite,
+    but the interface (list/create/get/delete) stays identical so routes
+    don't need to change.
+    """
 
     def __init__(self) -> None:
         self._items: Dict[int, Movie] = {}
         self._next_id = 1
 
-    def list(self) -> Iterable[Movie]:
-        """Get all movies."""
-        return self._items.values()
+    def list(self) -> list[Movie]:
+        """Get all movies.
+        
+        Returns list for now; Session 04 changes to Sequence[Movie]
+        to match SQLModel's query results.
+        """
+        return list(self._items.values())
 
     def create(self, payload: MovieCreate) -> Movie:
-        """Add a new movie and return it with assigned ID."""
+        """Add a new movie and return it with assigned ID.
+        
+        Session 04: This becomes `session.add()` + `session.commit()`,
+        but the function signature stays the same.
+        """
         movie = Movie(id=self._next_id, **payload.model_dump())
         self._items[movie.id] = movie
         self._next_id += 1
         return movie
 
     def get(self, movie_id: int) -> Movie | None:
-        """Get a movie by ID, or None if not found."""
+        """Get a movie by ID, or None if not found.
+        
+        Session 04: Changes to `session.get(Movie, movie_id)`.
+        """
         return self._items.get(movie_id)
 
     def delete(self, movie_id: int) -> None:
-        """Remove a movie by ID."""
+        """Remove a movie by ID.
+        
+        Session 04: Changes to `session.delete()` + `session.commit()`.
+        """
         self._items.pop(movie_id, None)
 
     def clear(self) -> None:
-        """Remove all movies (useful for tests)."""
+        """Remove all movies (useful for tests).
+        
+        Session 04: Test fixtures will use separate test databases
+        instead of clearing a shared repository.
+        """
         self._items.clear()
         self._next_id = 1
 ````
@@ -838,12 +870,14 @@ Before moving forward, ensure:
 4. More comprehensive error handling
 5. Update README with setup instructions
 
-**Future sessions will add:**
-- Database persistence (PostgreSQL/SQLite)
-- Authentication and authorization
-- Async operations
-- Production deployment
-- Monitoring and logging
+**Session 04 will upgrade this exact service with:**
+- SQLModel + SQLite persistence (data survives restarts)
+- Database-aware pytest fixtures (isolated test databases)
+- Alembic migrations (version-controlled schema changes)
+- Seed scripts (reproducible starter data)
+- **Zero changes to HTTP routes** (only repository internals swap)
+
+**Why the repository pattern matters:** Every `repo.create()` call you wrote today will work with SQLite tomorrow because we kept storage behind a clean interface. This is the architectural payoff for modular design.
 
 ## Troubleshooting
 
