@@ -317,6 +317,207 @@ Run `uv run pytest -q` and confirm each test creates/destroys its own database.
 
 > 🎉 **Quick win:** When pytest, Alembic, and `/healthz` all succeed against Postgres, the backend is production-colored and ready for Session 06’s Streamlit UI.
 
+## Optional Lab – Text-to-SQL PoC with a Local LLM (30 minutes)
+This side quest is for folks who want to showcase “hybrid” database + LLM workflows without touching the core CRUD paths. The goal is to expose a read-only `/admin/sql-assistant` endpoint that lets instructors/devs type questions such as “How many sci-fi movies per year after 2010?” and receive the generated SQL plus result set. Keep it optional: it’s an analytics/debug helper, not a production feature.
+
+### Step 0 – Run a small OpenAI-compatible LLM locally
+Fire up `llama-server` (or an equivalent) in another terminal so the FastAPI app can call it via an OpenAI-style API:
+```bash
+llama-server \
+  -hf ggml-org/gemma-3-270m-it-GGUF \
+  --port 1234 \
+  --host 127.0.0.1 \
+  --jinja \
+  -c 4096
+```
+The server exposes `http://127.0.0.1:1234/v1`, matching what the official `openai` Python client expects when you override `base_url`.
+
+### Step 1 – Add LLM settings + env vars
+Augment `movie_service/app/config.py` so the optional client can read local overrides:
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    app_name: str = "Movie Service"
+    database_url: str = "postgresql+psycopg://movie:movie@localhost:5432/movies"
+    database_echo: bool = False
+    pool_size: int = 5
+    pool_timeout: int = 30
+
+    # Text-to-SQL (optional)
+    llm_base_url: str = "http://127.0.0.1:1234/v1"
+    llm_api_key: str = "unused-local-key"
+    llm_model: str = "gemma-3-270m-it"
+
+    model_config = SettingsConfigDict(
+        env_prefix="MOVIE_",
+        env_file=".env",
+        extra="ignore",
+    )
+```
+Mirror those settings in `.env.example` so students don’t need to guess:
+```ini
+MOVIE_LLM_BASE_URL="http://127.0.0.1:1234/v1"
+MOVIE_LLM_API_KEY="unused-local-key"
+MOVIE_LLM_MODEL="gemma-3-270m-it"
+```
+In production you’d also introduce a read-only `MOVIE_DATABASE_URL_RO`, but for the PoC we reuse the primary connection.
+
+### Step 2 – LLM helper that returns SQL only
+Create `movie_service/app/llm.py` so the rest of the app calls a single function:
+```python
+from typing import Final
+
+from openai import OpenAI
+
+from .config import Settings
+
+settings = Settings()
+
+client: Final = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
+
+TEXT2SQL_SYSTEM_PROMPT = """
+You are a PostgreSQL SQL generator for a movie database.
+
+Only generate a single SQL query, no explanations.
+
+Database dialect: PostgreSQL.
+Allowed table: movies.
+
+Table schema:
+CREATE TABLE movies (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    genre TEXT NOT NULL
+);
+
+Rules:
+- Only use SELECT queries.
+- Never use INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or CREATE.
+- Always include an ORDER BY when it makes sense.
+- Always include LIMIT 50 unless the user explicitly asks for a different limit.
+- Return raw SQL only (no markdown, no backticks).
+""".strip()
+
+
+def generate_sql_from_nl(question: str) -> str:
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": TEXT2SQL_SYSTEM_PROMPT},
+            {"role": "user", "content": question},
+        ],
+        temperature=0,
+    )
+    sql = response.choices[0].message.content or ""
+    return sql.strip().strip("`").strip()
+```
+
+### Step 3 – Guardrail + execution helper
+Add `movie_service/app/text2sql.py` to keep the scope deliberately narrow before executing the query via SQLModel:
+```python
+import re
+from typing import Any
+
+from sqlalchemy import text
+from sqlmodel import Session
+
+from .llm import generate_sql_from_nl
+
+
+ALLOWED_PREFIX = re.compile(r"^\s*select\b", re.IGNORECASE)
+FORBIDDEN = re.compile(
+    r"\b(insert|update|delete|drop|alter|truncate|create)\b",
+    re.IGNORECASE,
+)
+
+
+def is_safe_sql(sql: str) -> bool:
+    if not ALLOWED_PREFIX.match(sql):
+        return False
+    if FORBIDDEN.search(sql):
+        return False
+    if ";" in sql.strip().rstrip(";"):
+        return False
+    return True
+
+
+def run_text2sql(question: str, session: Session) -> dict[str, Any]:
+    sql = generate_sql_from_nl(question)
+    if not is_safe_sql(sql):
+        return {
+            "sql": sql,
+            "error": "Generated SQL failed safety checks (only simple SELECT is allowed).",
+        }
+    result = session.exec(text(sql))
+    rows = [dict(row) for row in result.mappings()]
+    return {"sql": sql, "rows": rows}
+```
+
+### Step 4 – FastAPI route under `/admin`
+Keep the feature behind an admin-prefixed router so it’s clearly not student-facing CRUD:
+```python
+# filepath: movie_service/app/routes_sql_assistant.py
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import Session
+
+from .database import get_session
+from .text2sql import run_text2sql
+
+router = APIRouter(prefix="/admin", tags=["admin", "text2sql"])
+
+
+class SqlQuestion(BaseModel):
+    question: str
+
+
+@router.post("/sql-assistant")
+def sql_assistant(payload: SqlQuestion, session: Session = Depends(get_session)):
+    result = run_text2sql(payload.question, session)
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result,
+        )
+    return result
+```
+Finally, register the router in `movie_service/app/main.py`:
+```python
+from .routes_sql_assistant import router as sql_assistant_router
+
+app = FastAPI(title="Movie Service", version="0.5.0")
+
+# existing middleware/routes...
+
+app.include_router(sql_assistant_router)
+```
+
+### Step 5 – Kick the tires
+With Postgres, the FastAPI server, and the local LLM all running:
+```bash
+curl -X POST http://localhost:8000/admin/sql-assistant \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Show the 10 most recent sci-fi movies after 2010"}'
+```
+Expect a JSON payload that echoes the generated SQL and returns rows, for example:
+```json
+{
+  "sql": "SELECT title, year, genre FROM movies WHERE genre = 'sci-fi' AND year > 2010 ORDER BY year DESC LIMIT 10",
+  "rows": [{"title": "Sample 4", "year": 2014, "genre": "sci-fi"}]
+}
+```
+
+### When this fits (and when it doesn’t)
+- ✅ Great for instructor demos, debugging, or letting product folks explore aggregates without writing SQL.
+- ✅ Useful teaching aid—students can compare their own queries to the model’s output.
+- ❌ Not for production CRUD paths; keep `/movies` and friends on deterministic SQLModel code.
+- ❌ Skip if you don’t have time for the local LLM setup or if it would distract from the main Postgres objective.
+
+Emphasize the “hybrid mode” story: ~99% of the backend stays hand-authored, and this clearly labeled `/admin` endpoint gives a realistic, safe playground for Text-to-SQL experiments.
+
 ## Wrap-up & Next Steps
 - ✅ Postgres replaces SQLite locally; migrations and seeds run through Typer/uv.
 - 📌 Update CI to run `docker compose up -d db && uv run pytest` so pull requests always hit Postgres.

@@ -34,6 +34,44 @@ Session 06 delivered Streamlit + Typer and previewed modern JavaScript. Session 
    ```
 4. **Optional but helpful:** Clone the JS primer repo linked in the LMS and run `pnpm install && pnpm test` to warm up on TypeScript syntax.
 
+## Toolchain Primer – Node + pnpm + TypeScript
+> **Why?** Sessions 06–07 rely on FastAPI for the backend *and* a modern JavaScript toolchain for UI work. Many students are Python-first, so this section captures the minimum commands you’ll use repeatedly.
+
+### Node runtime
+- Install Node 20+ (Usefnm, volta, or the Node installer—whatever your team standard is).
+- Verify the version and package manager bridge (Corepack) whenever you sit down at a new machine:
+  ```bash
+  node --version          # Expect v20.x
+  corepack enable         # Enables pnpm/yarn wrappers that ship with Node
+  corepack prepare pnpm@latest --activate
+  pnpm --version          # Expect v8.x
+  ```
+- Keep Node tooling separate from `uv` (Python). Run Node commands from `frontend-react/`; use `uv` for FastAPI or database scripts.
+
+### pnpm quick reference
+| Command | Purpose |
+| --- | --- |
+| `pnpm create vite@latest frontend-react -- --template react-ts` | Scaffold a new React + TypeScript + Vite project in `frontend-react/`. |
+| `pnpm install` | Install dependencies listed in `package.json`. |
+| `pnpm dev` | Start the Vite dev server (defaults to `http://localhost:5173`). |
+| `pnpm test` | Run Vitest/Testing Library suites (configured later in this session). |
+| `pnpm lint` | Run ESLint across `src/`. |
+| `pnpm build` | Produce optimized assets in `dist/` (used for deployment demos). |
+| `pnpm tsc --noEmit` | Optional: run the TypeScript compiler type-check without writing files. |
+
+> ✅ **Tip:** pnpm stores a global content-addressable cache. The first install is the slowest; subsequent installs on student laptops are much faster than `npm` or `yarn`.
+
+### JavaScript/TypeScript cheat card
+- `import`/`export` behave like Python modules—use named exports for functions/types, default exports for main components.
+- `async/await` maps to Python’s `asyncio`, but `fetch/axios` return `Promise`s instead of `coroutines`.
+- TypeScript syntax you’ll see today:
+  - `type Movie = { id: number; title: string }`
+  - `Omit<Movie, "id">` (drop the `id` when creating)
+  - `Promise<Movie[]>` return types on async functions
+- Vite exposes env vars as `import.meta.env.VITE_*`, not `process.env`. Keep that consistent so frontend builds work across dev/prod.
+
+Revisit this primer anytime a console error complains about the toolchain; most fixes boil down to running the right pnpm command in the correct directory.
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
@@ -71,7 +109,7 @@ Goal: run `pnpm dev`, fetch movies, and create new entries from React.
 ### Step 0 – Align repo structure
 ```bash
 cd hello-uv
-pnpm create vite frontend-react --template react-ts
+pnpm create vite@latest frontend-react -- --template react-ts
 cd frontend-react
 pnpm install
 ```
@@ -115,14 +153,14 @@ export async function post<T>(url: string, body: unknown) {
 ### Step 3 – Domain services & hooks
 `src/services/movies.ts`:
 ```ts
+import { get, post } from "../lib/api";
+
 export type Movie = {
   id: number;
   title: string;
   year: number;
   genre: string;
 };
-
-import { get, post } from "../lib/api";
 
 export function listMovies(genre?: string) {
   return get<Movie[]>("/movies", genre ? { genre } : undefined);

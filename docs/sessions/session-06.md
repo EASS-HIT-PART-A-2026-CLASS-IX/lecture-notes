@@ -27,6 +27,27 @@ With Session 05’s PostgreSQL upgrade complete, the backend is durable enough t
    ```
 4. Confirm FastAPI server runs locally (`uv run uvicorn movie_service.app.main:app --reload`).
 
+### JavaScript + pnpm runway (for the Session 07 preview)
+We close today with a lightweight JavaScript/TypeScript demo so Session 07’s React lab doesn’t feel abrupt. Do these quick checks before class so the preview works on your laptop:
+
+```bash
+node --version              # Expect v20.x
+corepack enable             # Enables pnpm/yarn wrappers that ship with Node
+corepack prepare pnpm@latest --activate
+pnpm --version              # Expect v8.x
+```
+
+- Keep Node tooling outside the `uv` virtual env—run pnpm commands from the future `frontend-react/` folder.
+- Skim the “JS cheat sheet” slide deck (same deck linked below Session 07) so `import`, `async/await`, and `fetch` look familiar.
+- Optional warm up: create a scratch file and run `node` REPL for this snippet to see how promises behave:
+  ```js
+  const response = await fetch("https://httpbin.org/get");
+  const body = await response.json();
+  console.log(body.headers["User-Agent"]);
+  ```
+
+> ✅ By the time we reach Part D (JS preview), everyone already has Node + pnpm installed, so we can focus on concepts instead of tooling glitches.
+
 ### Pre-class Setup (JiTT)
 1. Create a `frontend/` package with `client.py` + `__init__.py`.
 2. Copy the Streamlit “hello world” snippet from the LMS, run `uv run streamlit run frontend/dashboard.py`, and verify the placeholder renders.
