@@ -18,13 +18,14 @@ gantt
 ## EX1 – FastAPI Foundations
 - **Assigned:** Monday, Nov 10, 2025  
 - **Due:** Tuesday, Dec 2, 2025 at 23:59 (Israel time)
-- **Goal:** Ship a tiny movie catalogue API using **FastAPI**, **SQLModel**, **Pydantic**, and SQLite. Keep the schema tight and the code easy to read.
-- **Sessions to revisit:** [Session 02 – Introduction to HTTP and REST](sessions/session-02.md), [Session 03 – FastAPI Fundamentals](sessions/session-03.md).
+- **Goal:** Ship a tiny movie catalogue API using **FastAPI**, **Pydantic**, and pytest. Keep the schema tight and the code easy to read; persistence starts in-memory and can later be upgraded with SQLite if you want the stretch goal.
+- **Sessions to revisit:** [Session 02 – Introduction to HTTP and REST](sessions/session-02.md), [Session 03 – FastAPI Fundamentals](sessions/session-03.md), [Session 04 – Persisting the Movie Service](sessions/session-04.md) (optional stretch).
 - **Required Features:**
   - Endpoints: `GET /movies`, `POST /movies`, `PUT /movies/{id}`, `DELETE /movies/{id}`. Optional extras (ratings, filters) belong in stretch goals, not the base grade.
-  - Data layer built with SQLModel + SQLite. Ship schema + seed script (Typer CLI or SQL) instead of committing the `.db` file.
+  - Data layer may be in-memory (e.g., simple repository/dict) for the base grade. Ambitious teams can follow Session 04 to drop in SQLModel + SQLite; if you do, ship migrations/seeds instead of committing `.db` files.
   - Tests using `pytest` and FastAPI’s `TestClient` (cover happy-path listing and create/update/delete).
   - README explaining how to create the uv environment, run the API locally, and execute the tests.
+> **Session guidance:** Session 03 is the canonical EX1 implementation (HTTP API, validators, pytest, Docker). Session 04 demonstrates how to layer SQLModel/SQLite under the same repository interface—treat it as a stretch for EX1 and required prep for EX3.
 - **Rubric (100 pts):** correctness 40, simplicity/readability 20, tests 20, documentation 20. Bonus (+5) for seeding the database with a handful of sample movies via a Typer CLI.
 
 ## EX2 – Friendly Interface

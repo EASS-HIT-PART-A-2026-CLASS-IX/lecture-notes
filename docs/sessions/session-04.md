@@ -21,6 +21,11 @@ You begin exactly where Session 03 ended: a FastAPI app that forgets every movie
 - Alembic migration script plus a seed helper for local data.
 - pytest fixtures that create/drop the SQLite schema in a temporary directory so tests stay deterministic.
 
+### Persistence Runway (Prep for EX3)
+- Session 03 already satisfied the EX1 brief (HTTP contract, validation, tests, Docker). Today we **extend that same service with SQLModel + SQLite** so the data finally survives process restarts and students can rehearse the upgrade path they will need before EX3.
+- Position this as a gradual mastery track: students can keep EX1 submissions in-memory if they need to prioritize fundamentals, while advanced teams can merge today’s DB layer immediately to reduce EX3 stress.
+- Emphasize architecture boundaries: **Session 03 kept storage behind a repository interface** for exactly this reason. All new database touch points stay inside `repository_db.py` / `database.py`, so future swaps (Session 05’s PostgreSQL stretch, Session 07 diagnostics, Session 08 AI tools) stay surgical.
+
 ## Prerequisites
 
 Complete these before students arrive so the first lab can jump straight into coding. Run every command from the `hello-uv/` workspace root unless noted otherwise.
@@ -94,7 +99,7 @@ Temporary SQLite files keep each test hermetic: build tables at the start of a m
 Alembic versions the schema; a seed script fills predictable starter rows so dev and tests stay in sync.
 - `alembic init` scaffolds migrations driven by SQLModel metadata.
 - A tiny seed script demonstrates how to reuse the same session dependency outside FastAPI.
-- Even if you skip Alembic locally, document the steps for EX1.
+- Even if you skip Alembic locally, capture the steps for your repo (it becomes essential prep for EX3, and ambitious EX1 teams can treat it as a stretch goal).
 
 ## Part A – Theory Highlights
 1. **State diagram:** Request enters FastAPI → dependency `get_session()` opens DB session → repository issues SQLModel operations → session commits/rollbacks → response serialized via Pydantic.
@@ -494,3 +499,9 @@ uv run python -m movie_service.scripts.seed_db
 - Seed script populates predictable starter data.
 
 If any box is unchecked, pair with a mentor before Session 05.
+
+## AI Prompt Seeds
+
+- "Convert these Pydantic models + dict repository into SQLModel classes with a SQLite-backed repository; keep the FastAPI route signatures identical."
+- "Write pytest fixtures that spin up a temporary SQLite database, override FastAPI dependencies, and keep each test hermetic."
+- "Draft an Alembic workflow (init, revision, upgrade) and a Typer/uv command list so students can recreate the migration + seed steps from the session."

@@ -21,6 +21,20 @@ A working FastAPI backend that:
 - Includes comprehensive test coverage
 - Runs identically on your machine and in Docker
 
+### EX1 Baseline (In-Memory Only)
+
+- This session **is the EX1 deliverable**: students leave class with a FastAPI backend, pytest suite, and Docker packaging that satisfy the HTTP API portion of the exercise—even if data only lives in memory for now.
+- In-memory storage is intentional at this checkpoint; it keeps the focus on HTTP verbs, validation, dependency injection, and smoke testing. Everyone can demo the service (curl, REST Client, Docker) without juggling SQL yet.
+- Preview the roadmap: **Session 04 adds SQLModel + SQLite** as an optional upgrade path the moment students feel ready (or when they begin prepping for EX3). Because the files are already modular (config/models/repository/routes/tests), persistence becomes a drop-in swap instead of a rewrite.
+- Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app.
+
+## Live Build Strategy (No Pre-Solved Example)
+
+- This session is the canonical FastAPI walkthrough for the whole course, so we now build the example entirely from the scripted steps below instead of keeping a separate `examples/fastapi-calculator/` folder.
+- Treat this document as the live-coding script: copy/paste the code fences when time is tight, or narrate each block while students type. Everything here feeds directly into Sessions 04–07, so keeping it inline prevents drift.
+- Want a rehearse-ready reference? Pair these steps with the REST Client snippets in `examples.http`—they hit the exact endpoints you create in Lab 1.
+- Optional deep dives that truly need their own repos (for example the blockchain mini-demo) are cataloged in `examples/README.md`; they stay disconnected from the core FastAPI storyline on purpose.
+
 ## Prerequisites
 
 Before class, complete these setup steps:
@@ -894,3 +908,10 @@ You're ready to move on when you can:
 - [x] Export and understand the OpenAPI schema
 
 **Schedule a mentor session if any box remains unchecked.**
+
+## AI Prompt Seeds
+
+- "Given this spec for `/movies` CRUD plus `/health`, scaffold config, models, repository, dependencies, and FastAPI routes that use `pydantic-settings` + dependency injection."
+- "Write pytest cases (using FastAPI's `TestClient`) that prove movie creation, lookup, deletion, and divide-by-zero-style errors work; include a fixture that clears the in-memory repository between tests."
+- "Propose a Dockerfile and uv commands so the exact same FastAPI app runs locally and in a container; explain why each instruction exists."
+- "Summarize a verification checklist for students building this example live: which commands should they run after each lab block to ensure parity with the instructor?"

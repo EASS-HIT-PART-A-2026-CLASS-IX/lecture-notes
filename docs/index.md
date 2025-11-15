@@ -90,7 +90,7 @@ gantt
 - Optional deep dives (Sessions 9–11) exist for curiosity and portfolio stretching; they do **not** add scope to the graded exercises.
 
 ## Teaching Philosophy
-- Keep examples tiny and copy/paste friendly.
+- Build every example live from the session scripts (no pre-solved `examples/` folders) so changes stay in sync and the cohort can follow the exact steps. Keep snippets tiny and copy/paste friendly when time is tight.
 - Repeat concepts using the whiteboard sketches described in each session and the Natalie reference notes in `lectures/notes/`.
 - Keep optional deep dives clearly labeled so students know graded work stays lightweight and local.
 - Encourage question “warm-ups”: students share what they tried before asking for help.
