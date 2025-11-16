@@ -1,4 +1,4 @@
-# Session 08 – Working with AI Coding Assistants (LM Studio or vLLM)
+# Session 08 – Working with AI Coding Assistants (LM Studio, vLLM, or Google AI Studio)
 
 - **Date:** Monday, Dec 22, 2025
 - **Theme:** Pair program with artificial intelligence (AI) safely—prompt with intent, review outputs critically, wire agents to your FastAPI backend using Pydantic AI (typed agent framework), and experiment with DSPy for declarative LLM orchestration.
@@ -6,9 +6,15 @@
 ## Learning Objectives
 - Apply spec-first and tests-first prompting patterns to extend the movie service while keeping humans in charge.
 - Wrap the FastAPI application programming interface (API) behind a Pydantic AI tool-call function that validates inputs/outputs and emits Logfire telemetry.
-- Call a local large language model (LLM) endpoint (LM Studio or vLLM) and evaluate responses automatically with tests.
+- Call a large language model (LLM) endpoint (local LM Studio/vLLM or hosted Google AI Studio) and evaluate responses automatically with tests.
 - Prototype a DSPy `Signature` + `Predict` pair to feel the ergonomics of declarative prompting before adding guardrails.
 - Document artificial intelligence (AI) assistance and toggle telemetry/privacy settings responsibly.
+
+### Prerequisite snapshot (Sessions 01–07 recap)
+You already shipped a FastAPI backend with uv, added Postgres, and experimented with Streamlit + Vite/React. Session 08 only stacks two new ideas on top of that foundation:
+- **LLM as another HTTP service.** Treat LM Studio/vLLM/Google Gemini exactly like the REST APIs you have already called—base URL + API key + JSON in/out.
+- **Typed agent helpers.** Pydantic AI/DSPy extend the Pydantic models and pytest habits you already know; no new web framework knowledge is required.
+- **Tooling mindset.** Docker, `uv`, Typer, pytest, and React stay the same—this session just shows how to bolt an AI assistant onto those familiar tools.
 
 ## Before Class – AI Preflight (Just-in-Time Teaching, JiTT)
 - Install agent tooling:
@@ -20,6 +26,13 @@
   uv add dspy-ai
   ```
 - Ensure LM Studio (desktop app for hosting local models) or vLLM (open-source high-performance inference server) is running locally—or know how to start the Docker image shared in the Learning Management System (LMS). Note the base URL.
+- If local GPU/CPU options aren’t possible, create a Google AI Studio (Gemini 2.x) API key at <https://aistudio.google.com/app/apikey> so you can tap the managed Google Gemini API (high-scale LLM endpoint with API keys). Then wire it into the repo:
+  ```bash
+  export GOOGLE_API_KEY="paste-your-ai-studio-key"
+  export GOOGLE_GEMINI_MODEL="gemini-2.0-flash"
+  uv add "pydantic-ai[google]" google-genai
+  ```
+  These settings let `GoogleModel` talk to the same spec-first tools as your local runtimes.
 - Prefer vLLM (Versatile Large Language Model)? Pull and run TinyLlama ahead of time:
   ```bash
   docker run --rm -p 8000:8000 \
@@ -33,6 +46,65 @@
 - Update your Exercise 2 (EX2) README with AI usage to date; bring one prompt you felt proud of and one that failed.
 - Optional: skim the Model Context Protocol (MCP) primer to prepare for Session 12’s tool-friendly APIs.
 
+### Google Gemini (AI Studio) track
+As of late 2025, Google AI Studio (`https://aistudio.google.com`) runs Gemini 2.x (Flash, Pro, Nano) as a managed service backed by production Google Cloud quotas—no local GPU required. Every API key is minted in the AI Studio console (⚙️ *Develop → API Keys*) and maps to the HTTPS endpoint `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`.
+
+#### Why instructors care
+- **Free sandbox, enforceable caps.** Each new account gets an unpaid/free tier that comfortably covers student prototypes. Quotas are enforced via requests-per-minute/day plus token-per-minute ceilings, so you immediately see when a classroom pushes too hard.
+- **API-first workflow.** Prompts that you prototype inside the web UI can be exported via the **“Get code”** button (Python, Node, curl) and pasted straight into labs.
+- **Scale when needed.** If you expect EX3 demos to spike usage, request higher limits or attach billing on the instructor account while students keep their keys throttled.
+
+#### 4-step setup (done once per laptop)
+1. **Mint a key + pick a model.** Use the AI Studio UI to create a key and note the exact model identifier (e.g., `gemini-2.5-flash`, `gemini-1.5-pro-exp`). Billing/quota are enforced per Google account, so students stay within the generous free tier while instructors can request higher limits ahead of time.
+2. **Export env vars (per shell):**
+   ```bash
+   export GOOGLE_API_KEY="paste-ai-studio-key"
+   export GOOGLE_GEMINI_MODEL="gemini-2.0-flash"
+   ```
+3. **Health check the endpoint before class:**
+   ```bash
+   curl -sS -X POST \
+     "https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_GEMINI_MODEL}:generateContent" \
+     -H "Content-Type: application/json" \
+     -H "x-goog-api-key: ${GOOGLE_API_KEY}" \
+     -d '{ "contents": [{ "parts": [{ "text": "Ping from Session 08 setup." }]}] }'
+   ```
+   A JSON response with `candidates[0].content.parts[0].text` confirms the AI Studio plumbing is live.
+4. **Wire it into Pydantic AI exactly like the LiteLLM client:**
+   ```python
+   import os
+   from pydantic_ai.models.google import GoogleModel
+
+   lm = GoogleModel(
+       model=os.environ.get("GOOGLE_GEMINI_MODEL", "gemini-2.0-flash"),
+       api_key=os.environ["GOOGLE_API_KEY"],
+   )
+   ```
+   The rest of the agent/tool code stays unchanged; AI Studio handles scaling, so classroom laptops only need network access.
+
+#### Minimal standalone example (students can run outside Pydantic AI)
+```python
+# pip install -U google-genai
+import os
+from google import genai
+
+client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+response = client.models.generate_content(
+    model=os.environ.get("GOOGLE_GEMINI_MODEL", "gemini-2.5-flash"),
+    contents="Explain JSON in two sentences with an example."
+)
+print(response.text)
+```
+This solo script helps students feel the difference between remote Gemini (AI Studio) and local vLLM/LM Studio before they plug the same key into the Session 08 agent stack.
+
+#### Local vs. remote LLM cheat sheet
+| Track | Where it runs | Setup (besides this repo) | When to pick it |
+| --- | --- | --- | --- |
+| LM Studio desktop app | Your laptop (GUI) | Install LM Studio, load a model, copy base URL `http://localhost:1234/v1`, export dummy key | You want a point-and-click setup with streaming logs on the same machine. |
+| vLLM Docker image | Your laptop (Docker) | `docker run -p 8000:8000 vllm/vllm-openai:latest --model TinyLlama/...` | You prefer a reproducible CLI path or need higher throughput on a workstation. |
+| llama.cpp HTTP server | Your laptop (CLI) | `brew install llama.cpp`, download Gemma weights, run `llama-server` | Machines without GUI support or when you only need a lightweight CPU model. |
+| Google AI Studio (Gemini) | Google-managed cloud | Create API key in AI Studio, export `GOOGLE_API_KEY` + `GOOGLE_GEMINI_MODEL` | Local resources are scarce, you want consistent latency, or you’re teaching on Chromebooks. |
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
@@ -42,8 +114,8 @@
 | Pydantic AI tool-calling | 20 min | Talk + live coding | Define schema, validate input/output (I/O), send telemetry, guardrails. |
 | **Part B – Lab 1** | **45 min** | **Guided pairing** | **Extend API with AI help, evaluate via pytest.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
-| **Part C – Lab 2** | **45 min** | **Guided agent** | **Connect LM Studio/vLLM through Pydantic AI + automated evaluation.** |
-| MCP microservice hop | 15 min | Live demo + pairing | Reuse a catalog MCP server (DuckDuckGo search) as a typed microservice + local LLM analysis. |
+| **Part C – Lab 2** | **45 min** | **Guided agent** | **Connect LM Studio/vLLM or Google AI Studio through Pydantic AI + automated evaluation.** |
+| MCP microservice hop | 15 min | Live demo + pairing | Reuse a catalog MCP server (DuckDuckGo search) as a typed microservice + LLM analysis (Google AI Studio or local vLLM). |
 | Retrospective & next steps | 10 min | Discussion | Share effective prompts, log outstanding risks.
 
 ## Part A – Guardrails & Patterns
@@ -168,7 +240,7 @@ sequenceDiagram
     participant User
     participant API as FastAPI API
     participant Agent as Pydantic AI Agent
-    participant LLM as Local large language model (LLM) (LM Studio/vLLM)
+    participant LLM as Large language model (LLM) (LM Studio/vLLM or Google AI Studio)
     participant Logfire
 
     User->>API: POST /movies/{id}/pitch
@@ -182,6 +254,8 @@ sequenceDiagram
 
 ### DuckDuckGo MCP microservice lab (15 min)
 Give students an end-to-end agentic path they can demo entirely offline: the DuckDuckGo MCP server on Docker Hub needs zero API keys, so everyone can search the open web and summarize hits with a local LLM.
+
+> ☁️ **Hosted fallback:** When laptops can’t run LM Studio/vLLM, install `pydantic-ai[google]`, export `GOOGLE_API_KEY`, and instantiate `GoogleModel(model=os.environ.get("GOOGLE_GEMINI_MODEL", "gemini-2.0-flash"), api_key=os.environ["GOOGLE_API_KEY"])` so the agent calls the Google Gemini API (AI Studio’s high-scale endpoint) instead. The tool plumbing stays identical—only the model import changes.
 
 1. **Pull the image once (Shell A).**
    ```bash
@@ -271,10 +345,10 @@ Give students an end-to-end agentic path they can demo entirely offline: the Duc
    ```
    - `StdioServerParameters` spawns the Docker container only when the tool runs; no long-lived services to babysit.
    - `parse_duck_results` turns the formatted string into structured `DuckResult` objects so your LLM prompt stays deterministic.
-   - Swap the LiteLLM endpoint for whichever local model is live (LM Studio, vLLM, llama.cpp HTTP server).
+   - Swap the LLM endpoint for whichever provider is live (LM Studio, vLLM, llama.cpp HTTP server, or Google AI Studio via `pydantic_ai.models.google.GoogleModel`).
 
 4. **Demo flow.**
-   - Start LM Studio/vLLM/llama.cpp so the completion endpoint is ready.
+   - Start LM Studio/vLLM/llama.cpp (or confirm Google AI Studio credentials) so the completion endpoint is ready.
    - Run `uv run python labs/duck_search_agent.py "Find upcoming ACM conferences"`.
    - Narrate the chain: Docker spins up, `duck_search` streams search output, the local LLM converts typed hits into bullets.
    - Briefly stop Docker to show the failure path—Pydantic raises a validation error when the tool output cannot be parsed.
@@ -440,7 +514,7 @@ Pair two catalog servers to show a research workflow with zero secrets: fetch th
    ```bash
    uv run python labs/attention_lookup.py
    ```
-   Watch the terminal: DuckDuckGo and arXiv containers spin up on demand, their logs stream through Docker Desktop, and LM Studio prints the combined summary. Students can swap the paper ID or author without touching API keys.
+   Watch the terminal: DuckDuckGo and arXiv containers spin up on demand, their logs stream through Docker Desktop, and your LLM (LM Studio/vLLM or Google AI Studio) prints the combined summary. Students can swap the paper ID or author without touching API keys.
 
 5. **CLI verification recap:** everything stays copy/paste friendly—`docker pull`, `npx inspector --transport stdio ...`, and `uv run` cover the full workflow.
 ### Qdrant vector DB stretch (retrieval-ready prompts)
@@ -530,7 +604,7 @@ Pair two catalog servers to show a research workflow with zero secrets: fetch th
 - **Bridge to FastAPI/Pydantic AI:** expose `POST /tool/movie-search` that accepts a natural-language query, runs `client.search(collection_name="movies", query_vector=encoder.encode(query), limit=3)`, and returns the payloads as structured context for the agent chain. Students can then:
   1. Call the tool directly from Pydantic AI (Part C) to ground model responses.
   2. Wrap the same search call in a DSPy `Signature` so optimizers can choose when to hit Qdrant vs. rely on the base prompt.
-- **Bring-back takeaway:** capture latency, relevance, and prompt-drift notes in the lab journal. Ask: *Did the retrieved snippets make LM Studio/vLLM outputs more accurate?* Encourage teams to recycle the pattern in Exercise 3 (EX3) if they pitch recommendations, FAQs, or troubleshooting guides.
+- **Bring-back takeaway:** capture latency, relevance, and prompt-drift notes in the lab journal. Ask: *Did the retrieved snippets make LM Studio/vLLM/Google AI Studio outputs more accurate?* Encourage teams to recycle the pattern in Exercise 3 (EX3) if they pitch recommendations, FAQs, or troubleshooting guides.
 
 ## Part B – Lab 1 (45 Minutes)
 
@@ -563,7 +637,7 @@ Add a subsection in `README.md` or `docs/ai-usage.md` summarizing prompts used i
 ## Part C – Lab 2 (45 Minutes)
 
 ### Lab timeline
-- **Minutes 0–10** – Configure LM Studio/vLLM endpoints and environment variables.
+- **Minutes 0–10** – Configure LM Studio/vLLM endpoints or plug in Google AI Studio API keys/model IDs.
 - **Minutes 10–20** – Build the Pydantic AI tool wrapper and validate schema enforcement.
 - **Minutes 20–35** – Add automated tests (tool-only transport) and review telemetry.
 - **Minutes 35–45** – Run local agent demo, discuss failure handling, capture takeaways.
@@ -625,7 +699,7 @@ prompt = "Suggest top 3 movies for user 42 based on recent ratings."
 response = agent.run(prompt)
 print(response)
 ```
-Explain how to switch `Agent` base URL/headers for LM Studio (`base_url="http://localhost:1234/v1"`, dummy key) or vLLM. Reinforce that deterministic API responses make evaluation easier.
+Explain how to switch `Agent` base URL/headers for LM Studio (`base_url="http://localhost:1234/v1"`, dummy key) or vLLM, or how to instantiate `GoogleModel(model="gemini-2.0-flash", api_key=os.environ["GOOGLE_API_KEY"])` when pointing at Google AI Studio. Reinforce that deterministic API responses make evaluation easier.
 
 ### 3. Automated evaluation
 Add pytest that spins the agent in “tool-only” mode:
@@ -663,6 +737,8 @@ def test_agent_returns_recommendations():
 Explain `transport="tool-only"` executes tools without calling an LLM—perfect for CI.
 
 ### 4. LM Studio / vLLM connection
+
+> Prefer to stay fully hosted? Follow the earlier Google AI Studio note with `GoogleModel` and skip these local runtime steps—the rest of the agent code stays the same.
 - LM Studio: configure `OPENAI_API_KEY=dummy`, `OPENAI_BASE_URL=http://localhost:1234/v1`, set model name to the loaded local model.
 - vLLM Docker (from LMS script) listens on `http://localhost:8000/v1`; run `docker compose up vllm` to start.
 - Use Logfire toggle to capture agent runs when telemetry enabled.
@@ -731,7 +807,7 @@ By the end of Session 08, every student should be able to:
 
 - [ ] Pair with an AI assistant using spec/tests-first prompts and validate changes via pytest.
 - [ ] Wrap a FastAPI endpoint in a Pydantic AI tool and exercise it with tool-only tests.
-- [ ] Connect to a local LLM endpoint (LM Studio or vLLM) and capture telemetry for agent runs.
+- [ ] Connect to an LLM endpoint (LM Studio, vLLM, or Google AI Studio) and capture telemetry for agent runs.
 
 **If any item is unchecked, assign a follow-up pairing before Session 09 to keep EX2/EX3 on schedule.**
 

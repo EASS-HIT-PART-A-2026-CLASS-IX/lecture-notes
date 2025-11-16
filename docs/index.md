@@ -54,11 +54,11 @@ gantt
     Session\ 06 – Frontend Choices           :milestone, 2025-12-08, 0d
     Session\ 07 – Testing & Diagnostics      :milestone, 2025-12-15, 0d
     Session\ 08 – AI-Assisted Coaching       :milestone, 2025-12-22, 0d
-    section Extension\ Ideas
-    Session\ 09 – Async Refresh (Optional)   :milestone, 2025-12-29, 0d
-    Session\ 10 – Compose Concepts (Optional):milestone, 2026-01-05, 0d
-    Session\ 11 – Security Tour (Optional)   :milestone, 2026-01-12, 0d
-    Session\ 12 – Tool-Friendly APIs         :milestone, 2026-01-19, 0d
+    section Scale\ &\ Polish
+    Session\ 09 – Async Recommendation Refresh   :milestone, 2025-12-29, 0d
+    Session\ 10 – Docker Compose,\ Redis,\ and\ Service\ Contracts:milestone, 2026-01-05, 0d
+    Session\ 11 – Security\ Foundations          :milestone, 2026-01-12, 0d
+    Session\ 12 – Tool-Friendly APIs             :milestone, 2026-01-19, 0d
     section Assessments
     EX1\ Window                              :active, 2025-11-10, 2025-12-02
     EX2\ Window                              :active, 2025-12-01, 2025-12-23
@@ -73,27 +73,27 @@ gantt
 5. [Session 05 – Movie Service Persistence with SQLite](sessions/session-05.md)
 6. [Session 06 – Movie Dashboards with Streamlit & React](sessions/session-06.md)
 7. [Session 07 – Testing, Logging, and Profiling Basics](sessions/session-07.md)
-8. [Session 08 – Working with AI Coding Assistants (LM Studio or vLLM)](sessions/session-08.md)
-9. [Session 09 – Async Recommendation Refresh _(Optional exploration)_](sessions/session-09.md)
-10. [Session 10 – Docker Compose, Redis, and Service Contracts _(Optional ideas)_](sessions/session-10.md)
-11. [Session 11 – Security Foundations _(Optional vocabulary only)_](sessions/session-11.md)
+8. [Session 08 – Working with AI Coding Assistants (LM Studio, vLLM, or Google AI Studio)](sessions/session-08.md)
+9. [Session 09 – Async Recommendation Refresh](sessions/session-09.md)
+10. [Session 10 – Docker Compose, Redis, and Service Contracts](sessions/session-10.md)
+11. [Session 11 – Security Foundations](sessions/session-11.md)
 12. [Session 12 – Tool-Friendly APIs and Final Prep](sessions/session-12.md)
 
-**Optional add-ons:**  
+**Optional add-ons (extra labs beyond the 12-session arc):**  
 - [MCP Workshop – Weather MCP Server](sessions/optional/mcp.md) for teams who want to ship MCP-compatible tools after Session 12.  
 - [DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md) for students who want a local analytics sandbox that complements Session 05.
 
 ## Exercises at a Glance
 - **EX1 – FastAPI Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build the FastAPI CRUD API + tests from Session 03; add Session 04’s SQLite persistence as soon as you’re ready so the service is EX3-ready.
 - **EX2 – Friendly Interface**: assigned Mon Dec 1 · due Tue Dec 23, 2025. Add a Streamlit dashboard or Typer CLI that calls the EX1 API.
-- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate the API, dedicated persistence layer, and interface into a multi-service stack, add one small improvement, and document the runbook. Everything stays local—no cloud, Docker, or security features required.
+- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate the API, dedicated persistence layer, interface, and async/Redis worker into a multi-service stack, add one small improvement, and document the runbook + Compose workflow. Everything stays local—`uv run` + `docker compose up`, no cloud hosting required.
 - **Choose your own theme:** the sessions demonstrate a movie service, but students pick any narrow domain on Day 1 and carry it through all three exercises.
-- Optional deep dives (Sessions 9–11) exist for curiosity and portfolio stretching; they do **not** add scope to the graded exercises.
+- Sessions 9–12 continue the main storyline by hardening async flows, multi-service orchestration, security, and tool-friendly polish—each reinforces EX3 readiness while keeping the graded scope local and manageable.
 
 ## Teaching Philosophy
 - Build every example live from the session scripts (no pre-solved `examples/` folders) so changes stay in sync and the cohort can follow the exact steps. Keep snippets tiny and copy/paste friendly when time is tight.
 - Repeat concepts using the whiteboard sketches described in each session and the Natalie reference notes in `lectures/notes/`.
-- Keep optional deep dives clearly labeled so students know graded work stays lightweight and local.
+- Keep optional extras (MCP workshop, DuckDB lab, blockchain demo) clearly labeled so students know the graded work stays lightweight and local.
 - Encourage question “warm-ups”: students share what they tried before asking for help.
 
 Happy teaching!

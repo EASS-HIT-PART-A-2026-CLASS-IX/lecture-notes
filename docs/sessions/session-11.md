@@ -1,13 +1,13 @@
-# Session 11 – Security Foundations
+# Session 11 – Security Foundations (EX3 Baseline Controls)
 
 - **Date:** Monday, Jan 19, 2026
-- **Theme:** Secure the movie service with proper authentication (auth), secrets hygiene, and threat modeling.
+- **Theme:** Secure the movie service with proper authentication (auth), secrets hygiene, and threat modeling so EX3 submissions include hashed credentials, JWT-protected routes, and documented secret rotation.
 
 ## Learning Objectives
 - Hash passwords with `passlib[bcrypt]`, issue JSON Web Tokens (JWTs) (`pyjwt`) with expiration, issuer, and audience claims.
 - Apply Open Worldwide Application Security Project (OWASP) API Top 3 mitigations: authentication, input validation, secret management.
-- Audit `.env.example`, rotate keys, and document secure defaults for Docker/Compose.
-- Write security-focused tests (401/403 paths, JWT expiry, secret exposure checks).
+- Audit `.env.example`, rotate keys, and document secure defaults for Docker/Compose plus GitHub Actions.
+- Write security-focused tests (401/403 paths, JWT expiry, secret exposure checks) and capture the results in the EX3 runbook checklist.
 
 ## Before Class – Security Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
@@ -16,7 +16,9 @@
   ```
 - Rotate any hard-coded secrets in your repo; ensure `.env` is gitignored and `.env.example` is up to date.
 - Review OWASP API Security Top 10 summary (Learning Management System (LMS)) and bring one question.
-- Optional: scan your repo with `trufflehog filesystem --exclude .git` to confirm secrets hygiene.
+- Optional but encouraged: scan your repo with `trufflehog filesystem --exclude .git` to confirm secrets hygiene.
+
+> 🧭 **EX3 Deliverable:** Every team must (1) protect at least one API route with JWT-based role checks, (2) document password hashing + secret rotation steps inside `docs/EX3-notes.md`, and (3) add tests that fail if a token is expired or missing the right role. These items sit on the EX3 grading checklist, so finish them during this session.
 
 ## Agenda
 | Segment | Duration | Format | Focus |

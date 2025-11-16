@@ -1,21 +1,28 @@
-# Session 09 – Async Recommendation Refresh
+# Session 09 – Async Recommendation Refresh (EX3 Reliability Checkpoint)
 
 - **Date:** Monday, Jan 5, 2026
-- **Theme:** Move the recommendation refresh pipeline to asynchronous execution, add retries/backoff, and guard against duplicate work with idempotency keys.
+- **Theme:** Move the recommendation refresh pipeline to asynchronous execution, add retries/backoff, and guard against duplicate work with idempotency keys so every EX3 project ships a proven background job + telemetry loop.
 
 ## Learning Objectives
 - Call FastAPI endpoints with `httpx.AsyncClient` using Asynchronous Server Gateway Interface (ASGI) transport for in-process tests.
 - Introduce bounded concurrency with `asyncio.Semaphore` and implement retry/backoff policies (`anyio`, `tenacity`).
 - Add idempotency keys to POST requests to avoid double-processing and design resilience tests around them.
 - Instrument async flows with trace identifiers (IDs) and metrics hooks for future observability.
+- Produce the EX3-required `scripts/refresh.py` Typer command plus pytest coverage that proves the async path works end to end.
 
 ## Before Class – Async Preflight (Just-in-Time Teaching, JiTT)
 - Install async tooling:
   ```bash
   uv add httpx anyio tenacity
   ```
+- Add telemetry + cache helpers you will lean on later:
+  ```bash
+  uv add logfire redis
+  ```
 - Review Python’s `asyncio` basics (Learning Management System (LMS) primer) and jot one question about concurrency hazards.
-- Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you're exploring the optional Compose stretch, verify `docker compose up` succeeds before class.
+- Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you already support Docker Compose locally, make sure `docker compose up` succeeds before class so you can reuse the same stack in Session 10.
+
+> 🧭 **EX3 Deliverable:** By the end of this session every team must check in (1) `scripts/refresh.py` with bounded concurrency + retries, (2) at least one `pytest.mark.anyio` test that exercises the refresher against the FastAPI app via ASGI transport, and (3) a short log excerpt (paste into `docs/EX3-notes.md`) showing `Idempotency-Key` and `X-Trace-Id` headers working together. Session 10’s worker/Redis labs assume this script exists.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
@@ -34,6 +41,36 @@
 2. **Retry/backoff:** exponential vs. jitter, idempotent vs. non-idempotent operations, using `tenacity` decorators.
 3. **Idempotency keys:** Accept `Idempotency-Key` header, store processed keys (in-memory or Redis), and short-circuit duplicates.
 4. **Instrumentation:** Keep `X-Trace-Id` consistent; plan to emit metrics (Session 10) using Prometheus/Redis.
+
+### Motivating Micro Demos (5 minutes each)
+Give students a quick taste of why we pair async work with Redis + Logfire before diving into the heavier lab steps.
+
+1. **Redis quick win:**  
+   ```bash
+   docker run --rm -p 6379:6379 redis:7-alpine
+   redis-cli set "recommend:pending" 2
+   redis-cli decr "recommend:pending"
+   redis-cli get "recommend:pending"
+   ```
+   Explain that the same counter powers your retry/idempotency checks once the async refresher fans out jobs. Seeing the number drop in real time makes the need for a shared cache tangible.
+
+2. **Logfire heartbeat:** (reuse the existing project virtualenv)
+   ```bash
+   uv run python - <<'PY'
+   import asyncio
+   import logfire
+
+   logfire.configure()
+
+   async def demo_task(name: str):
+       with logfire.span("demo.refresh", task=name):
+           await asyncio.sleep(0.2)
+           logfire.info("task-complete", task=name)
+
+   asyncio.run(asyncio.gather(demo_task("a"), demo_task("b")))
+   PY
+   ```
+   Point out the spans and structured logs in the console—Session 09’s refresher will emit the same telemetry so Session 10/12 have trace data to reference.
 
 ```mermaid
 sequenceDiagram
@@ -76,6 +113,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 import httpx
+import logfire
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
 
 from app.config import Settings
@@ -92,10 +130,13 @@ class RecommendationRefresher:
         self.settings = settings
         self.client = httpx.AsyncClient(base_url=settings.api_base_url, timeout=10.0)
         self._semaphore = asyncio.Semaphore(settings.refresh_max_concurrency)
+        self._logger = logfire.with_fields(component="recommendation_refresher")
 
     async def refresh(self, jobs: Iterable[RecommendationJob]) -> None:
-        tasks = [self._bounded_refresh(job) for job in jobs]
-        await asyncio.gather(*tasks)
+        job_list = list(jobs)
+        with self._logger.span("recommendation.refresh", jobs=len(job_list)):
+            tasks = [self._bounded_refresh(job) for job in job_list]
+            await asyncio.gather(*tasks)
 
     async def _bounded_refresh(self, job: RecommendationJob) -> None:
         async with self._semaphore:
@@ -109,15 +150,22 @@ class RecommendationRefresher:
 
     async def _send_job(self, job: RecommendationJob) -> None:
         idempotency_key = f"recommend:{job.movie_id}:{job.payload['user_id']}"
-        response = await self.client.post(
-            "/recommendations/refresh",
-            json=job.payload,
-            headers={
-                "X-Trace-Id": self.settings.trace_id,
-                "Idempotency-Key": idempotency_key,
-            },
-        )
-        response.raise_for_status()
+        with self._logger.span("recommendation.job", movie_id=job.movie_id):
+            response = await self.client.post(
+                "/recommendations/refresh",
+                json=job.payload,
+                headers={
+                    "X-Trace-Id": self.settings.trace_id,
+                    "Idempotency-Key": idempotency_key,
+                },
+            )
+            response.raise_for_status()
+            logfire.info(
+                "refresh-complete",
+                movie_id=job.movie_id,
+                status=response.status_code,
+                idempotency_key=idempotency_key,
+            )
 ```
 Track `refresh_max_concurrency` and `trace_id` via `Settings` (add defaults to config with environment overrides).
 
@@ -129,6 +177,7 @@ class Settings(BaseSettings):
     refresh_max_concurrency: int = 4
     trace_id: str = "recommend-refresh"
 ```
+Call `logfire.configure()` once during app or CLI startup (Session 07 introduced this pattern) so the spans and counters above stream to your local console or configured backend.
 
 ### 2. Async CLI trigger (`scripts/refresh.py`)
 ```python
@@ -230,6 +279,7 @@ Discuss time to live (TTL) strategy (one hour here) and note how Session 10’s 
 
 ## Wrap-up & Next Steps
 - ✅ Async refresher, retries with jitter, idempotency keys, async tests.
+- Capture a Logfire screenshot or log excerpt plus Redis counter snippet in `docs/EX3-notes.md` so graders can trace your background jobs later.
 - Prep for Session 10: bring Redis installed (`brew install redis` or `docker run redis`), and review Docker Compose basics.
 
 ## Troubleshooting
@@ -249,6 +299,7 @@ By the end of Session 09, every student should be able to:
 - [ ] Refresh recommendations asynchronously with bounded concurrency and retries.
 - [ ] Write async pytest suites using `httpx.ASGITransport`/`pytest.mark.anyio`.
 - [ ] Cache recommendation results in Redis with idempotency keys to prevent duplicate work.
+- [ ] Emit Logfire spans/counters that prove when refresh jobs run and succeed (screenshot or log excerpt stored in `docs/EX3-notes.md`).
 
 **If any box stays unchecked, book an async lab session before Session 10.**
 
@@ -256,3 +307,4 @@ By the end of Session 09, every student should be able to:
 - “Write an async refresher that batches POST requests with bounded concurrency and retries using tenacity.”
 - “Show how to use `httpx.AsyncClient` with `ASGITransport` in tests.”
 - “Design an idempotency key strategy for POST `/recommendations/refresh` with sample tests.”
+- “Instrument the refresher with Logfire spans and counters so each job logs status + idempotency key.”

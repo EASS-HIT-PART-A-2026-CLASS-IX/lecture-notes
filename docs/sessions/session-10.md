@@ -1,13 +1,13 @@
-# Session 10 – Docker Compose, Redis, and Service Contracts
+# Session 10 – Docker Compose, Redis, and Service Contracts (EX3 Runbook Core)
 
 - **Date:** Monday, Jan 12, 2026
-- **Theme:** Run the movie API with Redis and worker services via Docker Compose, enforce service contracts, and introduce rate limiting/background jobs.
+- **Theme:** Run the movie API with Redis and worker services via Docker Compose, enforce service contracts, and introduce rate limiting/background jobs so the EX3 stack has a single `docker compose up` story plus CI gates.
 
 ## Learning Objectives
-- Model multi-service environments with Docker Compose (application programming interface (API), Redis, worker, proxy).
-- Use Redis for caching and rate limiting (`slowapi`) and discuss background jobs (Celery or Arq) for async tasks.
+- Model multi-service environments with Docker Compose (application programming interface (API), Redis, worker, proxy) and treat the compose file as the default EX3 launch command.
+- Use Redis for caching, idempotency tracking, and rate limiting (`slowapi`) while wiring Session 09’s async refresher into a background worker.
 - Harden API contracts with Schemathesis (from Session 02 stretch) and document expectations in `docs/service-contract.md`.
-- Wire coverage + contract tests into GitHub Actions for continuous integration (CI) confidence.
+- Wire coverage + contract tests into GitHub Actions for continuous integration (CI) confidence and capture the exact steps inside `docs/runbooks/compose.md`.
 
 ## Before Class – Compose Preflight (Just-in-Time Teaching, JiTT)
 - Install Redis locally or ensure Docker Desktop can pull `redis:7-alpine`:
@@ -17,6 +17,9 @@
 - For hands-on Compose drills, open Docker Desktop and launch a **Labspace** from the left navigation (blue beaker icon). The **Building agentic apps with Docker** and **Container-supported development** lab cards mirror Session 10’s multi-service stack, so you can rehearse Compose + Redis workflows even if your laptop cannot run the full stack.
 - Review the provided Compose primer (Learning Management System (LMS)) and list one question about networking or environment variables.
 - Run `uv run schemathesis run docs/contracts/openapi.json --checks status_code_conformance --dry-run` to confirm tooling works.
+- Copy Session 09’s `scripts/refresh.py` into your repo (if you coded along elsewhere); Session 10 extends it into the worker container.
+
+> 🧭 **EX3 Deliverable:** Ship a working `compose.yaml` with services for API, Redis, and the async worker plus CI instructions (`docs/runbooks/compose.md`) that describe `docker compose up`, contract testing, and how to view rate-limit headers. Instructors will grade EX3 by running these exact commands.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
