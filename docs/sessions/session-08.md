@@ -26,7 +26,7 @@ You already shipped a FastAPI backend with uv, added Postgres, and experimented 
   uv add dspy-ai
   ```
 - Ensure LM Studio (desktop app for hosting local models) or vLLM (open-source high-performance inference server) is running locally—or know how to start the Docker image shared in the Learning Management System (LMS). Note the base URL.
-- If local GPU/CPU options aren’t possible, create a Google AI Studio (Gemini 2.x) API key at <https://aistudio.google.com/app/apikey> so you can tap the managed Google Gemini API (high-scale LLM endpoint with API keys). Then wire it into the repo:
+- If local GPU/CPU options aren’t possible, create a Google AI Studio (Gemini 2.x) API key at <https://aistudio.google.com/app/api-keys> so you can tap the managed Google Gemini API (high-scale LLM endpoint with API keys). Then wire it into the repo:
   ```bash
   export GOOGLE_API_KEY="paste-your-ai-studio-key"
   export GOOGLE_GEMINI_MODEL="gemini-2.0-flash"

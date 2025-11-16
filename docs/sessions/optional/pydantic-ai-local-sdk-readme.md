@@ -29,7 +29,7 @@ Every code block below is copy/paste ready and written in Python; shell snippets
 ## Before Workshop – Preflight (JiTT)
 - Install `uv` ≥ 0.5 and Python 3.12+ (PydanticAI pins to `>=3.9`, we standardize on 3.12).
 - Enable one model track:
-  - **Google AI Studio:** create an API key at <https://aistudio.google.com/app/apikey>, note the quota, and copy the key.
+  - **Google AI Studio:** create an API key at <https://aistudio.google.com/app/api-keys>, note the quota, and copy the key.
   - **Local:** install [Ollama](https://ollama.com), pull a model (`ollama pull llama3.2`) and confirm `ollama list`.
 - `uv add` will grab extras; no `pip install --break-system-packages`.
 - Clone or prep a repo with write access; the session assumes `git` is ready.

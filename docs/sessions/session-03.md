@@ -1,6 +1,6 @@
 # Session 03 – FastAPI Fundamentals (Movie Service v0)
 
-- **Date:** Monday, Nov 17, 2025
+- **Date:** Monday, November 17, 2025
 - **Theme:** Build a complete FastAPI movie service with dependency injection, validation, and automated tests.
 
 ## Learning Objectives
@@ -90,14 +90,18 @@ Before class, complete these setup steps:
    # Initialize creates pyproject.toml
    uv init --no-readme
    
-   # Add all required dependencies
-   uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
+   # Add runtime dependencies
+   uv add fastapi uvicorn pydantic pydantic-settings httpx
+
+   # Add dev/test dependencies
+   uv add --dev pytest
    ```
    
    **What just happened:**
    - `pyproject.toml` - Declares your project dependencies
    - `uv.lock` - Locks exact versions for reproducible installs (commit this!)
    - `.venv/` - Virtual environment with isolated packages (don't commit)
+   - Dev dependencies (pytest) live in their own group so Docker builds can skip them
    
    Verify the files exist:
    ```bash
@@ -597,6 +601,7 @@ ls   # Should see: movie_service/, pyproject.toml, .env
 
 **Start the development server:**
 ```bash
+# From the hello-uv directory
 uv run uvicorn movie_service.app.main:app --reload
 ```
 
@@ -850,6 +855,15 @@ def test_create_movie_rejects_missing_title(client):
     response = client.post(
         "/movies",
         json={"year": 2020, "genre": "drama"},
+    )
+    assert response.status_code == 422
+
+
+def test_create_movie_rejects_missing_genre(client):
+    """Genre is required."""
+    response = client.post(
+        "/movies",
+        json={"title": "Her", "year": 2013},
     )
     assert response.status_code == 422
 ````
@@ -1157,7 +1171,7 @@ If anything isn't working, run these checks first:
 
 ```bash
 # 1. Verify you're in the right directory
-pwd  # Should show .../hello-uv (NOT .../hello-uv/movie_service)
+pwd  # Should show .../hello-uv
 ls   # Should see: movie_service/, pyproject.toml, .env, .gitignore
 
 # 2. Check uv is installed
@@ -1167,7 +1181,7 @@ uv --version  # Should show uv version number
 uv run python --version  # Should show 3.12.x
 
 # 4. Test dependencies import
-uv run python -c "import fastapi, pydantic; print('Dependencies OK')"
+uv run python -c "import fastapi; print('FastAPI OK')"
 
 # 5. Test module imports
 uv run python -c "from movie_service.app.main import app; print('Imports OK')"
@@ -1214,8 +1228,8 @@ uv sync --refresh
 **Fix:**
 ```bash
 # 1. Ensure you're in hello-uv/ (not movie_service/)
-cd /path/to/hello-uv
-pwd  # Should NOT end in /movie_service
+cd "$(git rev-parse --show-toplevel)" 2>/dev/null || cd /path/to/hello-uv
+pwd  # Should show .../hello-uv (NOT .../hello-uv/movie_service)
 
 # 2. Verify package markers exist
 ls movie_service/__init__.py
@@ -1260,25 +1274,6 @@ def test_something(client):
 
 # Run with print output visible
 uv run pytest movie_service/tests -v -s
-```
-
----
-
-### Import errors in tests
-
-**Problem:** `from movie_service.app.main import app` fails
-
-**Fix:**
-```bash
-# Ensure you run pytest from project root
-cd hello-uv  # NOT cd movie_service
-pwd  # Should show .../hello-uv
-
-# Run tests with proper module path
-uv run pytest movie_service/tests/
-
-# Check __init__.py files exist
-find movie_service -name "__init__.py"
 ```
 
 ---
