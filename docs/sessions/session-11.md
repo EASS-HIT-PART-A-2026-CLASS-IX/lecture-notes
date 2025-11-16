@@ -9,6 +9,11 @@
 - Audit `.env.example`, rotate keys, and document secure defaults for Docker/Compose plus GitHub Actions.
 - Write security-focused tests (401/403 paths, JWT expiry, secret exposure checks) and capture the results in the EX3 runbook checklist.
 
+## Session Focus
+1. Replace plaintext credentials with bcrypt hashes and centralize JWT settings/rotation guidance.
+2. Gate at least one route with role-aware JWT checks plus tests that cover 401/403/expiry paths.
+3. Record the hardening steps (hashing, JWT config, secret scanning) inside `docs/EX3-notes.md` so graders can trace the controls.
+
 ## Before Class – Security Preflight (Just-in-Time Teaching, JiTT)
 - Install dependencies:
   ```bash
@@ -19,6 +24,12 @@
 - Optional but encouraged: scan your repo with `trufflehog filesystem --exclude .git` to confirm secrets hygiene.
 
 > 🧭 **EX3 Deliverable:** Every team must (1) protect at least one API route with JWT-based role checks, (2) document password hashing + secret rotation steps inside `docs/EX3-notes.md`, and (3) add tests that fail if a token is expired or missing the right role. These items sit on the EX3 grading checklist, so finish them during this session.
+
+## Simple Demo – Login + protected endpoint
+1. Start the API locally (`uv run uvicorn app.main:app --reload`) so `/token` and the protected route are reachable.
+2. Request a token:  
+   `TOKEN=$(curl -s -X POST http://localhost:8000/token -d "username=teacher&password=classroom" -H "Content-Type: application/x-www-form-urlencoded" | jq -r '.access_token')`
+3. Use the token to hit the protected endpoint (`curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/movies`) and rerun the same request without the header to confirm it returns 401/403.
 
 ## Agenda
 | Segment | Duration | Format | Focus |

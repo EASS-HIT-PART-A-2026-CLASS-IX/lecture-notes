@@ -10,6 +10,11 @@
 - Instrument async flows with trace identifiers (IDs) and metrics hooks for future observability.
 - Produce the EX3-required `scripts/refresh.py` Typer command plus pytest coverage that proves the async path works end to end.
 
+## Session Focus
+1. Ship a bounded async refresher with retries/backoff and per-job idempotency keys.
+2. Expose the refresher via `scripts/refresh.py` and cover it with at least one `pytest.mark.anyio` test that hits FastAPI through ASGI transport.
+3. Capture a telemetry snippet (Logfire span or log excerpt) that proves `X-Trace-Id` + `Idempotency-Key` headers survive the full path and paste it into `docs/EX3-notes.md`.
+
 ## Before Class – Async Preflight (Just-in-Time Teaching, JiTT)
 - Install async tooling:
   ```bash
@@ -23,6 +28,11 @@
 - Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you already support Docker Compose locally, make sure `docker compose up` succeeds before class so you can reuse the same stack in Session 10.
 
 > 🧭 **EX3 Deliverable:** By the end of this session every team must check in (1) `scripts/refresh.py` with bounded concurrency + retries, (2) at least one `pytest.mark.anyio` test that exercises the refresher against the FastAPI app via ASGI transport, and (3) a short log excerpt (paste into `docs/EX3-notes.md`) showing `Idempotency-Key` and `X-Trace-Id` headers working together. Session 10’s worker/Redis labs assume this script exists.
+
+## Simple Demo – Async refresher + telemetry loop
+1. Start the FastAPI app (`uv run uvicorn app.main:app --reload`) so the refresher has a live target.
+2. Run `uv run python scripts/refresh.py run --limit 3` and watch each POST log its `X-Trace-Id` + `Idempotency-Key`.
+3. Paste the snippet into `docs/EX3-notes.md` and rerun the command to confirm duplicate keys short-circuit instead of inserting twice.
 
 ## Agenda
 | Segment | Duration | Format | Focus |

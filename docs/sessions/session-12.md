@@ -9,12 +9,24 @@
 - Automate quality gates (MkDocs/pdocs, Ruff, mypy, pre-commit, changelog) so releases are repeatable.
 - Bridge the API to FastMCP by exposing at least one MCP tool that reuses the `/movies` vocabulary.
 
+## Session Focus
+1. Ship deterministic list endpoints (pagination + CSV + ETag) and document them in `docs/service-contract.md`.
+2. Prove automation is green by running Ruff, mypy, pytest, Schemathesis, MkDocs, and pre-commit as part of the release checklist.
+3. Mirror at least one REST capability through FastMCP so assistants can reuse the same contract hands-free.
+
 ## Before Class – Final Prep
 - Pull latest EX3 code, confirm `docker compose up`, `pytest --cov`, and Schemathesis dry runs pass.
 - Install doc + lint tooling if missing: `uv add mkdocs-material pdocs ruff mypy pre-commit`.
 - Draft `docs/release-checklist.md` with owner, trigger command, and smoke verification steps.
 
 > 🧭 **EX3 Deliverable:** Pagination + ETag on one list endpoint, CSV export, OpenAPI examples, MkDocs/pdocs + Ruff + mypy + pre-commit automation, a FastMCP probe that replays the same contracts, and an updated release checklist.
+
+## Simple Demo – Pagination + ETag handshake
+1. Boot the API (local run or Compose) and seed at least 6 movies so pagination is visible.
+2. Request the first page and capture the ETag:  
+   `curl -i "http://localhost:8000/movies?page=1&page_size=3" | tee /tmp/movies.out`  
+   Note `X-Total-Count`, pagination metadata, and the `ETag` header.
+3. Reuse the tag: `curl -i "http://localhost:8000/movies?page=1&page_size=3" -H "If-None-Match: <etag-from-step-2>"` and confirm FastAPI replies `304 Not Modified`; repeat with `?format=csv` to verify the export.
 
 ## Agenda
 | Segment | Duration | Format | Focus |

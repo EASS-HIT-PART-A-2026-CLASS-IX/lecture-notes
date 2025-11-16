@@ -9,6 +9,11 @@
 - Harden API contracts with Schemathesis (from Session 02 stretch) and document expectations in `docs/service-contract.md`.
 - Wire coverage + contract tests into GitHub Actions for continuous integration (CI) confidence and capture the exact steps inside `docs/runbooks/compose.md`.
 
+## Session Focus
+1. Maintain a single `docker compose up` workflow that boots the API, Redis, and async worker with healthchecks.
+2. Use Redis for rate limiting + caching (reusing Session 09’s refresher) and explain the behavior inside `docs/service-contract.md`.
+3. Lock in contract/CI coverage by showing how Schemathesis, pytest (with coverage), and the Compose runbook all tie together.
+
 ## Before Class – Compose Preflight (Just-in-Time Teaching, JiTT)
 - Install Redis locally or ensure Docker Desktop can pull `redis:7-alpine`:
   ```bash
@@ -20,6 +25,11 @@
 - Copy Session 09’s `scripts/refresh.py` into your repo (if you coded along elsewhere); Session 10 extends it into the worker container.
 
 > 🧭 **EX3 Deliverable:** Ship a working `compose.yaml` with services for API, Redis, and the async worker plus CI instructions (`docs/runbooks/compose.md`) that describe `docker compose up`, contract testing, and how to view rate-limit headers. Instructors will grade EX3 by running these exact commands.
+
+## Simple Demo – Compose stack in one command
+1. From the repo root, run `docker compose up --build` and wait until API, worker, and Redis report `healthy`.
+2. In another terminal, hit `curl -i http://localhost:8000/movies` twice—confirm the first response returns JSON plus `X-RateLimit-*` headers and the second hits Redis cache (latency drop in logs).
+3. Run `redis-cli -u redis://localhost:6379/0 keys 'rate:*'` (or `docker exec` if using Compose) to prove rate-limit counters exist, then stop the stack with `Ctrl+C`.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
