@@ -22,7 +22,7 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - [Optional MCP Workshop](sessions/optional/mcp.md)
 - [Optional DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md)
 - [Storage engine cheat sheet](sessions/session-05.md#part-a-–-theory-highlights) (SQLite ↔ Postgres ↔ Redis ↔ DuckDB guidance)
-- [Legacy slide archives](https://github.com/EASS-HIT-PART-A-2025-CLASS-VIII/lecture-notes/tree/main/lectures/archive)
+- [Legacy slide archives](https://github.com/EASS-HIT-PART-A-2025-CLASS-VIII/lecture-notes/tree/main/old-lecture-notes/archive)
 - [Troubleshooting tips](troubleshooting.md)
 - [Team Topologies summary](sessions/optional/TeamTopologies.md)
 - [DSPy + Pydantic AI agent lab](sessions/session-08.md#dspy-micro-lab)
@@ -92,7 +92,7 @@ gantt
 
 ## Teaching Philosophy
 - Build every example live from the session scripts (no pre-solved `examples/` folders) so changes stay in sync and the cohort can follow the exact steps. Keep snippets tiny and copy/paste friendly when time is tight.
-- Repeat concepts using the whiteboard sketches described in each session and the Natalie reference notes in `lectures/notes/`.
+- Repeat concepts using the whiteboard sketches described in each session and the Natalie reference notes in `old-lecture-notes/notes/`.
 - Keep optional extras (MCP workshop, DuckDB lab, blockchain demo) clearly labeled so students know the graded work stays lightweight and local.
 - Encourage question “warm-ups”: students share what they tried before asking for help.
 

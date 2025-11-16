@@ -199,7 +199,7 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
    - When asking for help, follow the **Problem → Action → Result → Desired** pattern: “I tried X, saw result R, and I’m aiming for Y.” Screenshots alone are not enough—share the exact command and output.
    - Pair programming during labs is encouraged—nobody should be stuck alone.
    - Once you join Discord, share your GitHub username and email so I can send you the GitHub Classroom invitations.
-   - Legacy study aids: clone the archived resources repo (see LMS link) and review `lectures/notes/EASS-Complete-Natalie.pdf` (Hebrew) plus `lectures/archive/all_slides.pdf` for historical context and solved exercises.
+   - Legacy study aids: clone the archived resources repo (see LMS link) and review `old-lecture-notes/notes/EASS-Complete-Natalie.pdf` (Hebrew) plus `old-lecture-notes/archive/all_slides.pdf` for historical context and solved exercises.
 
 4. **AI policy (crucial):**
    - **You MAY use AI tools** (ChatGPT, Claude, Gemini, Cursor, GitHub Copilot, LM Studio, Ollama, etc.).

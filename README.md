@@ -43,10 +43,10 @@ Modern software careers are coalescing around four builder profiles, and every l
 
 ## 🗂️ Legacy Materials
 
-Historical slides and Natalie’s notes live under `lectures/`:
+Historical slides and Natalie’s notes live under `old-lecture-notes/`:
 
-- `lectures/archive/` – previous slide decks and Makefile.
-- `lectures/notes/` – Natalie’s comprehensive PDF reference.
+- `old-lecture-notes/archive/` – previous slide decks and Makefile.
+- `old-lecture-notes/notes/` – Natalie’s comprehensive PDF reference.
 
 These are preserved for reference but the new scripted sessions in `docs/` are the canonical teaching materials.
 

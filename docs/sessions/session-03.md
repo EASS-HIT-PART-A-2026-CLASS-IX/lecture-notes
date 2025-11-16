@@ -45,6 +45,12 @@ Before class, complete these setup steps:
    # Install uv package manager
    curl -LsSf https://astral.sh/uv/install.sh | sh
    
+   # Restart your shell to load uv
+   exec "$SHELL" -l
+   
+   # Verify uv installed correctly
+   uv --version
+   
    # Install Python 3.12
    uv python install 3.12
    ```
@@ -54,29 +60,89 @@ Before class, complete these setup steps:
    mkdir hello-uv && cd hello-uv
    git init
    ```
-
-3. **Add dependencies:**
+   
+   Create `.gitignore` to prevent committing sensitive/generated files:
    ```bash
-   uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
+   cat > .gitignore << 'EOF'
+   # Python
+   __pycache__/
+   *.py[cod]
+   *$py.class
+   .pytest_cache/
+   
+   # Virtual environment
+   .venv/
+   
+   # Environment variables (contains secrets)
+   .env
+   
+   # IDEs
+   .vscode/
+   .idea/
+   
+   # OS
+   .DS_Store
+   EOF
    ```
 
-4. **Create environment template:**
-   Create `.env.example` with:
-   ```ini
+3. **Initialize uv project and add dependencies:**
+   ```bash
+   # Initialize creates pyproject.toml
+   uv init --no-readme
+   
+   # Add all required dependencies
+   uv add fastapi uvicorn pydantic pydantic-settings httpx pytest
+   ```
+   
+   **What just happened:**
+   - `pyproject.toml` - Declares your project dependencies
+   - `uv.lock` - Locks exact versions for reproducible installs (commit this!)
+   - `.venv/` - Virtual environment with isolated packages (don't commit)
+   
+   Verify the files exist:
+   ```bash
+   ls -la  # Should see: .gitignore, pyproject.toml, uv.lock, .venv/
+   ```
+
+4. **Create environment configuration:**
+   
+   Create `.env.example` (committed template):
+   ```bash
+   cat > .env.example << 'EOF'
    MOVIE_APP_NAME="Movie Service"
    MOVIE_DEFAULT_PAGE_SIZE=20
    MOVIE_FEATURE_PREVIEW=false
+   EOF
    ```
    
-   Copy to `.env` for local use:
+   Copy to `.env` for local development (stays private):
    ```bash
    cp .env.example .env
    ```
+   
+   **Note:** `.env` contains your local overrides and should never be committed.
 
-5. **Verify setup:**
+5. **Verify setup works:**
    ```bash
+   # Check Python version in virtual environment
+   uv run python --version  # Should show 3.12.x
+   
+   # Test that dependencies import correctly
    uv run python -c "import fastapi, pydantic; print('Ready!')"
+   
+   # Verify project files
+   ls -la  # Should see: .env, .env.example, .gitignore, pyproject.toml, uv.lock, .venv/
    ```
+   
+   **If any command fails, stop and troubleshoot before continuing to class.**
+
+6. **Make initial commit:**
+   ```bash
+   git add .gitignore .env.example pyproject.toml uv.lock
+   git commit -m "Initial project setup with uv"
+   ```
+   
+   **Important:** We do NOT commit `.env` (secrets) or `.venv/` (too large).
 
 ## Toolkit Snapshot
 - **FastAPI** – async-ready web framework that maps HTTP verbs to Python functions and autogenerates OpenAPI docs.
@@ -195,32 +261,58 @@ Follow these steps to build a working FastAPI application from scratch.
 
 ### Step 1: Create Project Structure (5 min)
 
+**Verify you're in the project root:**
 ```bash
-cd hello-uv
+pwd  # Should show .../hello-uv
+ls   # Should see: .env, pyproject.toml, uv.lock
+```
+
+**Create the movie_service package:**
+```bash
+# Create directory structure
 mkdir -p movie_service/{app,tests,scripts}
+
+# Create Python package markers (__init__.py makes directories importable)
 touch movie_service/__init__.py
 touch movie_service/app/__init__.py
 touch movie_service/tests/__init__.py
+touch movie_service/scripts/__init__.py
 ```
 
-Your structure:
+**Verify structure:**
+```bash
+# If you have tree installed:
+tree movie_service -L 2
+
+# Otherwise:
+find movie_service -type f -name "*.py"
 ```
-hello-uv/
-├── .env
-├── .env.example
-├── pyproject.toml
+
+Your structure should look like:
+```
+hello-uv/                   # ← You are here
+├── .env                    # Local config (not committed)
+├── .env.example            # Template (committed)
+├── .gitignore              # What to ignore (committed)
+├── pyproject.toml          # Dependencies (committed)
+├── uv.lock                 # Locked versions (committed)
+├── .venv/                  # Virtual env (not committed)
 └── movie_service/
     ├── __init__.py
     ├── app/
     │   ├── __init__.py
-    │   ├── config.py
-    │   ├── models.py       # ← new in this session
+    │   ├── config.py       # ← We'll create these next
+    │   ├── models.py
     │   ├── repository.py
     │   ├── dependencies.py
     │   └── main.py
     ├── tests/
-    │   └── __init__.py
+    │   ├── __init__.py
+    │   ├── conftest.py     # ← Test fixtures
+    │   └── test_movies.py  # ← Test cases
     └── scripts/
+        ├── __init__.py
+        └── export_openapi.py
 ```
 
 ### Step 2: Configure Settings (5 min)
@@ -497,42 +589,81 @@ def delete_movie(movie_id: int, repository: RepositoryDep) -> None:
 
 ### Step 7: Run the API (5 min)
 
-Start the server:
+**Verify you're in the correct directory:**
 ```bash
-cd hello-uv
+pwd  # Should show .../hello-uv (NOT .../hello-uv/movie_service)
+ls   # Should see: movie_service/, pyproject.toml, .env
+```
+
+**Start the development server:**
+```bash
 uv run uvicorn movie_service.app.main:app --reload
 ```
 
+**Understanding the command:**
+- `uv run` - Runs command in the virtual environment (no activation needed)
+- `--reload` - Auto-restarts server when code changes (development only, remove in production)
+
 You'll see:
 ```
+INFO:     Will watch for changes in these directories: ['/path/to/hello-uv']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process
+INFO:     Started reloader process [12345] using WatchFiles
+INFO:     Started server process [12346]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
 ```
 
 **Test it works:**
 
-1. **Visit the docs:** Open `http://127.0.0.1:8000/docs` in your browser
+1. **Interactive API docs:** Open `http://127.0.0.1:8000/docs` in your browser
    - See all endpoints with request/response schemas
-   - Try creating a movie directly in the UI
+   - Try creating a movie using the "Try it out" button
+   - Check the "Schemas" section to see your Pydantic models
 
 2. **Test with curl:**
-```bash
-# Create a movie
-curl -X POST http://localhost:8000/movies \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Inception", "year": 2010, "genre": "sci-fi"}'
-
-# List all movies
-curl http://localhost:8000/movies
-
-# Check health
-curl http://localhost:8000/health
-```
+   ```bash
+   # Health check
+   curl http://localhost:8000/health
+   # Response: {"status":"ok","app":"Movie Service"}
+   
+   # Create a movie
+   curl -X POST http://localhost:8000/movies \
+     -H "Content-Type: application/json" \
+     -d '{"title": "Inception", "year": 2010, "genre": "sci-fi"}'
+   # Response: {"id":1,"title":"Inception","year":2010,"genre":"Sci-Fi"}
+   # Notice: genre normalized to "Sci-Fi"
+   
+   # List all movies
+   curl http://localhost:8000/movies
+   # Response: [{"id":1,"title":"Inception","year":2010,"genre":"Sci-Fi"}]
+   
+   # Get specific movie
+   curl http://localhost:8000/movies/1
+   # Response: {"id":1,"title":"Inception","year":2010,"genre":"Sci-Fi"}
+   
+   # Delete a movie
+   curl -X DELETE http://localhost:8000/movies/1
+   # Response: (empty body with 204 status)
+   
+   # Verify deletion (should return 404)
+   curl http://localhost:8000/movies/1
+   # Response: {"detail":"Movie not found"}
+   ```
 
 **Success criteria:**
-- Server starts without errors
-- `/docs` page loads and shows all endpoints
-- Can create and retrieve movies
+- ✅ Server starts without errors
+- ✅ `/docs` page loads and shows all endpoints
+- ✅ Can create and retrieve movies via curl
+- ✅ Genre is normalized ("sci-fi" → "Sci-Fi")
+- ✅ Health endpoint returns your app name
+- ✅ 404 returned for missing movies
+
+**If something fails:**
+- Check you're in `hello-uv/` directory (not `movie_service/`)
+- Verify all files were created: `ls movie_service/app/*.py`
+- Look for Python errors in the terminal output
+- Test imports: `uv run python -c "from movie_service.app.main import app; print('OK')"`
 
 ## Part C – Lab 2: Test Everything (45 minutes)
 
@@ -582,6 +713,17 @@ Create `movie_service/tests/test_movies.py`:
 
 ````python
 # filepath: movie_service/tests/test_movies.py
+"""
+Comprehensive test suite for Movie Service API.
+
+Tests use the 'client' fixture from conftest.py, which provides
+a TestClient for making HTTP requests to our FastAPI app without
+needing a real server.
+"""
+
+# Note: The 'client' fixture is automatically discovered from conftest.py
+# No imports needed here - pytest handles fixture injection
+
 
 def test_health_includes_app_name(client):
     """Health endpoint returns status and app name."""
@@ -738,29 +880,54 @@ test_movie_ids_increment PASSED
 
 **Live demonstration of test-driven development:**
 
-1. **Break something** - Comment out the genre validator:
+1. **Break something** - Comment out the genre validator in `movie_service/app/models.py`:
    ```python
    # @model_validator(mode="after")
-   # def normalize_genre(self):
+   # def normalize_genre(self) -> "MovieCreate":
+   #     """Title-case the genre: 'sci-fi' → 'Sci-Fi'."""
    #     self.genre = self.genre.title()
    #     return self
    ```
 
-2. **Run tests** - See them fail:
+2. **Run the specific test** - See it fail:
    ```bash
-   uv run pytest movie_service/tests::test_create_movie_returns_201_and_payload -v
+   uv run pytest movie_service/tests/test_movies.py::test_create_movie_returns_201_and_payload -v
    ```
-   Output: `AssertionError: assert 'sci-fi' == 'Sci-Fi'`
+   
+   **Expected failure output:**
+   ```
+   FAILED test_create_movie_returns_201_and_payload
+   AssertionError: assert 'sci-fi' == 'Sci-Fi'
+     - Sci-Fi
+     + sci-fi
+   ```
+   
+   This is the **RED** phase - test fails because behavior doesn't match expectations.
 
-3. **Restore the validator** - Uncomment the code
+3. **Fix it** - Uncomment the validator code
 
-4. **Run tests again** - See them pass
+4. **Run tests again** - See them pass:
+   ```bash
+   uv run pytest movie_service/tests/test_movies.py::test_create_movie_returns_201_and_payload -v
+   ```
+   
+   **Expected success output:**
+   ```
+   PASSED test_create_movie_returns_201_and_payload
+   ```
+   
+   This is the **GREEN** phase - test passes, behavior matches expectations.
 
-**The lesson:** Tests catch regressions immediately. Always run tests before committing code.
+**The lesson:** Tests catch regressions immediately. The Red→Green→Refactor cycle:
+- 🔴 **Red:** Write a failing test (or break something intentionally)
+- 🟢 **Green:** Make it pass with minimal code
+- 🔵 **Refactor:** Clean up while keeping tests green
 
-## Docker Deployment (10 minutes)
+Always run tests before committing code to ensure you don't break existing functionality.
 
-Run the exact same application in a container.
+## Part D – Docker Deployment (10 minutes)
+
+Run the exact same application in a container with identical behavior.
 
 ### Create Dockerfile
 
@@ -771,78 +938,153 @@ Create `movie_service/Dockerfile`:
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-# Install uv
-RUN pip install --no-cache-dir uv
+# Copy uv binary from official image (faster than pip install)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Install dependencies
+# Copy dependency files first (better layer caching)
 COPY pyproject.toml uv.lock ./
-RUN uv pip install --system fastapi uvicorn pydantic pydantic-settings httpx
+
+# Install dependencies using locked versions
+# --frozen: don't update uv.lock, use exact versions
+# --no-dev: skip pytest and other dev dependencies
+RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY movie_service ./movie_service
 
+# Copy env template (container will use these defaults)
+COPY .env.example ./.env
+
 EXPOSE 8000
+
 CMD ["uv", "run", "uvicorn", "movie_service.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ````
+
+**What this Dockerfile does:**
+- Uses Python 3.12 slim base (smaller image size)
+- Copies uv binary from official image (consistent tooling)
+- Installs exact versions from `uv.lock` (reproducible builds)
+- `--frozen` prevents dependency resolution (faster, deterministic)
+- `--no-dev` skips test dependencies (smaller production image)
+- Copies `.env.example` as `.env` for container defaults
 
 ### Build and Run
 
 ```bash
-# Build the image (from hello-uv directory)
+# Ensure you're in hello-uv directory
+pwd  # Should show .../hello-uv
+
+# Build the image
 docker build -t movie-service -f movie_service/Dockerfile .
 
 # Run the container
 docker run --rm -p 8000:8000 --name movie-service movie-service
 ```
 
-**Test it:**
-- Visit `http://127.0.0.1:8000/docs`
-- Same API, same behavior, different environment
-- Stop with Ctrl+C
+**Test the containerized app:**
+```bash
+# In a new terminal:
+curl http://localhost:8000/health
+curl http://localhost:8000/movies
 
-**Key insight:** Docker ensures your app runs the same way everywhere—your laptop, a teammate's machine, production servers.
+# Or visit http://127.0.0.1:8000/docs in your browser
+```
 
-## Export API Contract
+**Stop the container:**
+```bash
+# Press Ctrl+C in the docker run terminal, OR:
+docker stop movie-service
+```
 
-Document your API with OpenAPI schema.
+**Key insights:**
+- Docker ensures identical behavior across environments (dev, staging, production)
+- `uv.lock` guarantees same dependency versions everywhere
+- Container includes only production dependencies (smaller, faster, more secure)
+- No "works on my machine" problems
+
+**Compare local vs Docker:**
+| Aspect | Local | Docker |
+|--------|-------|--------|
+| Startup | `uv run uvicorn ...` | `docker run ...` |
+| Dependencies | From local `.venv` | Baked into image |
+| Port | 127.0.0.1:8000 | 0.0.0.0:8000 |
+| Data persistence | In-memory (both) | In-memory (both) |
+| Environment | From `.env` | From `.env` in image |
+
+## Part E – Export the API Contract
+
+Document your API with machine-readable OpenAPI schema.
 
 Create `movie_service/scripts/export_openapi.py`:
 
 ````python
 # filepath: movie_service/scripts/export_openapi.py
+"""
+Export OpenAPI schema for Movie Service.
+
+Generates a JSON schema file that can be used for:
+- Client code generation (openapi-generator, swagger-codegen)
+- API documentation (swagger-ui, redoc)
+- Contract testing (schemathesis, dredd)
+- Validation and monitoring
+"""
 import json
 from pathlib import Path
 
 from movie_service.app.main import app
 
+# Generate OpenAPI schema from FastAPI app
 schema = app.openapi()
 
-contracts_dir = Path("docs/contracts")
+# Create output directory (inside movie_service for cleaner structure)
+contracts_dir = Path("movie_service/contracts")
 contracts_dir.mkdir(parents=True, exist_ok=True)
 
-output_path = contracts_dir / "movie-service-openapi.json"
+# Write schema to file
+output_path = contracts_dir / "openapi.json"
 output_path.write_text(json.dumps(schema, indent=2))
 
+# Print summary
 print(f"Exported OpenAPI schema to {output_path}")
-print(f"Title: {schema['info']['title']}")
-print(f"Version: {schema['info']['version']}")
-print(f"Endpoints: {len(schema['paths'])}")
+print(f"  Title: {schema['info']['title']}")
+print(f"  Version: {schema['info']['version']}")
+print(f"  Endpoints: {len(schema['paths'])}")
+print(f"\nUse this file to:")
+print(f"  - Generate client SDKs (Python, TypeScript, Java, etc.)")
+print(f"  - Validate API responses in tests")
+print(f"  - Generate interactive documentation")
+print(f"  - Monitor API contract compliance")
 ````
 
-Run it:
+**Run it:**
 ```bash
 uv run python -m movie_service.scripts.export_openapi
 ```
 
+**Expected output:**
+```
+Exported OpenAPI schema to movie_service/contracts/openapi.json
+  Title: Movie Service
+  Version: 0.1.0
+  Endpoints: 5
+```
+
 **What this gives you:**
-- Machine-readable API contract
-- Can generate client code automatically
-- Can validate API behavior with schema testing tools
-- Living documentation that never gets outdated with your code
+- **Machine-readable API contract** - Can be validated automatically
+- **Client code generation** - Generate SDKs for any language
+- **Documentation** - Always in sync with actual code
+- **Contract testing** - Verify responses match schema
+- **Living documentation** - Never gets outdated
+
+**View the schema:**
+```bash
+cat movie_service/contracts/openapi.json | head -30
+```
 
 ## Wrap-Up & Deliverables
 
@@ -896,6 +1138,7 @@ Before moving forward, ensure:
 2. Tag it as `session-03-complete` for easy rollback
 3. Run full test suite and verify all 13+ tests pass
 4. Review the Session 04 prerequisites (install `sqlmodel` + `alembic`)
+5. Push commits + tags to GitHub so EX1 repos stay in sync
 
 **Session 04 will upgrade this exact service with:**
 - SQLModel + SQLite persistence (data survives restarts)
@@ -908,43 +1151,205 @@ Before moving forward, ensure:
 
 ## Troubleshooting
 
-**Server won't start:**
-```bash
-# Verify dependencies
-uv run python -c "import fastapi; print('OK')"
+### Quick Diagnostics
 
-# Check for port conflicts
-lsof -i :8000
+If anything isn't working, run these checks first:
+
+```bash
+# 1. Verify you're in the right directory
+pwd  # Should show .../hello-uv (NOT .../hello-uv/movie_service)
+ls   # Should see: movie_service/, pyproject.toml, .env, .gitignore
+
+# 2. Check uv is installed
+uv --version  # Should show uv version number
+
+# 3. Verify Python version
+uv run python --version  # Should show 3.12.x
+
+# 4. Test dependencies import
+uv run python -c "import fastapi, pydantic; print('Dependencies OK')"
+
+# 5. Test module imports
+uv run python -c "from movie_service.app.main import app; print('Imports OK')"
 ```
 
-**Tests failing:**
+---
+
+### "uv: command not found"
+
+**Fix:**
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Restart shell to load PATH
+exec "$SHELL" -l
+
+# Verify
+uv --version
+```
+
+---
+
+### "uv.lock is out of date"
+
+**Fix:**
+```bash
+# Regenerate lock file
+uv lock
+
+# Or force sync
+uv sync --refresh
+```
+
+---
+
+### "No module named 'movie_service'"
+
+**Causes:**
+1. Running from wrong directory
+2. Missing `__init__.py` files
+3. Typo in import path
+
+**Fix:**
+```bash
+# 1. Ensure you're in hello-uv/ (not movie_service/)
+cd /path/to/hello-uv
+pwd  # Should NOT end in /movie_service
+
+# 2. Verify package markers exist
+ls movie_service/__init__.py
+ls movie_service/app/__init__.py
+ls movie_service/tests/__init__.py
+ls movie_service/scripts/__init__.py
+
+# 3. Test import
+uv run python -c "import movie_service; print('OK')"
+```
+
+---
+
+### Server won't start
+
+```bash
+# Check dependencies installed
+uv run python -c "import fastapi; print('FastAPI OK')"
+
+# Check for port conflicts (something else using 8000)
+lsof -i :8000
+# If something is there: kill -9 <PID>
+
+# Try a different port
+uv run uvicorn movie_service.app.main:app --port 8001
+```
+
+---
+
+### Tests failing
+
 ```bash
 # Run single test with verbose output
-uv run pytest movie_service/tests::test_create_movie_returns_201_and_payload -vv
+uv run pytest movie_service/tests/test_movies.py::test_health_includes_app_name -vv
 
-# Print response in test
+# Add debug output in test
 def test_something(client):
     response = client.post("/movies", json={...})
-    print(response.json())  # Add this line
+    print(response.status_code)  # Add this
+    print(response.json())        # Add this
     assert ...
+
+# Run with print output visible
+uv run pytest movie_service/tests -v -s
 ```
 
-**Import errors:**
+---
+
+### Import errors in tests
+
+**Problem:** `from movie_service.app.main import app` fails
+
+**Fix:**
 ```bash
-# Ensure you're in the right directory
+# Ensure you run pytest from project root
+cd hello-uv  # NOT cd movie_service
 pwd  # Should show .../hello-uv
 
-# Run with proper module path
-uv run python -m movie_service.app.main
+# Run tests with proper module path
+uv run pytest movie_service/tests/
+
+# Check __init__.py files exist
+find movie_service -name "__init__.py"
 ```
 
-**Docker build fails:**
+---
+
+### Docker build fails
+
 ```bash
 # Build with verbose output
 docker build --progress=plain -t movie-service -f movie_service/Dockerfile .
 
-# Check if files exist
-ls movie_service/app/main.py
+# Check required files exist
+ls pyproject.toml uv.lock movie_service/app/main.py
+
+# Common issue: missing uv.lock
+# Fix: run `uv lock` to generate it
+
+# Test Docker locally before building
+docker run --rm python:3.12-slim python --version
+```
+
+---
+
+### Docker container exits immediately
+
+```bash
+# Check container logs
+docker logs movie-service
+
+# Run interactively to see errors
+docker run --rm -it -p 8000:8000 movie-service sh
+
+# Inside container:
+ls -la
+python --version
+python -m movie_service.app.main  # Should fail with helpful error
+```
+
+---
+
+### Port already in use
+
+```bash
+# Find what's using port 8000
+lsof -i :8000
+
+# Kill the process
+kill -9 <PID>
+
+# Or use a different port
+uv run uvicorn movie_service.app.main:app --port 8001
+```
+
+---
+
+### "Ready!" verification fails
+
+**Problem:** `import fastapi, pydantic` fails
+
+**Fix:**
+```bash
+# Reinstall dependencies
+uv sync
+
+# Check what's installed
+uv pip list
+
+# Verify pyproject.toml has dependencies
+cat pyproject.toml
+
+# Try installing explicitly
+uv add fastapi pydantic
 ```
 
 ## Key Takeaways
