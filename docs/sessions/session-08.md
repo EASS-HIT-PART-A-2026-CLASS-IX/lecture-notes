@@ -105,6 +105,28 @@ This solo script helps students feel the difference between remote Gemini (AI St
 | llama.cpp HTTP server | Your laptop (CLI) | `brew install llama.cpp`, download Gemma weights, run `llama-server` | Machines without GUI support or when you only need a lightweight CPU model. |
 | Google AI Studio (Gemini) | Google-managed cloud | Create API key in AI Studio, export `GOOGLE_API_KEY` + `GOOGLE_GEMINI_MODEL` | Local resources are scarce, you want consistent latency, or you’re teaching on Chromebooks. |
 
+## Agentic Backend Blueprint (ReAct + Pydantic AI)
+
+Session 08 is the first time students wire typed tools to their FastAPI stack, so keep this blueprint handy for anyone asking how those snippets evolve into the EX3-ready “agentic backend”:
+
+- **Architecture snapshot.** A top-level `orchestrator_agent` (Pydantic AI) follows a ReAct script—Thought → Action → Observation—and exposes tools that proxy to subagents: `code_agent` (sandboxed Python executor), `db_agent` (SQLModel CRUD), and optional guard/eval agents. Every agent receives the same dependency bundle (`Deps`) with a FastAPI-managed SQLModel session, a `CodeSandbox` adapter, and shared config/telemetry handles.
+- **HTTP + persistence loop.** `POST /agent/run` accepts `session_id`, user input, and metadata. The route loads prior messages/tasks from `User`, `Session`, `Message`, and `Task` tables, then calls `orchestrator_agent.run_sync(...)`. Tool calls persist back through the same SQLModel session so state lives in the database, not ephemeral chat buffers, and the FastAPI response mirrors the orchestrator’s typed output (e.g., `AgentRunResponse` with `reply` + `tasks_created`).
+- **Sandbox contract.** Never `exec()` inline—make agents call `CodeSandbox.execute(code: str) -> str`. Demo with a `SimpleInsecureSandbox`, then swap in Docker, Firecracker, or a remote code-interpreter service without changing the tool signature. This isolation step is the throughline when Session 09 introduces async jobs and Session 10/12 deploy the same contract inside Compose or MCP.
+- **Project layout reminder.**
+  ```text
+  app/
+    api/{schemas.py,routes.py}        # FastAPI entrypoints (POST /agent/run)
+    agents/{code_agent,db_agent,...}  # Pydantic AI agents + tools
+    agents/deps.py                    # shared dependency dataclass
+    models.py                         # SQLModel tables for User/Session/Message/Task
+    db.py                             # engine + get_session dependency
+    sandbox.py                        # CodeSandbox interface + adapters
+  main.py                             # FastAPI factory + router wiring
+  ```
+- **Implementation highlights.** Point students to the minimal scaffolds: SQLModel models with UTC timestamps + FKs; `init_db()` + `get_session()` context helpers; dataclass `Deps` (db + sandbox); decorator-based tools (`@code_agent.tool def run_python(...)`, `@db_agent.tool def list_tasks(...)`); orchestrator tool shims that simply invoke the subagent and return structured data; FastAPI schemas that mirror the orchestrator’s `output_type`.
+
+Use this section when bridging Session 08 labs to the follow-up work in Sessions 09–12 (async jobs, Redis/Compose, MCP). It keeps the ReAct mental model anchored to concrete Python files students already know.
+
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
