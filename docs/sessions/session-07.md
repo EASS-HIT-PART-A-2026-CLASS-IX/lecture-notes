@@ -38,7 +38,7 @@ Session 06 delivered Streamlit + Typer and previewed modern JavaScript. Session 
 > **Why?** Sessions 06–07 rely on FastAPI for the backend *and* a modern JavaScript toolchain for UI work. Many students are Python-first, so this section captures the minimum commands you’ll use repeatedly.
 
 ### Node runtime
-- Install Node 20+ (Usefnm, volta, or the Node installer—whatever your team standard is).
+- Install Node 20+ (use fnm, Volta, or the Node installer—whatever your team standard is).
 - Verify the version and package manager bridge (Corepack) whenever you sit down at a new machine:
   ```bash
   node --version          # Expect v20.x
@@ -196,6 +196,23 @@ export function useMovies(genre?: string) {
 ```
 Wrap the app in `QueryClientProvider` (update `main.tsx`).
 
+```tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </React.StrictMode>,
+);
+```
+
 ### Step 4 – Replace `src/App.tsx`
 ```tsx
 import { FormEvent, useState } from "react";
@@ -332,7 +349,7 @@ def test_create_movie_variants(client, payload):
     response = client.post("/movies", json=payload, headers={"X-Trace-Id": "pytest"})
     assert response.status_code == 201
     assert response.json()["genre"].istitle()
-
+                                                 
 
 @pytest.mark.parametrize("bad_year", [1800, 2150])
 def test_create_movie_rejects_out_of_range_year(client, bad_year):
@@ -343,25 +360,32 @@ def test_create_movie_rejects_out_of_range_year(client, bad_year):
     assert response.status_code == 422
 
 
-@given(st.text(min_size=1, max_size=40))
+ascii_titles = st.text(
+    alphabet=st.characters(min_codepoint=32, max_codepoint=126),
+    min_size=1,
+    max_size=40,
+)
+
+
+@given(title=ascii_titles)
 def test_title_round_trip(client, title):
     response = client.post(
         "/movies",
         json={"title": title, "year": 2000, "genre": "Drama"},
     )
-    if response.status_code == 201:
-        movie_id = response.json()["id"]
-        fetched = client.get(f"/movies/{movie_id}").json()
-        assert fetched["title"] == title
+    response.raise_for_status()
+    movie_id = response.json()["id"]
+    fetched = client.get(f"/movies/{movie_id}").json()
+    assert fetched["title"] == title
 ```
-Call out Hypothesis shrink reports and how to fix flaky inputs.
+The `ascii_titles` strategy limits Hypothesis to printable ASCII so Postgres validators don’t choke on control characters. Call out Hypothesis shrink reports and how to fix flaky inputs.
 
 ### 3. Snapshot + coverage + Logfire
 ```python
 from pathlib import Path
 
 SNAPSHOT_DIR = Path("tests/snapshots")
-SNAPSHOT_DIR.mkdir(exist_ok=True)
+SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 def test_movies_list_snapshot(client):
     client.post("/movies", json={"title": "Interstellar", "year": 2014, "genre": "Sci-Fi"})
