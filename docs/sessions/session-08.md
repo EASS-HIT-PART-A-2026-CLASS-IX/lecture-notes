@@ -808,6 +808,519 @@ Add this lightweight option for students who prefer a CLI workflow or can’t in
 
 > 🎉 **Quick win:** Once `agent.run(...)` returns structured recommendations without touching an external API, you have a reproducible agent test harness ready for EX3 demos.
 
+### Case study – AI calculator microservices
+Session 08 is also where we zoom out from “AI helper bolted onto an existing API” to “LLM coordinating multiple FastAPI services.” Use this optional case study (good for EX3 capstones) to walk through an entire microservice stack where a deterministic calculator, a sandboxed Python REPL, and a Pydantic AI agent cooperate.
+
+#### Quick REPL refresher (why we care)
+A **REPL** is a *Read–Eval–Print Loop*: read user code (e.g., `sin(x) + 2`), evaluate inside a sandbox, print the result, and repeat. In this calculator stack the LLM is **not** the evaluator; it is the planner/dispatcher that chooses among three tools:
+- Pure arithmetic → call the deterministic calculator API.
+- Graphing requests → call the point-sampling endpoint and hand results to the UI.
+- Arbitrary Python → send the code to a hardened REPL microservice.
+
+Pydantic AI orchestrates the choice so the LLM never needs to execute unsafe code itself.
+
+#### Architecture spec string (drop directly into docs or code comments)
+```python
+CALCULATOR_SYSTEM_DESIGN = """
+Title: AI Calculator with Graphing using PydanticAI + FastAPI
+
+Goal
+----
+Expose an HTTP API that behaves like a graphic calculator:
+- Handles simple arithmetic deterministically.
+- Handles complex / natural-language math via an LLM agent.
+- Supports graphing: `plot sin(x) from -2π to 2π`, etc.
+- Uses a Python REPL microservice for on-the-fly code execution.
+- Prompts & agents are centrally managed via a small "prompt factory".
+
+High-Level Components
+---------------------
+1. basic-calc-service (HTTP, FastAPI)
+   - Pure deterministic calculator + graph sampler.
+   - No AI. Safe numeric eval only.
+   - Endpoints:
+     - POST /eval
+       - Request: { "expression": "2 + 2" }
+       - Response: { "result": 4.0, "mode": "basic" }
+     - POST /graph/points
+       - Request: {
+           "expression": "sin(x)",
+           "x_min": -6.28318,
+           "x_max":  6.28318,
+           "num_points": 200
+         }
+       - Response: { "points": [ { "x": float, "y": float }, ... ] }
+
+2. repl-service (HTTP, FastAPI)
+   - Python REPL in a sandboxed environment.
+   - Intended for "advanced" math / algorithmic code.
+   - You restrict imports and builtins. No I/O, no network.
+   - Endpoint:
+     - POST /python
+       - Request: { "code": "import math; math.sin(0.5) ** 2" }
+       - Response: { "result": "0.22984884706593015" }
+
+3. ai-gateway-service (HTTP, FastAPI + PydanticAI)
+   - Front-door for "agentic" calculator usage.
+   - Uses PydanticAI Agent with tools that call the two backends.
+   - Routing rules enforced via system prompt:
+     - Simple arithmetic, no loops / defs / custom variables:
+       → use basic_calc_tool (calls /eval).
+     - Requests asking for plots / graphs:
+       → use graph_points_tool (calls /graph/points) and include the points in output.
+     - Anything that looks like Python code, algorithmic steps, or custom functions:
+       → use python_repl_tool (calls /python).
+   - Endpoints:
+     - POST /ai/calculate
+       - Request: { "query": "plot sin(x) from -2π to 2π" }
+       - Response (structured Pydantic model):
+         {
+           "mode": "graph",
+           "final_answer": "Plotted sin(x) from -2π to 2π.",
+           "numeric_result": null,
+           "graph_points": [ { "x": ..., "y": ... }, ... ],
+           "reasoning": "I interpreted the request as a graph query..."
+         }
+     - POST /classic/calculate
+       - Thin pass-through to basic-calc-service /eval, for clients that want no LLM.
+
+4. Prompt / Agent Factory
+   - A central place for:
+     - System prompts for calculator domain.
+     - Creating / configuring the PydanticAI Agent with:
+       - model name
+       - output schema
+       - tools (basic_calc_tool, graph_points_tool, python_repl_tool)
+   - Exposed as:
+     - PromptFactory.calculator_system_prompt()
+     - build_calculator_agent()  # usually called once at import, then reused.
+
+Execution Flow
+--------------
+Example: "What is (2 + 3) * 5?"
+1. Client → ai-gateway /ai/calculate with the query string.
+2. PydanticAI agent runs with calculator_system_prompt.
+3. Model recognizes this as simple arithmetic → uses basic_calc_tool.
+4. basic_calc_tool calls basic-calc-service /eval, gets "25.0".
+5. Agent builds a CalculatorAnswer:
+   - mode="basic"
+   - numeric_result=25.0
+   - final_answer="(2 + 3) * 5 = 25"
+   - reasoning describes tool usage.
+6. FastAPI returns CalculatorAnswer as JSON.
+
+Example: "Write Python to compute the sum of squares from 1 to 100 and give me the result."
+1. Client → /ai/calculate.
+2. Agent recognizes "write Python" + non-trivial loop → python_repl_tool.
+3. It synthesizes code like:
+   "sum(i*i for i in range(1, 101))"
+4. python_repl_tool calls repl-service /python.
+5. REPL returns "338350".
+6. Agent wraps into CalculatorAnswer with mode="repl".
+
+Example: "Plot sin(x)/x from -10 to 10"
+1. Client → /ai/calculate.
+2. Agent decides it's a graph task → graph_points_tool with expression "sin(x)/x".
+3. graph_points_tool calls basic-calc-service /graph/points.
+4. basic-calc-service samples x in [-10, 10], computes y.
+5. Agent returns CalculatorAnswer with:
+   - mode="graph"
+   - graph_points populated
+   - final_answer gives natural language explanation.
+
+Security Considerations
+-----------------------
+- basic-calc-service implements a restricted AST-based evaluator:
+  - Only numeric literals, + - * / **, parentheses, unary +/-, some math functions.
+- repl-service:
+  - No direct eval of arbitrary user string in Python global scope.
+  - Restrict builtins, imports, and accessible modules.
+  - In a real system, run in a separate container / process with resource limits.
+
+When to Use Classical vs. REPL vs. "No LLM" API
+-----------------------------------------------
+- /classic/calculate:
+  - The caller already has a structured math expression and wants deterministic behavior.
+  - This bypasses the LLM entirely.
+- /ai/calculate with PydanticAI agent:
+  - User gives natural language, ambiguous goals, or "do the steps for me".
+  - The agent internally decides:
+    - basic_calc_tool for direct arithmetic.
+    - graph_points_tool for graphing.
+    - python_repl_tool for advanced logic.
+
+Tech Stack
+----------
+- FastAPI for all HTTP services.
+- Pydantic v2 + PydanticAI for agents and structured outputs.
+- httpx for service-to-service HTTP calls.
+- uvicorn for local dev servers.
+"""
+```
+
+#### Minimal working demo (4 scripts + requirements)
+Use the same `uv` workflow as the rest of the course. Create a folder (`examples/ai-calculator/` or similar) and drop in these files.
+
+##### requirements.txt
+```
+fastapi
+uvicorn
+httpx
+pydantic-ai
+pydantic>=2.0
+```
+
+##### basic-calc-service.py
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+import ast
+import math
+from typing import List
+
+app = FastAPI(title="basic-calc-service")
+
+
+class EvalRequest(BaseModel):
+    expression: str = Field(..., description="Math expression, e.g. '2 + 3 * 4'")
+
+
+class EvalResponse(BaseModel):
+    result: float
+    mode: str = "basic"
+
+
+class GraphRequest(BaseModel):
+    expression: str = Field(..., description="Function of x, e.g. 'sin(x)'")
+    x_min: float = -10.0
+    x_max: float = 10.0
+    num_points: int = 200
+
+
+class Point(BaseModel):
+    x: float
+    y: float
+
+
+class GraphResponse(BaseModel):
+    points: List[Point]
+
+
+_ALLOWED_NAMES = {
+    k: getattr(math, k)
+    for k in (
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "sqrt",
+        "log",
+        "log10",
+        "exp",
+        "pi",
+        "e",
+        "fabs",
+    )
+}
+_ALLOWED_NODE_TYPES = (
+    ast.Expression,
+    ast.BinOp,
+    ast.UnaryOp,
+    ast.Num,
+    ast.Constant,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.Pow,
+    ast.USub,
+    ast.UAdd,
+    ast.Load,
+    ast.Call,
+    ast.Name,
+)
+
+
+def _safe_eval(expr: str, extra_names: dict | None = None) -> float:
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        raise ValueError(f"Invalid expression: {e}") from e
+
+    for node in ast.walk(tree):
+        if not isinstance(node, _ALLOWED_NODE_TYPES):
+            raise ValueError(f"Disallowed expression element: {type(node).__name__}")
+
+    names = dict(_ALLOWED_NAMES)
+    if extra_names:
+        names.update(extra_names)
+
+    code = compile(tree, "<expr>", "eval")
+    return float(eval(code, {"__builtins__": {}}, names))
+
+
+@app.post("/eval", response_model=EvalResponse)
+def eval_expression(body: EvalRequest) -> EvalResponse:
+    try:
+        value = _safe_eval(body.expression)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return EvalResponse(result=value)
+
+
+@app.post("/graph/points", response_model=GraphResponse)
+def graph_points(body: GraphRequest) -> GraphResponse:
+    if body.num_points <= 1:
+        raise HTTPException(status_code=400, detail="num_points must be > 1")
+
+    step = (body.x_max - body.x_min) / (body.num_points - 1)
+    pts: list[Point] = []
+    for i in range(body.num_points):
+        x = body.x_min + i * step
+        try:
+            y = _safe_eval(body.expression, extra_names={"x": x})
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        pts.append(Point(x=x, y=y))
+
+    return GraphResponse(points=pts)
+```
+
+##### repl-service.py
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+import math
+
+app = FastAPI(title="repl-service")
+
+
+class PythonRequest(BaseModel):
+    code: str = Field(..., description="Small Python expression or snippet returning a value")
+
+
+class PythonResponse(BaseModel):
+    result: str
+
+
+def _restricted_eval(code: str):
+    allowed_globals = {
+        "__builtins__": {},
+        "math": math,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "sqrt": math.sqrt,
+        "pi": math.pi,
+        "e": math.e,
+    }
+    try:
+        return eval(code, allowed_globals, {})
+    except Exception as e:
+        raise ValueError(str(e)) from e
+
+
+@app.post("/python", response_model=PythonResponse)
+def run_python(body: PythonRequest) -> PythonResponse:
+    try:
+        value = _restricted_eval(body.code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return PythonResponse(result=repr(value))
+```
+
+##### prompts.py (prompt factory)
+```python
+class PromptFactory:
+    BASE_CALCULATOR_PROMPT = """
+You are an AI calculator and math assistant.
+
+You have three tools:
+1. basic_calc_tool(expression: str) -> float
+   - Use ONLY for straightforward numeric arithmetic expressions.
+   - No loops, no Python keywords, no control flow, no variable definitions.
+   - Examples: "2 + 3 * 4", "(2 + 3) ** 2 / 5", "sin(0.5) + cos(1.0)".
+
+2. graph_points_tool(expression: str, x_min: float, x_max: float, num_points: int) -> list[Point]
+   - Use when the user wants a plot or graph.
+   - Examples: "plot sin(x) from -2π to 2π", "graph x**2 between -10 and 10".
+   - Choose a reasonable default range and num_points if the user doesn't specify them,
+     but explicitly state your assumptions in the final_answer.
+
+3. python_repl_tool(code: str) -> str
+   - Use for complex or algorithmic requests that require general Python.
+   - Examples: "write python to compute sum of squares from 1 to n and give the value for n=100",
+     "simulate a sequence and give the final value", "numerically integrate exp(-x**2) from 0 to 5".
+
+Decision rule:
+- If you can express the user's request as a single pure math expression over numbers (and maybe x),
+  and no custom logic is needed -> use basic_calc_tool (and graph_points_tool for plotting).
+- If the user explicitly asks for Python code execution, loops, conditionals, or algorithms -> use python_repl_tool.
+- If the user asks for a graph/plot -> call graph_points_tool (and optionally basic_calc_tool for specific values).
+
+Output schema:
+- You must always fill the CalculatorAnswer output object:
+  - mode: "basic" | "graph" | "repl" | "mixed"
+  - final_answer: concise explanation to the user
+  - numeric_result: optional numeric result if applicable
+  - graph_points: optional list of (x, y) for plotting
+  - reasoning: short explanation of which tools you used and why, in one or two sentences.
+
+Be terse but clear in final_answer.
+"""
+
+    @classmethod
+    def calculator_system_prompt(cls) -> str:
+        return cls.BASE_CALCULATOR_PROMPT.strip()
+```
+
+##### ai-gateway.py (agent orchestrator + FastAPI)
+```python
+from dataclasses import dataclass
+from typing import List, Literal, Optional
+
+import httpx
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, RunContext
+
+from prompts import PromptFactory
+
+BASIC_CALC_URL = "http://localhost:8001"
+REPL_URL = "http://localhost:8002"
+
+app = FastAPI(title="ai-gateway-service")
+
+
+class GraphPoint(BaseModel):
+    x: float
+    y: float
+
+
+class CalculatorAnswer(BaseModel):
+    mode: Literal["basic", "graph", "repl", "mixed"]
+    final_answer: str
+    numeric_result: Optional[float] = None
+    graph_points: Optional[List[GraphPoint]] = None
+    reasoning: str
+
+
+@dataclass
+class CalcDeps:
+    basic_calc_url: str
+    repl_url: str
+
+
+calculator_agent = Agent[CalcDeps, CalculatorAnswer](
+    "gateway/openai:gpt-4.1-mini",
+    deps_type=CalcDeps,
+    output_type=CalculatorAnswer,
+    system_prompt=PromptFactory.calculator_system_prompt(),
+)
+
+
+@calculator_agent.tool
+async def basic_calc_tool(ctx: RunContext[CalcDeps], expression: str) -> float:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{ctx.deps.basic_calc_url}/eval",
+            json={"expression": expression},
+            timeout=5.0,
+        )
+    if resp.status_code != 200:
+        raise RuntimeError(f"basic_calc_service error: {resp.text}")
+    data = resp.json()
+    return float(data["result"])
+
+
+@calculator_agent.tool
+async def graph_points_tool(
+    ctx: RunContext[CalcDeps],
+    expression: str,
+    x_min: float,
+    x_max: float,
+    num_points: int = 200,
+) -> List[GraphPoint]:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{ctx.deps.basic_calc_url}/graph/points",
+            json={
+                "expression": expression,
+                "x_min": x_min,
+                "x_max": x_max,
+                "num_points": num_points,
+            },
+            timeout=10.0,
+        )
+    if resp.status_code != 200:
+        raise RuntimeError(f"graph service error: {resp.text}")
+    raw = resp.json()
+    return [GraphPoint(**p) for p in raw["points"]]
+
+
+@calculator_agent.tool
+async def python_repl_tool(ctx: RunContext[CalcDeps], code: str) -> str:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{ctx.deps.repl_url}/python",
+            json={"code": code},
+            timeout=10.0,
+        )
+    if resp.status_code != 200:
+        raise RuntimeError(f"repl service error: {resp.text}")
+    return resp.json()["result"]
+
+
+class AiCalcRequest(BaseModel):
+    query: str = Field(..., description="Natural language calculator request.")
+
+
+@app.post("/ai/calculate", response_model=CalculatorAnswer)
+async def ai_calculate(body: AiCalcRequest) -> CalculatorAnswer:
+    try:
+        result = await calculator_agent.run(
+            body.query,
+            deps=CalcDeps(basic_calc_url=BASIC_CALC_URL, repl_url=REPL_URL),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI error: {e}") from e
+
+    return result.output
+
+
+class ClassicCalcRequest(BaseModel):
+    expression: str
+
+
+class ClassicCalcResponse(BaseModel):
+    result: float
+    mode: str = "basic"
+
+
+@app.post("/classic/calculate", response_model=ClassicCalcResponse)
+async def classic_calculate(body: ClassicCalcRequest) -> ClassicCalcResponse:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASIC_CALC_URL}/eval",
+            json={"expression": body.expression},
+            timeout=5.0,
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=400, detail=resp.text)
+    data = resp.json()
+    return ClassicCalcResponse(result=float(data["result"]))
+```
+
+Run each service with uvicorn on separate ports (`uvicorn basic-calc-service:app --reload --port 8001`, etc.), then point the `ai-gateway` at them. Tool-only pytest coverage mirrors the movie-service flow from earlier labs.
+
+#### Debrief prompts for class discussion
+- *Where did we force determinism vs. allow the LLM to be creative?*
+- *How does the REPL benefit from being its own microservice (security, resource limits)?*
+- *Could you swap Google AI Studio for LM Studio here just by changing the agent’s model configuration?*
+- *What other deterministic microservices (weather, currency, feature flags) could you pair with an LLM planner now that you have this template?*
+
 ## Retrospective & Next Steps
 - Share prompt wins/fails; compile a shared `prompts.md` with best practices.
 - Action items: finalize EX2 deliverables, keep AI usage logs current, prep for Session 09 (async + reliability).
