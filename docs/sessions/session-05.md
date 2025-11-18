@@ -1,35 +1,39 @@
 # Session 05 – PostgreSQL Foundations for the Movie Service
 
 - **Date:** Monday, Dec 1, 2025
-- **Theme:** Graduate from local SQLite files to a production-ready PostgreSQL instance with Alembic migrations, health checks, and test fixtures.
+- **Theme:** Graduate from local SQLite to production-colored PostgreSQL with Docker Compose, Alembic migrations, connection health checks, and Postgres-aware tests.
 
 ## Session Story
-Session 04 proved the repository abstraction works by persisting to SQLite. Session 05 turns that prototype into a production-ready persistence layer: we provision PostgreSQL with Docker Compose, update SQLModel + Alembic settings, introduce connection pools, and teach pytest how to spin up an isolated Postgres database per run. When the dust settles, every request hits a real database just like it will in staging and Exercise 3 (EX3), and the rest of the stack (Streamlit in Session 06, React/Vite in Session 07) can trust the API under load.
+Session 04 proved the repository abstraction by persisting to SQLite. Session 05 keeps the same FastAPI surface but swaps the backing store for PostgreSQL, adds connection-pool guardrails, and teaches every team how to run, migrate, and test against the database they’ll ship to staging and Exercise 3. Students leave with Docker Compose running Postgres, updated configs + migrations, health endpoints with trace IDs, and pytest fixtures that create/tear down disposable Postgres databases.
 
 ## Learning Objectives
-- Run PostgreSQL locally with Docker Compose and manage credentials/env vars via `pydantic-settings`.
-- Update SQLModel/Alembic configuration (engines, metadata, migrations) to target Postgres instead of SQLite.
-- Implement health checks, seed scripts, and connection pooling best practices for async/sync FastAPI apps.
-- Write pytest fixtures that create/tear down Postgres schemas so integration tests stay deterministic.
+- Provision PostgreSQL locally with Docker Compose and manage credentials via `pydantic-settings`.
+- Point SQLModel, Alembic, and uv-based scripts at Postgres URLs instead of SQLite.
+- Implement connection pooling, CORS, and health checks that prove DB reachability.
+- Seed and reset Postgres safely with Typer/uv scripts.
+- Write pytest fixtures that create isolated Postgres databases per run.
 
-## What You’ll Build
-- `docker-compose.yml` service for PostgreSQL + admin tools (`pgAdmin`, `pgcli`).
-- Updated `.env(.example)` entries for `MOVIE_DATABASE_URL`, `MOVIE_DB_HOST`, etc.
-- `movie_service/app/database.py` pointing SQLModel/Alembic to Postgres with pooling options.
-- Alembic migration targeting Postgres types (UUIDs, timestamps) plus a repeatable seed command.
-- Test utilities that provision a throwaway Postgres database (`movies_test_<uuid>`) before each test module.
+## Deliverables (What You’ll Build)
+- `docker-compose.yml` running Postgres (plus optional admin tools).
+- `.env(.example)` entries for `MOVIE_DATABASE_URL`, pool settings, and optional test URLs.
+- `movie_service/app/database.py` configured for psycopg + pooling.
+- Alembic migrations targeted at Postgres types.
+- Seed + diagnostic scripts (Typer CLI) connected to the Postgres engine.
+- pytest fixtures that create/drop throwaway Postgres databases (e.g., `movies_test_<uuid>`).
 
-## Prerequisites
-1. Complete Session 04 with SQLite + SQLModel working end-to-end.
-2. Install Docker Desktop (or Colima) and ensure `docker compose version` works.
-3. Install Postgres tooling inside `hello-uv`:
-   ```bash
-   uv add "psycopg[binary]"
-   ```
-4. Confirm `uv run python -c "import psycopg"` succeeds. If not, reinstall `psycopg[binary]` and ensure OpenSSL/libpq dependencies exist (Homebrew covers this on macOS).
+## Toolkit Snapshot
+- **PostgreSQL 16** – production-grade relational database with concurrency + JSONB.
+- **psycopg 3** – default sync driver for SQLModel/SQLAlchemy.
+- **Docker Compose** – standard way to run Postgres consistently on every laptop.
+- **Alembic** – captures schema history as revisions before EX3 deployments.
+- **pytest** – integration tests now talk to real Postgres databases.
+- **Typer/Rich** – optional CLI helpers for seeds + ops automation.
 
-### Pre-class Setup (JiTT)
-1. Create `docker-compose.yml` with a `postgres` service:
+## Before Class (JiTT)
+1. Finish Session 04 and ensure SQLite tests still pass.
+2. Install Docker Desktop (or Colima) and confirm `docker compose version` works.
+3. Add psycopg: `uv add "psycopg[binary]"` and verify with `uv run python -c "import psycopg"`.
+4. Create `docker-compose.yml`:
    ```yaml
    services:
      db:
@@ -45,7 +49,7 @@ Session 04 proved the repository abstraction works by persisting to SQLite. Sess
    volumes:
      pgdata:
    ```
-2. Update `.env.example`:
+5. Update `.env.example` / `.env`:
    ```ini
    MOVIE_DATABASE_URL="postgresql+psycopg://movie:movie@localhost:5432/movies"
    MOVIE_DB_HOST="localhost"
@@ -53,39 +57,20 @@ Session 04 proved the repository abstraction works by persisting to SQLite. Sess
    MOVIE_DB_USER="movie"
    MOVIE_DB_PASSWORD="movie"
    ```
-3. Start the database and verify connectivity:
-   ```bash
-   docker compose up -d db
-   pgcli postgresql://movie:movie@localhost:5432/movies -c "SELECT 1;"
-   ```
-4. Run `uv run alembic upgrade head` to migrate SQLite changes into Postgres before class.
+6. Start the database: `docker compose up -d db` and verify with `pgcli postgresql://movie:movie@localhost:5432/movies -c "SELECT 1;"`.
+7. Run `uv run alembic upgrade head` so the Postgres schema matches the SQLite models before class starts.
 
-## Toolkit Snapshot
-- **PostgreSQL 16** – production-grade relational database, supporting concurrency, JSONB, and extensions.
-- **psycopg 3** – async-friendly Postgres driver that SQLModel/SQLAlchemy leverage.
-- **Alembic** – migration orchestrator; now configured for Postgres schemas, sequences, and UUIDs.
-- **Docker Compose** – spins up Postgres + admin tools consistently across laptops.
-- **pytest** – still the main harness, now paired with Postgres-specific fixtures or `testcontainers` (optional stretch).
-- **Rich/Typer** – reused for migration + seed scripts, ensuring developers can manage Postgres without manual SQL.
-
-## Agenda
+## Session Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Recap & intent | 10 min | Discussion | Why SQLite isn’t enough for EX3; Postgres expectations. |
-| Postgres architecture primer | 20 min | Talk + whiteboard | Connection strings, pooling, Alembic config, Docker Compose. |
+| Recap & intent | 10 min | Discussion | Why SQLite won’t survive concurrent clients; Postgres expectations. |
+| Postgres architecture primer | 20 min | Talk + whiteboard | Connection strings, pools, Alembic env vars, Docker Compose. |
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Provision Postgres + migrate SQLModel + health checks.** |
 | Break | 10 min | — | Encourage pgcli exploration, share `docker compose` tips. |
-| **Part C – Lab 2** | **45 min** | **Guided testing** | **Seeds, fixtures, Alembic scripts, multi-db strategy.** |
-| Wrap-up & Streamlit preview | 10 min | Q&A | How Session 06’s UI benefits from a hardened DB. |
+| **Part C – Lab 2** | **45 min** | **Guided testing** | **Seeds, fixtures, Alembic scripts, multi-DB strategy.** |
+| Wrap-up & Streamlit preview | 10 min | Q&A | How Session 06’s UI builds on this backend. |
 
-## Part A – Theory Highlights
-1. **Why Postgres now?** Concurrency, transactions, row-level security, JSONB columns, and the ability to mirror production before EX3. SQLite is great for local dev but single-writer constraints will hurt once Streamlit/React clients join.
-2. **Connection management:** prefer a single global engine with `pool_size` tuned for your workload. Discuss `asyncpg` vs synchronous psycopg; we’ll stick to sync for now.
-3. **Migrations + environments:** keep `.env` authoritative, but drive migrations via Alembic env variables—not hardcoded strings. Introduce `MOVIE_DATABASE_URL_TEST` for pytest.
-4. **Testing strategy:** options include `pytest-postgresql`, `testcontainers`, or manual create/drop logic via psycopg. Today we’ll implement a deterministic create/drop scheme using unique database names.
-5. **Observability readiness:** Postgres exposes statistics via `pg_stat_activity`; we’ll hook those metrics to Logfire/Grafana later, but today’s focus is ensuring logs include DB host/DB name on connection failures.
-
-## Part B – Lab 1: Provision Postgres + migrate SQLModel (45 minutes)
+## Lab 1 – Provision Postgres + migrate SQLModel (45 min)
 Goal: replace SQLite-specific assumptions with Postgres-friendly config and confirm CRUD still works.
 
 ### Step 0 – Boot Postgres
@@ -93,11 +78,11 @@ Goal: replace SQLite-specific assumptions with Postgres-friendly config and conf
 docker compose up -d db
 pg_isready -h localhost -p 5432 -d movies -U movie
 ```
-If the command fails, run `docker compose logs db` and fix credentials before moving on.
+If the readiness probe fails, inspect `docker compose logs db` before proceeding.
 
 ### Step 1 – Update settings
-`movie_service/app/config.py`:
-```python
+`movie_service/app/config.py`
+````python
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -109,12 +94,12 @@ class Settings(BaseSettings):
     pool_timeout: int = 30
 
     model_config = SettingsConfigDict(env_prefix="MOVIE_", env_file=".env", extra="ignore")
-```
+````
 Add `MOVIE_DATABASE_URL_TEST` later for pytest.
 
 ### Step 2 – Configure the Postgres engine
-`movie_service/app/database.py`:
-```python
+`movie_service/app/database.py`
+````python
 from typing import Generator
 
 from sqlmodel import Session, SQLModel, create_engine
@@ -137,14 +122,17 @@ def init_db() -> None:
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
-```
-> ✅ `pool_pre_ping` guards against stale connections when containers restart.
+````
+`pool_pre_ping=True` protects the app when the container restarts or idle connections go stale.
 
 ### Step 3 – Align Alembic with Postgres
-`alembic/env.py` excerpt:
-```python
+`migrations/env.py` excerpt:
+````python
 from movie_service.app.database import engine
+from movie_service.app.config import Settings
 from sqlmodel import SQLModel
+
+settings = Settings()
 
 def run_migrations_offline() -> None:
     context.configure(
@@ -160,27 +148,28 @@ def run_migrations_online() -> None:
         context.configure(connection=connection, target_metadata=SQLModel.metadata)
         with context.begin_transaction():
             context.run_migrations()
-```
-Run:
+````
+Commands:
 ```bash
 uv run alembic revision --autogenerate -m "migrate to postgres"
 uv run alembic upgrade head
 ```
-Inspect the migration to verify Postgres-specific types (serial primary keys, timestamps).
+Inspect the revision to confirm Postgres types (serial, timestamptz, etc.).
 
-### Step 4 – Build a health endpoint with trace support
+### Step 4 – Add health + middleware support
 `movie_service/app/main.py` snippet:
-```python
+````python
 import uuid
-from fastapi import FastAPI, Depends, Request
+
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import engine
+from .dependencies import RepositoryDep, SettingsDep
+from .models import MovieCreate, MovieRead
 
 app = FastAPI(title="Movie Service", version="0.4.0")
-
-# Add CORS for upcoming UI clients (Session 06+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -195,11 +184,6 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_trace_id(request: Request, call_next):
-    """Add or preserve X-Trace-Id for request tracing.
-    
-    Session 06's Streamlit client and Session 07's Vite client
-    will send this header. If missing, we generate one.
-    """
     trace_id = request.headers.get("X-Trace-Id") or f"req-{uuid.uuid4().hex[:8]}"
     request.state.trace_id = trace_id
     response = await call_next(request)
@@ -209,31 +193,26 @@ async def add_trace_id(request: Request, call_next):
 
 @app.get("/healthz", tags=["health"])
 def healthcheck() -> dict[str, str]:
-    """Health check with database connectivity test.
-    
-    Returns trace ID so clients can correlate logs.
-    """
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return {"status": "ok", "database": "postgres"}
+````
+Reuse the existing movie routes from Session 04; CRUD logic stays unchanged.
 
-
-# ...existing movie routes below...
-```
-Run `uv run uvicorn movie_service.app.main:app --reload` and hit `/healthz` + `/movies` to confirm Postgres-backed CRUD works.
-
-Test trace ID propagation:
+### Step 5 – Smoke test against Postgres
 ```bash
-curl -H "X-Trace-Id: test-123" http://localhost:8000/healthz -v
-# Should see X-Trace-Id: test-123 in response headers
+uv run uvicorn movie_service.app.main:app --reload
+curl http://localhost:8000/healthz -H "X-Trace-Id: test-123" -v
+curl http://localhost:8000/movies
 ```
+Successful responses prove FastAPI, SQLModel, Alembic, and CORS are now Postgres-aware.
 
-## Part C – Lab 2: Seeds, fixtures, and safety rails (45 minutes)
+## Lab 2 – Seeds, fixtures, and safety rails (45 min)
 Goal: treat Postgres as the default datastore for dev + tests.
 
-### Step 1 – Seed script for Postgres
-`scripts/db.py`:
-```python
+### Step 1 – Typer seed script
+`scripts/db.py`
+````python
 import typer
 from sqlmodel import Session
 
@@ -252,42 +231,48 @@ def bootstrap(sample: int = 5) -> None:
         for idx in range(sample):
             repo.create(MovieCreate(title=f"Sample {idx}", year=2000 + idx, genre="sci-fi"))
     typer.echo("Seed complete")
-```
+
+
+if __name__ == "__main__":
+    app()
+````
 Run `uv run python scripts/db.py bootstrap --sample 3`.
 
 ### Step 2 – Test database strategy
-Create `tests/conftest.py` snippet:
-```python
+`movie_service/tests/conftest.py`
+````python
 import uuid
 
 import psycopg
 import pytest
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, Session, create_engine
 
 from movie_service.app.dependencies import get_repository
+from movie_service.app.main import app
 from movie_service.app.repository_db import MovieRepository
 
 DB_TEMPLATE = "postgresql+psycopg://movie:movie@localhost:5432/{db_name}"
+ADMIN_URL = "postgresql://movie:movie@localhost:5432/postgres"
 
 
 def _create_test_db() -> str:
     db_name = f"movies_test_{uuid.uuid4().hex[:8]}"
-    with psycopg.connect("postgresql://movie:movie@localhost:5432/postgres", autocommit=True) as conn:
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
         conn.execute(f"CREATE DATABASE {db_name}")
     return DB_TEMPLATE.format(db_name=db_name)
 
 
 def _drop_test_db(url: str) -> None:
     db_name = url.rsplit("/", 1)[-1]
-    with psycopg.connect("postgresql://movie:movie@localhost:5432/postgres", autocommit=True) as conn:
+    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
         conn.execute(
             f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{db_name}'"
         )
         conn.execute(f"DROP DATABASE IF EXISTS {db_name}")
 
 
-@pytest.fixture
-def session_url() -> str:
+@pytest.fixture()
+def engine_url():
     url = _create_test_db()
     try:
         yield url
@@ -295,273 +280,91 @@ def session_url() -> str:
         _drop_test_db(url)
 
 
-@pytest.fixture
-def repo(monkeypatch: pytest.MonkeyPatch, session_url: str) -> MovieRepository:
-    engine = create_engine(session_url)
+@pytest.fixture()
+def session(engine_url):
+    engine = create_engine(engine_url)
     SQLModel.metadata.create_all(engine)
-
-    def _override_repo():
-        with Session(engine) as session:
-            yield MovieRepository(session)
-
-    monkeypatch.setattr("movie_service.app.dependencies.get_repository", _override_repo)
     with Session(engine) as session:
-        yield MovieRepository(session)
-```
-Run `uv run pytest -q` and confirm each test creates/destroys its own database.
+        yield session
+
+
+@pytest.fixture(autouse=True)
+def override_repo(session):
+    app.dependency_overrides[get_repository] = lambda: MovieRepository(session)
+    yield
+    app.dependency_overrides.pop(get_repository, None)
+````
+These fixtures provision a clean database for every test session and remove it afterward.
 
 ### Step 3 – Document and monitor
-- Add `docs/runbooks/postgres.md` (or README section) describing `docker compose` commands, credentials, and troubleshooting tips.
-- Configure Logfire (or simple logging) to include `db_host`, `db_name`, and pool statistics.
-- Capture `pg_dump` instructions for backups; emphasize storing migrations/seed data alongside code.
+- Add `docs/runbooks/postgres.md` (or README section) covering Docker commands, credentials, and troubleshooting.
+- Capture `pg_dump` + restore commands for backups.
+- Log `db_host`, `db_name`, and the trace ID when `/healthz` fails; these details will feed Session 07 diagnostics.
 
-> 🎉 **Quick win:** When pytest, Alembic, and `/healthz` all succeed against Postgres, the backend is production-colored and ready for Session 06’s Streamlit UI.
+### Step 4 – Regression checks
+- `docker compose ps` shows the Postgres container running.
+- `uv run pytest -q` creates/drops databases cleanly.
+- `uv run alembic upgrade head` targets the Postgres URL.
 
-## Optional Lab – Text-to-SQL PoC with a Local LLM (30 minutes)
-This side quest is for folks who want to showcase “hybrid” database + LLM workflows without touching the core CRUD paths. The goal is to expose a read-only `/admin/sql-assistant` endpoint that lets instructors/devs type questions such as “How many sci-fi movies per year after 2010?” and receive the generated SQL plus result set. Keep it optional: it’s an analytics/debug helper, not a production feature.
+## Optional Lab – Text-to-SQL PoC (30 min)
+Use only if time allows; it showcases how to bolt a local LLM onto the hardened backend.
 
-### Step 0 – Run a small OpenAI-compatible LLM locally
-Fire up `llama-server` (or an equivalent) in another terminal so the FastAPI app can call it via an OpenAI-style API:
-```bash
-llama-server \
-  -hf ggml-org/gemma-3-270m-it-GGUF \
-  --port 1234 \
-  --host 127.0.0.1 \
-  --jinja \
-  -c 4096
-```
-The server exposes `http://127.0.0.1:1234/v1`, matching what the official `openai` Python client expects when you override `base_url`.
+1. Run a local OpenAI-compatible model (e.g., `llama-server`).
+2. Extend `movie_service/app/config.py` with `llm_base_url`, `llm_api_key`, and `llm_model` defaults and mirror them in `.env.example`.
+3. Create `movie_service/app/llm.py`:
+   ````python
+   from openai import OpenAI
 
-### Step 1 – Add LLM settings + env vars
-Augment `movie_service/app/config.py` so the optional client can read local overrides:
-```python
-from pydantic_settings import BaseSettings, SettingsConfigDict
+   from .config import Settings
 
+   settings = Settings()
+   client = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
 
-class Settings(BaseSettings):
-    app_name: str = "Movie Service"
-    database_url: str = "postgresql+psycopg://movie:movie@localhost:5432/movies"
-    database_echo: bool = False
-    pool_size: int = 5
-    pool_timeout: int = 30
-
-    # Text-to-SQL (optional)
-    llm_base_url: str = "http://127.0.0.1:1234/v1"
-    llm_api_key: str = "unused-local-key"
-    llm_model: str = "gemma-3-270m-it"
-
-    model_config = SettingsConfigDict(
-        env_prefix="MOVIE_",
-        env_file=".env",
-        extra="ignore",
-    )
-```
-Mirror those settings in `.env.example` so students don’t need to guess:
-```ini
-MOVIE_LLM_BASE_URL="http://127.0.0.1:1234/v1"
-MOVIE_LLM_API_KEY="unused-local-key"
-MOVIE_LLM_MODEL="gemma-3-270m-it"
-```
-In production you’d also introduce a read-only `MOVIE_DATABASE_URL_RO`, but for the PoC we reuse the primary connection.
-
-### Step 2 – LLM helper that returns SQL only
-Create `movie_service/app/llm.py` so the rest of the app calls a single function:
-```python
-from typing import Final
-
-from openai import OpenAI
-
-from .config import Settings
-
-settings = Settings()
-
-client: Final = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
-
-TEXT2SQL_SYSTEM_PROMPT = """
-You are a PostgreSQL SQL generator for a movie database.
-
-Only generate a single SQL query, no explanations.
-
-Database dialect: PostgreSQL.
-Allowed table: movies.
-
-Table schema:
-CREATE TABLE movies (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    year INTEGER NOT NULL,
-    genre TEXT NOT NULL
-);
-
-Rules:
-- Only use SELECT queries.
-- Never use INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or CREATE.
-- Always include an ORDER BY when it makes sense.
-- Always include LIMIT 50 unless the user explicitly asks for a different limit.
-- Return raw SQL only (no markdown, no backticks).
-""".strip()
+   TEXT2SQL_SYSTEM_PROMPT = """You are a PostgreSQL SQL generator for the movies table...
+   Only return SELECT statements with LIMIT 50 unless told otherwise.""".strip()
 
 
-def generate_sql_from_nl(question: str) -> str:
-    response = client.chat.completions.create(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": TEXT2SQL_SYSTEM_PROMPT},
-            {"role": "user", "content": question},
-        ],
-        temperature=0,
-    )
-    sql = response.choices[0].message.content or ""
-    return sql.strip().strip("`").strip()
-```
+   def generate_sql_from_nl(question: str) -> str:
+       response = client.chat.completions.create(
+           model=settings.llm_model,
+           messages=[
+               {"role": "system", "content": TEXT2SQL_SYSTEM_PROMPT},
+               {"role": "user", "content": question},
+           ],
+           temperature=0,
+       )
+       return (response.choices[0].message.content or "").strip("`")
+   ````
+4. Guard execution in `movie_service/app/text2sql.py` (regex-allow only SELECT, block destructive verbs) and run the SQL via a SQLModel session.
+5. Mount the feature under `/admin/sql-assistant` with a simple POST route that returns `{ "sql": ..., "rows": [...] }` or a validation error.
 
-### Step 3 – Guardrail + execution helper
-Add `movie_service/app/text2sql.py` to keep the scope deliberately narrow before executing the query via SQLModel:
-```python
-import re
-from typing import Any
+## Wrap-Up & Success Criteria
+- [ ] Dockerized Postgres is running locally with a persistent volume and health checks.
+- [ ] FastAPI CRUD + `/healthz` talk to Postgres via SQLModel + Alembic migrations.
+- [ ] pytest fixtures create/destroy dedicated Postgres databases without manual cleanup.
+- [ ] Typer/uv scripts seed + reset data safely.
+- [ ] Runbook/README documents the workflow so Streamlit (Session 06) can plug in immediately.
 
-from sqlalchemy import text
-from sqlmodel import Session
+## Session 06 Preview – Building User Interfaces
+| Component | Session 05 (Current) | Session 06 (UI Layer) | Change? |
+| --- | --- | --- | --- |
+| FastAPI backend | Postgres, trace IDs, CORS | Reused verbatim | None |
+| Streamlit dashboard | — | New dashboard hitting `/movies` | Add `frontend/dashboard.py` |
+| Typer CLI | Seeds only | Adds admin UX commands | Extend scripts |
+| HTTP client | — | `frontend/client.py` (httpx wrapper) | New |
+| Dependencies | psycopg, sqlmodel | + streamlit, typer, rich, httpx, pandas | Install |
 
-from .llm import generate_sql_from_nl
-
-
-ALLOWED_PREFIX = re.compile(r"^\s*select\b", re.IGNORECASE)
-FORBIDDEN = re.compile(
-    r"\b(insert|update|delete|drop|alter|truncate|create)\b",
-    re.IGNORECASE,
-)
-
-
-def is_safe_sql(sql: str) -> bool:
-    if not ALLOWED_PREFIX.match(sql):
-        return False
-    if FORBIDDEN.search(sql):
-        return False
-    if ";" in sql.strip().rstrip(";"):
-        return False
-    return True
-
-
-def run_text2sql(question: str, session: Session) -> dict[str, Any]:
-    sql = generate_sql_from_nl(question)
-    if not is_safe_sql(sql):
-        return {
-            "sql": sql,
-            "error": "Generated SQL failed safety checks (only simple SELECT is allowed).",
-        }
-    result = session.exec(text(sql))
-    rows = [dict(row) for row in result.mappings()]
-    return {"sql": sql, "rows": rows}
-```
-
-### Step 4 – FastAPI route under `/admin`
-Keep the feature behind an admin-prefixed router so it’s clearly not student-facing CRUD:
-```python
-# filepath: movie_service/app/routes_sql_assistant.py
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
-
-from .database import get_session
-from .text2sql import run_text2sql
-
-router = APIRouter(prefix="/admin", tags=["admin", "text2sql"])
-
-
-class SqlQuestion(BaseModel):
-    question: str
-
-
-@router.post("/sql-assistant")
-def sql_assistant(payload: SqlQuestion, session: Session = Depends(get_session)):
-    result = run_text2sql(payload.question, session)
-    if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result,
-        )
-    return result
-```
-Finally, register the router in `movie_service/app/main.py`:
-```python
-from .routes_sql_assistant import router as sql_assistant_router
-
-app = FastAPI(title="Movie Service", version="0.5.0")
-
-# existing middleware/routes...
-
-app.include_router(sql_assistant_router)
-```
-
-### Step 5 – Kick the tires
-With Postgres, the FastAPI server, and the local LLM all running:
-```bash
-curl -X POST http://localhost:8000/admin/sql-assistant \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Show the 10 most recent sci-fi movies after 2010"}'
-```
-Expect a JSON payload that echoes the generated SQL and returns rows, for example:
-```json
-{
-  "sql": "SELECT title, year, genre FROM movies WHERE genre = 'sci-fi' AND year > 2010 ORDER BY year DESC LIMIT 10",
-  "rows": [{"title": "Sample 4", "year": 2014, "genre": "sci-fi"}]
-}
-```
-
-### When this fits (and when it doesn’t)
-- ✅ Great for instructor demos, debugging, or letting product folks explore aggregates without writing SQL.
-- ✅ Useful teaching aid—students can compare their own queries to the model’s output.
-- ❌ Not for production CRUD paths; keep `/movies` and friends on deterministic SQLModel code.
-- ❌ Skip if you don’t have time for the local LLM setup or if it would distract from the main Postgres objective.
-
-Emphasize the “hybrid mode” story: ~99% of the backend stays hand-authored, and this clearly labeled `/admin` endpoint gives a realistic, safe playground for Text-to-SQL experiments.
-
-## Wrap-up & Next Steps
-- ✅ Postgres replaces SQLite locally; migrations and seeds run through Typer/uv.
-- 📌 Update CI to run `docker compose up -d db && uv run pytest` so pull requests always hit Postgres.
-
-## Session 06 Preview – What's Coming:
-
-**Building User Interfaces:**
-
-With Postgres hardened, Session 06 adds **two** UI layers:
-1. **Streamlit dashboard** – Python-native, perfect for data exploration and admin tasks
-2. **Typer CLI** – Terminal commands for seeding, wiping, and ops workflows
-
-| Component | Session 05 (Current) | Session 06 (UI Layer) | Changes? |
-|-----------|---------------------|----------------------|----------|
-| FastAPI | Postgres backend | SAME, now with CORS enabled | ✅ Already setup |
-| `main.py` | Has X-Trace-Id middleware | Clients send trace IDs | ✅ Already setup |
-| New: `frontend/client.py` | Doesn't exist | httpx wrapper for API | 🆕 NEW |
-| New: `frontend/dashboard.py` | Doesn't exist | Streamlit UI | 🆕 NEW |
-| New: `scripts/ui.py` | Doesn't exist | Typer admin CLI | 🆕 NEW |
-| Dependencies | psycopg, sqlmodel | + streamlit, typer, rich | 🆕 NEW |
-
-**Key insight:** Session 06 only *adds* frontend code. Your FastAPI + Postgres backend runs unchanged, proving the API contract from Session 03 → Session 05 is solid.
-
-**Action items before Session 06:**
-1. Verify `docker compose ps` shows `db` container running
-2. Confirm `/healthz` returns `{"status": "ok", "database": "postgres"}`
-3. Test trace ID: `curl -H "X-Trace-Id: test" http://localhost:8000/healthz -v`
-4. Install UI deps: `uv add streamlit rich typer httpx pandas`
-
-🔜 Session 06 builds Streamlit dashboards and Typer UX on top of this database; Session 07 brings full TypeScript/Vite clients plus expanded testing/logging.
+Action items before Session 06:
+1. Ensure `docker compose ps` shows `db` healthy.
+2. Confirm `/healthz` returns `{"status": "ok", "database": "postgres"}` and echoes trace IDs.
+3. Install UI deps: `uv add streamlit rich typer httpx pandas`.
+4. Capture screenshots/logs of health + seed commands for reference during the UI lab.
 
 ## Troubleshooting
-- **`psycopg.OperationalError: connection refused`** → ensure Docker Desktop is running and port 5432 isn’t taken; restart with `docker compose down && docker compose up -d`.
-- **`permission denied to create database`** → connect as the `postgres` superuser or grant `CREATEDB` to `movie` role: `ALTER ROLE movie CREATEDB;`.
-- **Alembic fails with `No such table`** → check that `MOVIE_DATABASE_URL` is exported when running migrations; avoid mixing SQLite + Postgres URLs.
-- **Tests hang on DB drop** → make sure you terminate active connections before `DROP DATABASE` (see `_drop_test_db`).
-
-## Student Success Criteria
-- [ ] Dockerized Postgres is running locally with persistent volume + health checks.
-- [ ] FastAPI CRUD + `/healthz` talk to Postgres via SQLModel + Alembic migrations.
-- [ ] pytest fixtures spin up and tear down dedicated Postgres databases without manual cleanup.
-- [ ] Runbook/README documents the new workflow so Streamlit (Session 06) can reuse it immediately.
-
-Schedule mentoring time before Session 06 if any box is unchecked.
+- **`psycopg.OperationalError: connection refused`** → make sure Docker Desktop is running and port 5432 is free; restart with `docker compose down && docker compose up -d`.
+- **`permission denied to create database`** → connect as the `postgres` superuser or grant `CREATEDB` to the `movie` role: `docker compose exec db psql -c "ALTER ROLE movie CREATEDB;"`.
+- **Alembic cannot find tables** → verify `MOVIE_DATABASE_URL` is exported when running migrations and that `movie_service.app.models` is imported in `env.py`.
+- **Tests hang on drop** → terminate active connections before `DROP DATABASE` (see `_drop_test_db`).
 
 ## AI Prompt Seeds
 - “Given a SQLModel app currently on SQLite, write the code/commands to migrate it to PostgreSQL with Alembic, Docker Compose, and health checks.”
