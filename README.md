@@ -18,6 +18,7 @@ Key documents:
 - `docs/sessions/session-XX.md` – detailed talk tracks, copy/paste code, AI prompt kits, troubleshooting, and verification commands for each class.
 - `docs/troubleshooting.md` – quick fixes for common environment issues (uv, imports, Redis, etc.).
 - `examples.http` – ready-to-run VS Code REST Client requests for the movie API.
+- `docs/workflows/ai-assisted/` – new Codex paradigm for working with AI assistants (briefs, checklists, teaching guide).
 
 ## 🧠 Course Highlights
 
@@ -55,6 +56,10 @@ These are preserved for reference but the new scripted sessions in `docs/` are t
 1. Edit the relevant `docs/sessions/session-XX.md` file (each is standalone and self-contained).
 2. Run through the verification commands provided in that session (most require `uv run pytest -q` or `curl` checks).
 3. Commit changes and push to `main` (the repository is intentionally kept current for instructors).
+
+## 🧪 AI-Assisted Workflow (Codex Paradigm)
+
+The repo is organized around the cycle described in Anindya Chakraborty’s *AI Assisted Coding: Quicker Code Doesn’t Mean Higher Velocity*. Before prompting an assistant, fill out `docs/workflows/ai-assisted/templates/feature-brief.md`, keep diffs under ~150 LOC chunks, and run the review checklist in `docs/workflows/ai-assisted/checklists/review.md`. The complete teaching plan for this workflow lives in `docs/workflows/ai-assisted/teaching-guide.md`; use it whenever you update a session or add new materials so students learn the same habits.
 
 If you spot an issue or want to suggest an improvement, open a GitHub issue or pull request with the session number in the title (e.g., `Session 05 – clarify rating fixture`).
 

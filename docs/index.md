@@ -28,6 +28,7 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - [DSPy + Pydantic AI agent lab](sessions/session-08.md#dspy-micro-lab)
 - [Local llama.cpp fallback (Session 08)](sessions/session-08.md#local-llamacpp-fallback-gemma-3-270m)
 - [Qdrant vector DB stretch (Session 08)](sessions/session-08.md#qdrant-vector-db-stretch-retrieval-ready-prompts)
+- [AI-assisted workflow (Codex paradigm)](workflows/ai-assisted/README.md)
 
 ## Future-facing Engineering Archetypes
 Modern software careers are coalescing around four complementary builder profiles, and EASS intentionally lets students rehearse each mindset while staying within an approachable scope.
