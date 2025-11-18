@@ -29,6 +29,7 @@ We resume from Session 03’s in-memory FastAPI app and keep upgrading the same 
 - **uv** – dependency manager + runner for scripts, migrations, and uvicorn.
 
 ## Before Class (Just-in-Time Tasks)
+0. **Workflow reminder:** fill out `docs/workflows/ai-assisted/templates/feature-brief.md` for each slice (settings, database, models, repository, tests). Use it to drive your prompts and keep the change under the 150‑LOC review threshold described in `docs/workflows/ai-assisted/README.md`.
 1. Confirm Session 03 code still passes: `uv run pytest movie_service/tests -v` and `uv run uvicorn movie_service.app.main:app --reload`.
 2. Install the new dependencies inside `hello-uv`: `uv add sqlmodel alembic sqlalchemy-utils`.
 3. Create `data/` (ignored by Git) and append `data/` to `.gitignore` if it’s missing.
@@ -51,6 +52,8 @@ We resume from Session 03’s in-memory FastAPI app and keep upgrading the same 
 
 ## Lab 1 – Persist CRUD with SQLModel (45 min)
 Goal: move the repository + routes from in-memory storage to SQLite without touching the FastAPI contract.
+
+> Work through one feature brief per subsystem (config, database module, models, repository, routes). After each generation, run your splitter/annotation step before moving on so reviews stay fast.
 
 ### Step 1: Configure Settings
 `movie_service/app/config.py`
@@ -265,6 +268,8 @@ Records now persist because they live in `data/movies.db`.
 
 ## Lab 2 – Tests, Migrations, Seeds (45 min)
 Goal: prove the database-backed service is safe to refactor by adding hermetic pytest fixtures, an Alembic migration, and a repeatable seed script.
+
+> Reuse the same brief/checklist flow here: scope fixtures, migrations, and seed script separately so assistants don’t dump unreviewable diffs.
 
 ### Step 1: Database-aware pytest fixtures
 `movie_service/tests/conftest.py`

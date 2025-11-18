@@ -30,6 +30,7 @@ Session 04 proved the repository abstraction by persisting to SQLite. Session 05
 - **Typer/Rich** – optional CLI helpers for seeds + ops automation.
 
 ## Before Class (JiTT)
+0. **Workflow reminder:** open `docs/workflows/ai-assisted/templates/feature-brief.md` and copy one per slice (Docker Compose, settings/env, database module, Alembic wiring, health/CORS, seed/tests). Stick to ≤150 LOC chunks and capture verification commands so Codex + reviewers stay aligned.
 1. Finish Session 04 and ensure SQLite tests still pass.
 2. Install Docker Desktop (or Colima) and confirm `docker compose version` works.
 3. Add psycopg: `uv add "psycopg[binary]"` and verify with `uv run python -c "import psycopg"`.
@@ -72,6 +73,8 @@ Session 04 proved the repository abstraction by persisting to SQLite. Session 05
 
 ## Lab 1 – Provision Postgres + migrate SQLModel (45 min)
 Goal: replace SQLite-specific assumptions with Postgres-friendly config and confirm CRUD still works.
+
+> Use individual briefs for Docker Compose + env vars, config/database updates, Alembic changes, and FastAPI wiring. Generate/review in that order so each chunk stays within the AI-assisted workflow guardrails.
 
 ### Step 0 – Boot Postgres
 ```bash
@@ -209,6 +212,8 @@ Successful responses prove FastAPI, SQLModel, Alembic, and CORS are now Postgres
 
 ## Lab 2 – Seeds, fixtures, and safety rails (45 min)
 Goal: treat Postgres as the default datastore for dev + tests.
+
+> Continue the slice-by-slice habit: one brief for the Typer seed script, another for pytest fixtures, etc. Annotate diffs before moving to the next segment.
 
 ### Step 1 – Typer seed script
 `scripts/db.py`
