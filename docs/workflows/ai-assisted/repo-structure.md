@@ -3,7 +3,7 @@
 The repo now encodes the workflow outlined in the “AI Assisted Coding: Quicker Code Doesn’t Mean Higher Velocity” PDF. This document points to the key spots.
 
 ## Reference Sources
-- `docs/reference/ai-assisted-coding.txt` — text export of the PDF so every contributor can cite the primary source.
+- Medium article: [AI Assisted Coding: Quicker Code Doesn’t Mean Higher Velocity](https://medium.com/@anindyaju99/ai-assisted-coding-quicker-code-doesnt-mean-higher-velocity-d8bc92a107dd).
 - `docs/workflows/ai-assisted/` — this folder with guides, templates, and checklists (see `README.md`).
 
 ## Mandatory Artifacts per Change
@@ -40,4 +40,4 @@ docs/
 
 ## Tooling Integration
 - Adopt `armchr` locally (documented in `docs/workflows/ai-assisted/README.md`) to split large diffs. Until an automated integration lands, copy the annotations into PR descriptions.
-- Encourage `git worktree` usage for parallel AI sessions, mirroring the Reddit workflow quoted in `docs/reference/ai-assisted-coding.txt` comments.
+- Encourage `git worktree` usage for parallel AI sessions, mirroring the Reddit workflow quoted in the Medium article comments.

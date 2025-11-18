@@ -103,7 +103,7 @@ Feel free to trim or expand per session, but keep this as the mental model.
 
 ## 2.5 AI-Assisted Workflow (Codex Paradigm)
 
-- Source: *AI Assisted Coding: Quicker Code Doesn’t Mean Higher Velocity* (Anindya Chakraborty, Nov 9, 2025). Full text lives in `docs/reference/ai-assisted-coding.txt`.
+- Source: *AI Assisted Coding: Quicker Code Doesn’t Mean Higher Velocity* (Anindya Chakraborty, Nov 9, 2025). Read it on Medium: https://medium.com/@anindyaju99/ai-assisted-coding-quicker-code-doesnt-mean-higher-velocity-d8bc92a107dd
 - Process summary: plan every change with `docs/workflows/ai-assisted/templates/feature-brief.md`, generate code in ≤150-line slices, split/annotate diffs (armchr or manual), run the checklist in `docs/workflows/ai-assisted/checklists/review.md`, and log the verification commands from the relevant session doc.
 - Teaching guide: `docs/workflows/ai-assisted/teaching-guide.md` shows how to narrate the paradigm inside the Part A/B/C format.
 - Expectations for contributors: treat AI-written code like external PRs—no merges until briefs + annotations + tests are in place (`docs/workflows/ai-assisted/repo-structure.md`).
