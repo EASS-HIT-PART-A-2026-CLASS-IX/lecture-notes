@@ -55,6 +55,7 @@ htmlcov/
 *.sqlite3
 movies.db
 test.db
+data/
 
 # Node / Frontend (if using React)
 node_modules/

@@ -1,25 +1,25 @@
 # Session 04 – Persisting the Movie Service (SQLite + SQLModel)
 
-- **Date:** Monday, Nov 24, 2025
+- **Date:** Monday, November 24, 2025
 - **Theme:** Replace the in-memory repository with SQLite + SQLModel, wire FastAPI to real sessions, and back everything with migrations + tests.
 
 ## Session Story
-We resume from Session 03’s in-memory FastAPI app and keep upgrading the same codebase. Today the class learns how SQLModel sits between FastAPI and SQLite, why repositories made that swap painless, and how to turn persistence changes into reliable tests and migrations. Every activity is linear and scoped so newer students can focus on one concept at a time: configure the engine, rewrite the repo, prove it with pytest, and finally add Alembic + seed helpers for repeatable setups.
+Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps the same HTTP contract but persists to SQLite through SQLModel, proving the repository abstraction, adding Alembic migrations, and hardening pytest fixtures so every test runs in a throwaway database. Students leave with durable data, migrations, and a repeatable seed script they can trust in later sessions.
 
 ## Learning Objectives
-- Model movie data with SQLModel, create tables, and keep HTTP contracts intact.
-- Configure engines + session dependencies using uv-powered settings files.
-- Rewrite the repository layer so CRUD operations persist rows instead of dict entries.
-- Seed data, manage Alembic migrations, and keep the workflow inside `hello-uv`.
-- Update pytest fixtures so every test file uses an isolated SQLite database.
+- Model movie data with SQLModel tables while keeping request/response schemas intact.
+- Configure a SQLite engine and FastAPI dependency that hands out scoped SQLModel sessions.
+- Replace the dict-backed repository with SQLModel CRUD without changing the routes.
+- Run pytest against isolated SQLite files to prevent cross-test contamination.
+- Capture schema history with Alembic and seed working data via uv scripts.
 
 ## Deliverables (What You’ll Build)
-- `movie_service/app/models.py` with SQLModel definitions (`Movie`, `MovieCreate`, `MovieRead`, `MovieUpdate`).
-- `movie_service/app/database.py` exposing `engine`, `get_session`, and `init_db()` helpers.
+- `movie_service/app/models.py` SQLModel definitions (`Movie`, `MovieCreate`, `MovieRead`, `MovieUpdate`).
+- `movie_service/app/database.py` with `engine`, `get_session`, and `init_db()` helpers.
 - `movie_service/app/repository_db.py` backed by SQLModel sessions for CRUD.
-- Updated FastAPI routes that keep the Session 03 HTTP contract while persisting rows.
-- A repeatable Alembic migration + `movie_service/scripts/seed_db.py`.
-- pytest fixtures that spin up/destroy SQLite schemas inside a temporary directory.
+- FastAPI routes that still satisfy the Session 03 HTTP contract while persisting rows.
+- Alembic scaffolding + initial migration and `movie_service/scripts/seed_db.py`.
+- pytest fixtures that create/destroy temp SQLite databases per test file.
 
 ## Toolkit Snapshot
 - **SQLModel** – Pydantic + SQLAlchemy hybrid that keeps request/response models close to table definitions.
@@ -28,22 +28,34 @@ We resume from Session 03’s in-memory FastAPI app and keep upgrading the same 
 - **pytest** – hermetic tests with dependency overrides.
 - **uv** – dependency manager + runner for scripts, migrations, and uvicorn.
 
-## Before Class (Just-in-Time Tasks)
-0. **Workflow reminder:** fill out `docs/workflows/ai-assisted/templates/feature-brief.md` for each slice (settings, database, models, repository, tests). Use it to drive your prompts and keep the change under the 150‑LOC review threshold described in `docs/workflows/ai-assisted/README.md`.
-1. Confirm Session 03 code still passes: `uv run pytest movie_service/tests -v` and `uv run uvicorn movie_service.app.main:app --reload`.
-2. Install the new dependencies inside `hello-uv`: `uv add sqlmodel alembic sqlalchemy-utils`.
-3. Create `data/` (ignored by Git) and append `data/` to `.gitignore` if it’s missing.
-4. Update `.env.example` and `.env`:
+## Before Class (JiTT)
+0. **Workflow reminder:** copy `docs/workflows/ai-assisted/templates/feature-brief.md` for each slice (settings, database, models, repository, tests, Alembic/seed). Keep each change under the 150‑LOC guardrail in `docs/workflows/ai-assisted/README.md`.
+1. Baseline: from the Session 03 code, run `uv run pytest movie_service/tests -v` and fix any failures. Commit/tag as `session-03-complete` so you can roll back easily.
+2. Install the new dependencies inside `hello-uv`:
+   ```bash
+   uv add sqlmodel alembic sqlalchemy-utils
+   ```
+3. Create a writable data directory and ignore it:
+   ```bash
+   mkdir -p data
+   grep -qx 'data/' .gitignore || printf "\n# SQLite data\ndata/\n" >> .gitignore
+   ```
+4. Extend `.env.example` and `.env`:
    ```ini
    MOVIE_DATABASE_URL="sqlite:///data/movies.db"
-   MOVIE_ALEMBIC_CONFIG="alembic.ini"
    ```
-5. Smoke-test SQLModel import: `uv run python -c "import sqlmodel; print(sqlmodel.__version__)"`.
+5. Smoke-test imports:
+   ```bash
+   uv run python - <<'PY'
+   import sqlmodel, alembic  # noqa: F401
+   print("SQLModel + Alembic ready")
+   PY
+   ```
 
 ## Session Agenda
 | Time | Activity | Focus |
 | --- | --- | --- |
-| 10 min | Recap & intent | Why in-memory storage was a stop-gap; why persistence matters before EX3. |
+| 10 min | Recap & intent | Why the repo abstraction makes the DB swap easy. |
 | 20 min | Data modeling primer | SQLModel basics, table vs response models, migrations. |
 | 45 min | **Lab 1** | **Database wiring + CRUD rewrite.** |
 | 10 min | Break | Encourage quick sqlite browser checks. |
@@ -53,7 +65,7 @@ We resume from Session 03’s in-memory FastAPI app and keep upgrading the same 
 ## Lab 1 – Persist CRUD with SQLModel (45 min)
 Goal: move the repository + routes from in-memory storage to SQLite without touching the FastAPI contract.
 
-> Work through one feature brief per subsystem (config, database module, models, repository, routes). After each generation, run your splitter/annotation step before moving on so reviews stay fast.
+> Stay disciplined: one brief per subsystem (config, database, models, repository, routes). Generate → review → split before moving on so diffs stay small.
 
 ### Step 1: Configure Settings
 `movie_service/app/config.py`
@@ -79,9 +91,10 @@ class Settings(BaseSettings):
 ````python
 from typing import Generator
 
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, Session, create_engine
 
 from .config import Settings
+from . import models  # ensures SQLModel metadata includes Movie before create_all
 
 settings = Settings()
 engine = create_engine(
@@ -99,7 +112,7 @@ def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
 ````
-Run the helper once so the file exists:
+Run the helper once so the database file exists (run from the project root):
 ```bash
 uv run python - <<'PY'
 from movie_service.app.database import init_db
@@ -113,8 +126,8 @@ PY
 ````python
 from typing import Optional
 
-from sqlmodel import SQLModel, Field
 from pydantic import model_validator
+from sqlmodel import Field, SQLModel
 
 
 class MovieBase(SQLModel):
@@ -144,7 +157,7 @@ class MovieUpdate(SQLModel):
     year: Optional[int] = Field(default=None, ge=1900, le=2100)
     genre: Optional[str] = None
 ````
-FastAPI will keep serializing the same JSON payloads even though the backend now owns SQLModel tables.
+`MovieUpdate` is ready for a future `PUT/PATCH` route; the contract today stays list/create/get/delete.
 
 ### Step 4: Database-backed repository
 `movie_service/app/repository_db.py`
@@ -262,14 +275,12 @@ curl -X POST http://localhost:8000/movies \
   -d '{"title": "Inception", "year": 2010, "genre": "sci-fi"}'
 curl http://localhost:8000/movies
 ```
-Records now persist because they live in `data/movies.db`.
-
-> ✅ Lab 1 is complete when POST returns `201`, `/movies` shows the new record, and the record is still present after restarting uvicorn.
+Run after `init_db()` or `uv run alembic upgrade head`; records should persist in `data/movies.db` across restarts.
 
 ## Lab 2 – Tests, Migrations, Seeds (45 min)
 Goal: prove the database-backed service is safe to refactor by adding hermetic pytest fixtures, an Alembic migration, and a repeatable seed script.
 
-> Reuse the same brief/checklist flow here: scope fixtures, migrations, and seed script separately so assistants don’t dump unreviewable diffs.
+> Keep the briefs flowing: fixtures → Alembic → seed script. Commit between each chunk to avoid giant diffs.
 
 ### Step 1: Database-aware pytest fixtures
 `movie_service/tests/conftest.py`
@@ -312,20 +323,22 @@ def override_repository(session):
 
 
 @pytest.fixture()
-def client():
+def client(override_repository):
     return TestClient(app)
 ````
-The dependency override forces every TestClient call to use the temporary SQLite database so no test leaks into `data/movies.db`.
 
 ### Step 2: Reuse Session 03 tests
-Keep the assertions in `movie_service/tests/test_movies.py`; the fixtures already isolate each test file.
+Keep the assertions in `movie_service/tests/test_movies.py`; the fixtures already isolate each test file. Run them:
+```bash
+uv run pytest movie_service/tests -v
+```
 
 ### Step 3: Alembic workflow
 1. Scaffold Alembic:
    ```bash
    uv run alembic init migrations
    ```
-2. Update `alembic.ini` to remove the hard-coded `sqlalchemy.url`; `env.py` will set it.
+2. Update `alembic.ini` to remove the hard-coded `sqlalchemy.url` (env.py will set it). Leave `script_location = migrations`.
 3. Edit `migrations/env.py`:
    ````python
    from logging.config import fileConfig
@@ -354,6 +367,7 @@ Keep the assertions in `movie_service/tests/test_movies.py`; the fixtures alread
            target_metadata=target_metadata,
            literal_binds=True,
            dialect_opts={"paramstyle": "named"},
+           render_as_batch=True,  # needed for SQLite ALTER TABLE
        )
        with context.begin_transaction():
            context.run_migrations()
@@ -366,7 +380,7 @@ Keep the assertions in `movie_service/tests/test_movies.py`; the fixtures alread
            poolclass=pool.NullPool,
        )
        with connectable.connect() as connection:
-           context.configure(connection=connection, target_metadata=target_metadata)
+           context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
            with context.begin_transaction():
                context.run_migrations()
 
@@ -408,14 +422,8 @@ Run via `uv run python -m movie_service.scripts.seed_db`.
 - `uv run pytest movie_service/tests -v`
 - `uv run alembic upgrade head`
 - `uv run python -m movie_service.scripts.seed_db`
-
-## Wrap-Up & Success Criteria
-- [ ] Data persists in `data/movies.db` across uvicorn restarts.
-- [ ] pytest passes using SQLite fixtures (no leaks into the real database file).
-- [ ] Alembic `upgrade head` finishes without errors.
-- [ ] Seed script inserts the expected movies.
-- [ ] README/docs updated with new commands.
-- Students can explain how FastAPI obtains a session per request and why the repository abstraction made the swap painless.
+- Data persists in `data/movies.db` across uvicorn restarts.
+- README/docs updated with the new commands and `.gitignore` contains `data/`.
 
 ## Session 05 Preview – Moving to PostgreSQL
 | Component | Session 04 (SQLite) | Session 05 (Postgres) | Change? |
