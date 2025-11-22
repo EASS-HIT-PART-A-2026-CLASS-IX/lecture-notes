@@ -25,9 +25,9 @@
   uv add logfire redis
   ```
 - Review Python’s `asyncio` basics (Learning Management System (LMS) primer) and jot one question about concurrency hazards.
-- Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you already support Docker Compose locally, make sure `docker compose up` succeeds before class so you can reuse the same stack in Session 10.
+- Ensure Exercise 3 (EX3) materials are cloned and the local API/interface run cleanly; if you already support Docker Compose locally, make sure `docker compose up` succeeds so you can reuse the same stack for async drills.
 
-> 🧭 **EX3 Deliverable:** By the end of this session every team must check in (1) `scripts/refresh.py` with bounded concurrency + retries, (2) at least one `pytest.mark.anyio` test that exercises the refresher against the FastAPI app via ASGI transport, and (3) a short log excerpt (paste into `docs/EX3-notes.md`) showing `Idempotency-Key` and `X-Trace-Id` headers working together. Session 10’s worker/Redis labs assume this script exists.
+> 🧭 **EX3 Deliverable:** By the end of this session every team must check in (1) `scripts/refresh.py` with bounded concurrency + retries, (2) at least one `pytest.mark.anyio` test that exercises the refresher against the FastAPI app via ASGI transport, and (3) a short log excerpt (paste into `docs/EX3-notes.md`) showing `Idempotency-Key` and `X-Trace-Id` headers working together. Later worker/Redis labs assume this script exists.
 
 ## Simple Demo – Async refresher + telemetry loop
 1. Start the FastAPI app (`uv run uvicorn app.main:app --reload`) so the refresher has a live target.
@@ -50,7 +50,7 @@
 1. **Event loop refresher:** tasks share a thread, await input/output (I/O), avoid CPU-heavy work. Show `asyncio.create_task` (schedule work without blocking), `asyncio.gather` (wait for many coroutines at once), and `asyncio.Semaphore` (cap concurrency) so every student knows the building blocks.
 2. **Retry/backoff:** exponential vs. jitter, idempotent vs. non-idempotent operations, using `tenacity` decorators.
 3. **Idempotency keys:** Accept `Idempotency-Key` header, store processed keys (in-memory or Redis), and short-circuit duplicates.
-4. **Instrumentation:** Keep `X-Trace-Id` consistent; plan to emit metrics (Session 10) using Prometheus/Redis.
+4. **Instrumentation:** Keep `X-Trace-Id` consistent; plan to emit metrics using Prometheus/Redis.
 
 ### Motivating Micro Demos (5 minutes each)
 Give students a quick taste of why we pair async work with Redis + Logfire before diving into the heavier lab steps.
@@ -80,7 +80,7 @@ Give students a quick taste of why we pair async work with Redis + Logfire befor
    asyncio.run(asyncio.gather(demo_task("a"), demo_task("b")))
    PY
    ```
-   Point out the spans and structured logs in the console—Session 09’s refresher will emit the same telemetry so Session 10/12 have trace data to reference.
+   Point out the spans and structured logs in the console—Session 09’s refresher will emit the same telemetry so later exercises have trace data to reference.
 
 ```mermaid
 sequenceDiagram
@@ -285,16 +285,16 @@ async def recommend(user_id: int) -> dict[str, object]:
     cache_recommendations(user_id, recs)
     return {"source": "fresh", "recommendations": recs}
 ```
-Discuss time to live (TTL) strategy (one hour here) and note how Session 10’s Redis deployment makes this production-ready.
+Discuss time to live (TTL) strategy (one hour here) and note how a Redis deployment makes this production-ready.
 
 ## Wrap-up & Next Steps
 - ✅ Async refresher, retries with jitter, idempotency keys, async tests.
 - Capture a Logfire screenshot or log excerpt plus Redis counter snippet in `docs/EX3-notes.md` so graders can trace your background jobs later.
-- Prep for Session 10: bring Redis installed (`brew install redis` or `docker run redis`), and review Docker Compose basics.
+- Confirm Redis is installed locally (`brew install redis` or `docker run redis`) so caching/idempotency checks are easy to repeat.
 
 ## Troubleshooting
 - **`RuntimeError: Event loop is closed`** → avoid nested `asyncio.run`; use `pytest.mark.anyio` and `asyncio.get_event_loop_policy().new_event_loop()` if needed.
-- **Idempotency store resets** → persist keys in Redis (Session 10) or file for long-running jobs.
+- **Idempotency store resets** → persist keys in Redis or file for long-running jobs.
 - **Un-awaited coroutine warnings** → ensure every async call is awaited; use `pytest.raises` with async context for exceptions.
 
 ### Common pitfalls
@@ -311,7 +311,7 @@ By the end of Session 09, every student should be able to:
 - [ ] Cache recommendation results in Redis with idempotency keys to prevent duplicate work.
 - [ ] Emit Logfire spans/counters that prove when refresh jobs run and succeed (screenshot or log excerpt stored in `docs/EX3-notes.md`).
 
-**If any box stays unchecked, book an async lab session before Session 10.**
+**If any box stays unchecked, book an async lab session soon after this one.**
 
 ## AI Prompt Seeds
 - “Write an async refresher that batches POST requests with bounded concurrency and retries using tenacity.”

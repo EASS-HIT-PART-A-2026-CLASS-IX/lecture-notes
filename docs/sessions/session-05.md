@@ -74,7 +74,7 @@ Session 04 proved the repository abstraction by persisting to SQLite. Session 05
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Swap SQLite → Postgres, health/CORS/trace.** |
 | Break | 10 min | — | Logs + pgcli checks. |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Seeds, pytest fixtures, migrations.** |
-| Wrap-up | 10 min | Q&A | Checklist + preview of Session 06. |
+| Wrap-up | 10 min | Q&A | Checklist and open questions. |
 
 ## Lab 1 – Move FastAPI to Postgres (45 min)
 Goal: configure Postgres URLs, wire engine/pooling, align Alembic, and prove the app still serves the same CRUD contract.
@@ -351,20 +351,11 @@ uv run pytest movie_service/tests -v
 - [ ] Pytest uses throwaway Postgres DBs (no writes to dev DB).
 - [ ] README/docs updated with Compose/Alembic/seed/test commands.
 
-## Session 06 Preview – UI Layer
-| Component | Session 05 (Postgres) | Session 06 (UI) | Change? |
-| --- | --- | --- | --- |
-| Backend | FastAPI + Postgres + CORS/trace IDs | Reused verbatim | None |
-| Dependencies | psycopg, sqlmodel | + streamlit, typer, rich, httpx, pandas | Add |
-| Scripts | Seed/reset | Add UI-focused Typer commands | Extend |
-| Health | `/healthz` w/ trace IDs | Reused on UI calls | None |
-| Tests | Postgres DB per run | Same fixtures reused | None |
-
-Action items before Session 06:
-1. Ensure `docker compose ps` shows `db` healthy.
-2. `curl http://localhost:8000/healthz` returns status and trace header.
-3. Install UI deps: `uv add streamlit rich typer httpx pandas`.
-4. Keep seed + pytest commands handy for demos.
+## Next steps
+- Ensure `docker compose ps` shows `db` healthy.
+- `curl http://localhost:8000/healthz` returns status and trace header.
+- Install UI deps if you plan to build dashboards/CLI layers: `uv add streamlit rich typer httpx pandas`.
+- Keep seed + pytest commands handy for demos.
 
 ## Troubleshooting
 - **`psycopg.OperationalError: connection refused`** → ensure Docker Desktop/Colima is running and port 5432 is free; restart with `docker compose down && docker compose up -d`.

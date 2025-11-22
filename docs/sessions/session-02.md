@@ -213,7 +213,7 @@ Kick off with an everyday analogy: the diner (client) reads the menu and places 
 - Rate limiting (throttle abusive clients)
 - Header injection (add `X-Forwarded-For`, `X-Trace-Id`)
 
-**Key insight:** In EX1, your Typer CLI is the **client**. FastAPI is the **server**. In Session 04, we'll add nginx as a **gateway** for health checks and request logging before traffic reaches FastAPI.
+**Key insight:** In EX1, your Typer CLI is the **client** and FastAPI is the **server**. You can swap persistence under that contract later and bring in an nginx gateway for health checks and logging as the stack grows.
 
 ### 3. nginx+Docker gateway demo (10 min)
 
@@ -277,7 +277,7 @@ docker stop demo-gateway
 - "What does nginx do?" (forwards to httpbin.org, adds headers)
 - "Why would we use a gateway in EX1?" (centralize logging, SSL, rate limiting)
 
-**Connection to EX1:** In Session 04, nginx will sit in front of FastAPI for health checks and structured logging before requests hit your application code.
+**Connection to EX1:** FastAPI stays the direct entrypoint for EX1. When you build the Compose stack in Session 10, you can drop nginx in front for health checks and structured logging without changing the routes.
 
 **Forward vs reverse proxy cheat sheet:**
 - **Forward proxy:** Lives near the client. Example: corporate proxy that hides every developer's laptop IP when browsing the public internet.
@@ -294,9 +294,9 @@ docker stop demo-gateway
 
 **Draw full stack with trace propagation:**
 ```
-Browser → nginx (gateway) → FastAPI (Session 03) → SQLite (Session 05) → Redis (Session 10)
-   ↓         ↓                    ↓                     ↓                    ↓
-trace_id  trace_id            trace_id              trace_id             trace_id
+Browser → nginx (gateway) → FastAPI → SQLite → Redis
+   ↓         ↓               ↓          ↓        ↓
+trace_id  trace_id       trace_id   trace_id  trace_id
 ```
 
 **Status codes:**
@@ -307,12 +307,12 @@ trace_id  trace_id            trace_id              trace_id             trace_i
 
 **Critical headers:**
 - `Accept`, `Content-Type`: content negotiation (JSON vs XML)
-- `Authorization`: auth tokens (Session 06)
-- `X-Trace-Id`: correlation across services (inject now, visualize in Session 07)
+- `Authorization`: auth tokens
+- `X-Trace-Id`: correlation across services (inject now, visualize in logs)
 - `X-Forwarded-For`: original client IP (gateway adds this)
 - `Retry-After`: rate limiting (429 responses)
 
-**Standard error envelope for EX1 (introduce now, implement in Session 03):**
+**Standard error envelope for EX1 (introduce now, implement in your FastAPI server):**
 
 Every error response must include these four fields:
 ```json
@@ -411,33 +411,35 @@ docker mcp tools call search query="Yossi Eliaz" max_results=3
 - **Gateway:** `docker mcp gateway` (like nginx, routes requests to correct tool)
 - **Server:** `duckduckgo` MCP server (like FastAPI, implements business logic)
 
-**Connection to EX1:** Your Typer CLI in Part B is the client. FastAPI is the server. In Session 04, nginx becomes the gateway. Same architecture pattern at different scales.
+**Connection to EX1:** Your Typer CLI in Part B is the client and FastAPI is the server. You can layer SQLite/SQLModel beneath it and add an nginx gateway for logging/health without changing the routes. Same architecture pattern at different scales.
 
 ### 6. Preview EX1 architecture (5 min)
 
 ```mermaid
 flowchart LR
     CLI["HTTP Client\n(curl/httpx/Typer)"]
-    GW["Gateway\n(nginx in Docker)"]
-    API["FastAPI Server\n(Session 03)"]
-    DB["SQLite\n(Session 05)"]
-    Cache["Redis\n(Session 10)"]
-    Logs["Structured Logs\n(Session 07)"]
+    GW["Gateway\n(nginx – Session 10 optional)"]
+    API["FastAPI Server"]
+    DB["SQLite/Postgres"]
+    Cache["Redis"]
+    Logs["Structured Logs"]
 
-    CLI -->|"GET /movies\nX-Trace-Id"| GW
+    CLI -->|"GET /movies\nX-Trace-Id"| API
+    CLI -->|"Optional via gateway"| GW
     GW -->|"Forward + inject headers"| API
     API -->|"SQL queries"| DB
     API -->|"Cache check"| Cache
     Cache -->|"Cache hit"| API
     API -->|"JSON + trace_id"| GW
     GW -->|"Response + logs"| CLI
+    API -->|"Response + logs"| CLI
     GW --> Logs
     API --> Logs
 ```
 
 **Contract:** Every component must accept and propagate `X-Trace-Id` for end-to-end observability.
 
-**Next session bridge:** In Session 03, you'll build the FastAPI **server** that your Typer client calls. We'll implement the `/movies` CRUD endpoints from the table above and ensure every error matches the envelope structure. The gateway (nginx) joins in Session 04.
+**Next build step:** Build the FastAPI **server** that your Typer client calls. Implement the `/movies` CRUD endpoints from the table above and ensure every error matches the envelope structure. You can tuck SQLite/SQLModel under the same routes later; an nginx gateway can wait until you need centralized logging/health.
 
 ## Part B – Hands-on Lab 1 (45 Minutes)
 
@@ -606,11 +608,11 @@ uv run python -m app.cli headers --city London
 - Where is the server? (httpbin.org)
 - Where would a gateway fit? (between client and httpbin, like nginx demo)
 
-**Check:** Highlight `X-Trace-Id` in headers output. Ask: "How would you propagate this to FastAPI logs in Session 03?"
+**Check:** Highlight `X-Trace-Id` in headers output. Ask: "How would you propagate this to FastAPI logs when you build the server?"
 
 > 🎉 **Quick win:** Structured JSON output with trace IDs confirms your client can drive HTTP servers repeatably.
 
-**Map to CRUD:** Today's `echo` command is the "Read" action (GET). In Session 03, you'll add commands for:
+**Map to CRUD:** Today's `echo` command is the "Read" action (GET). Next, add commands for:
 - `create` → `POST /movies` with JSON body
 - `list` → `GET /movies` with optional filters
 - `update` → `PUT /movies/{id}` with full object
@@ -634,7 +636,7 @@ def test_ping_default_city():
     response = ping()
     assert response.args["city"] == "Haifa"
     assert response.url.startswith("https://httpbin.org")
-    # In Session 07, we'll mock this to avoid flaky network tests
+    # You can mock this later to avoid flaky network tests
 ```
 
 ```bash
@@ -643,7 +645,7 @@ uv run pytest -q tests/test_ping.py
 
 ## Part C – Hands-on Lab 2 (45 Minutes)
 
-**Goal:** Capture reusable request patterns and validate the error envelope contract you'll implement in Session 03.
+**Goal:** Capture reusable request patterns and validate the error envelope contract you'll implement in your FastAPI server.
 
 ### Create `.http` request collection
 
@@ -678,7 +680,7 @@ X-Trace-Id: demo-404
 
 ### Validate error envelope contract
 
-**Goal:** Create test cases that your FastAPI server must pass in Session 03.
+**Goal:** Create test cases that your FastAPI server must pass.
 
 ```markdown
 <!-- filepath: docs/contracts/http-errors.md -->
@@ -695,7 +697,7 @@ All EX1 error responses must follow this structure so clients can parse errors p
 }
 ```
 
-### Test Cases for Session 03
+### Test Cases for the FastAPI server
 
 **404 Resource Not Found:**
 ```http
@@ -760,7 +762,7 @@ X-Trace-Id: test-500
 - [ ] FastAPI exception handlers catch all errors and format consistently
 ```
 
-**Discussion:** Save these `.http` snippets. In Session 03, you'll run them against your FastAPI server to verify error handling before submitting EX1.
+**Discussion:** Save these `.http` snippets. Run them against your FastAPI server to verify error handling before submitting EX1.
 
 ### Prepare Schemathesis for contract testing
 
@@ -791,7 +793,7 @@ Have each student post in their Discord lab thread:
 
 ## Before You Leave – Quick Verification
 
-Run these commands to confirm your setup for Session 03:
+Run these commands to confirm your setup:
 
 ```bash
 # 1. Client works
@@ -817,9 +819,9 @@ Link to full brief: [docs/exercises.md](../exercises.md#ex1--fastapi-foundations
 
 **Core deliverables (due Tue Dec 2):**
 - FastAPI server with CRUD for `/movies` and health endpoint
-- nginx gateway container for request logging (Session 04)
+- SQLite/SQLModel persistence + seed/migration helpers (stretch for EX1; required before EX3)
 - Error responses match `docs/contracts/http-errors.md`
-- 80% branch coverage with pytest (Session 07)
+- 80% branch coverage with pytest
 
 **Backlog items (prioritize for excellence):**
 - Pagination & filtering (`?limit=10&offset=20`)
@@ -828,9 +830,9 @@ Link to full brief: [docs/exercises.md](../exercises.md#ex1--fastapi-foundations
 - Schemathesis integration for fuzz testing
 - ETag/`If-None-Match` caching demo
 
-**Architecture reminder:** Your Typer client from today becomes the test harness. FastAPI is the server. nginx is the gateway. All three must propagate trace IDs.
+**Architecture reminder:** Your Typer client from today becomes the test harness; FastAPI is the server. SQLite/SQLModel and Postgres sit beneath it, and an nginx gateway is optional once you add one. All components should propagate trace IDs.
 
-**Next session preview:** You'll implement the FastAPI **server** that responds to your Typer client. We'll build `/movies` CRUD endpoints, ensure errors match `docs/contracts/http-errors.md`, and add trace ID middleware. Bring questions about FastAPI routing and dependency injection.
+**Next steps:** Implement the FastAPI **server** that responds to your Typer client. Build `/movies` CRUD endpoints, ensure errors match `docs/contracts/http-errors.md`, and add trace ID middleware. Bring questions about FastAPI routing and dependency injection.
 
 ## Common Pitfalls
 
@@ -857,7 +859,7 @@ By the end of Session 02, every student should be able to:
 - [ ] Build an HTTP client with httpx that generates trace IDs and validates responses.
 - [ ] Capture `.http` request patterns and document server-side error contracts for EX1.
 
-**If a student cannot check any box above, schedule an office-hours pairing before Session 03.**
+**If a student cannot check any box above, schedule an office-hours pairing soon.**
 
 ## AI Prompt Seeds
 

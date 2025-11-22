@@ -75,7 +75,7 @@ Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps th
 | 45 min | **Lab 1** | **Database wiring + CRUD rewrite.** |
 | 10 min | Break | Encourage quick sqlite browser checks. |
 | 45 min | **Lab 2** | **Tests, Alembic, seed scripts.** |
-| 10 min | Wrap-up | Checklist + preview of Session 05 (Postgres). |
+| 10 min | Wrap-up | Checklist + Q&A. |
 
 ## Lab 1 – Persist CRUD with SQLModel (45 min)
 Goal: move the repository + routes from in-memory storage to SQLite without touching the FastAPI contract.
@@ -440,22 +440,11 @@ Run via `uv run python -m movie_service.scripts.seed_db`.
 - Data persists in `data/movies.db` across uvicorn restarts.
 - README/docs updated with the new commands and `.gitignore` contains `data/`.
 
-## Session 05 Preview – Moving to PostgreSQL
-| Component | Session 04 (SQLite) | Session 05 (Postgres) | Change? |
-| --- | --- | --- | --- |
-| `database.py` | `sqlite:///data/movies.db` | `postgresql+psycopg://...` | URL swap |
-| `config.py` | Basic settings | Adds pool + echo flags | Minor tweaks |
-| `models.py` | SQLModel classes | Reused verbatim | None |
-| `repository_db.py` | SQLite session | Reused verbatim | None |
-| Alembic | SQLite URL | Points to Postgres | Config update |
-| Tests | Temp SQLite | Temp Postgres DBs | New fixtures |
-| Workflow | `uv run uvicorn` | `docker compose up` + uvicorn | Add service |
-
-Action items before Session 05:
-1. Install Docker Desktop and verify `docker compose version`.
-2. Commit/tag Session 04 (`session-04-complete`).
-3. Capture current `.env` values—you’ll swap URLs in Session 05.
-4. Rerun `uv run pytest -v` to ensure a clean baseline.
+## Next steps
+- Install Docker Desktop and verify `docker compose version` if you plan to run Postgres locally.
+- Commit/tag this checkpoint (e.g., `session-04-complete`) for easy rollback.
+- Capture current `.env` values so you can swap URLs cleanly when changing databases.
+- Rerun `uv run pytest -v` to ensure a clean baseline before extending the stack.
 
 ## Facilitation Tips
 - Open each target file before coding so everyone understands where the changes land.

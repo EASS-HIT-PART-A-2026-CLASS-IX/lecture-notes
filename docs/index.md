@@ -49,9 +49,9 @@ gantt
     Session\ 01 – Kickoff (Env, Git)         :milestone, 2025-11-03, 0d
     Session\ 02 – HTTP/REST Probing          :milestone, 2025-11-10, 0d
     Session\ 03 – FastAPI Fundamentals       :milestone, 2025-11-17, 0d
-    Session\ 04 – Docker & Reverse Proxy     :milestone, 2025-11-24, 0d
+    Session\ 04 – SQLite Persistence         :milestone, 2025-11-24, 0d
     section Delivery
-    Session\ 05 – Persistence                :milestone, 2025-12-01, 0d
+    Session\ 05 – PostgreSQL Foundations     :milestone, 2025-12-01, 0d
     Session\ 06 – Frontend Choices           :milestone, 2025-12-08, 0d
     Session\ 07 – Testing & Diagnostics      :milestone, 2025-12-15, 0d
     Session\ 08 – AI-Assisted Coaching       :milestone, 2025-12-22, 0d
@@ -71,7 +71,7 @@ gantt
 2. [Session 02 – Introduction to HTTP and REST](sessions/session-02.md)
 3. [Session 03 – FastAPI Fundamentals](sessions/session-03.md)
 4. [Session 04 – Persisting the Movie Service (SQLite + SQLModel)](sessions/session-04.md)
-5. [Session 05 – Movie Service Persistence with SQLite](sessions/session-05.md)
+5. [Session 05 – PostgreSQL Foundations for the Movie Service](sessions/session-05.md)
 6. [Session 06 – Movie Dashboards with Streamlit & React](sessions/session-06.md)
 7. [Session 07 – Testing, Logging, and Profiling Basics](sessions/session-07.md)
 8. [Session 08 – Working with AI Coding Assistants (LM Studio, vLLM, or Google AI Studio)](sessions/session-08.md)

@@ -41,7 +41,7 @@
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Add password hashing, login endpoint, JWT tokens.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided hardening** | **Role-based guards, security tests, secret scanning.** |
-| Wrap-up | 10 min | Questions and Answers (Q&A) | Prep for Session 12 (tool-friendly APIs), confirm Exercise 3 (EX3) security tasks.
+| Wrap-up | 10 min | Questions and Answers (Q&A) | Confirm Exercise 3 (EX3) security tasks and remaining questions. |
 
 ## Part A – Theory Highlights
 1. **Threat modeling:** assets (user data, movie catalog), adversaries (students, bots), attack surface (login, recommendations, admin endpoints).
@@ -290,7 +290,7 @@ Encourage students to add the script to `scripts/security-smoke.sh` so QA teams 
 
 ## Wrap-up & Next Steps
 - ✅ Password hashing, JWT issuance, role guards, security tests, secret scanning.
-- Prep for Session 12: finalize documentation, tool-friendly API design, publish `docs/service-contract.md` updates, and gather all EX3 deliverables.
+- Finalize documentation, tool-friendly API design, publish `docs/service-contract.md` updates, and gather all EX3 deliverables.
 
 ## Troubleshooting
 - **`bcrypt` missing build prerequisites** → ensure `rust`/`gcc` installed or use prebuilt wheels (should work on macOS/Linux). On Windows/WSL, install `build-essential`.
@@ -310,7 +310,7 @@ By the end of Session 11, every student should be able to:
 - [ ] Issue and validate JWTs (with `iss`, `aud`, `exp`, and roles) that gate at least one endpoint.
 - [ ] Run security smoke tests (pytest + curl) and share clean secret-scan results.
 
-**If a student cannot check a box, schedule a security-focused pairing before Session 12.**
+**If a student cannot check a box, schedule a security-focused pairing soon after this session.**
 
 ## AI Prompt Seeds
 - “Generate FastAPI login endpoint that hashes passwords with passlib, returns JWT with exp/iss/aud claims.”

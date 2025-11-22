@@ -50,7 +50,7 @@ Session 06 delivered Streamlit + Typer. Session 07 finishes the UI runway with R
 | **Part B – Lab 1** | **45 min** | **Guided build** | **Service layer + React Query UI.** |
 | Break | 10 min | — | Fix pnpm/env issues. |
 | **Part C – Lab 2** | **45 min** | **Guided reliability** | **Frontend lint/tests + backend test boosts.** |
-| Wrap-up | 10 min | Discussion | Checklist + Session 08 preview. |
+| Wrap-up | 10 min | Discussion | Checklist and discussion. |
 
 ## Lab 1 – Scaffold Vite + movie client (45 min)
 Goal: run `pnpm dev`, see Postgres-backed movies, and create new entries using the same trace headers Streamlit used.
@@ -264,18 +264,10 @@ uv run pytest movie_service/tests -v
 - [ ] Backend pytest suite still green after UI changes.
 - [ ] Docs note how to run Streamlit *or* React with the same API.
 
-## Session 08 Preview – AI/Agentic Add-ons
-| Component | Session 07 | Session 08 | Change? |
-| --- | --- | --- | --- |
-| Backend | FastAPI + Postgres + trace | Add Pydantic AI tools | Extend |
-| UIs | Streamlit, React | Reused | None |
-| Tooling | pnpm + pytest | Add Pydantic AI/DSPy deps | Extend |
-| Data | Movies table | Reused | None |
-
-Action items before Session 08:
-1. Keep `/healthz` green and Postgres running.
-2. Ensure React + Streamlit can both hit the API (CORS/trace).
-3. Install `uv add pydantic-ai httpx` (plus `dspy-ai` if running the optional lab).
+## Next steps
+- Keep `/healthz` green and Postgres running.
+- Ensure React + Streamlit can both hit the API (CORS/trace).
+- Install `uv add pydantic-ai httpx` (plus `dspy-ai` if you plan to explore agentic tools).
 
 ## Troubleshooting
 - **`pnpm dev` cannot reach API** → verify FastAPI on port 8000 and CORS allows `http://localhost:5173`.

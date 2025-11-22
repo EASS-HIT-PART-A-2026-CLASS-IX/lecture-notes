@@ -38,7 +38,7 @@ gantt
 - **Due:** Tuesday, Dec 23, 2025 at 23:59 (Israel time)
 - **Heads-up:** This timeline intentionally overlaps with EX1’s submission window; you can finish EX1 and kick off EX2 planning on the same day.
 - **Goal:** Build a lightweight interface (Streamlit dashboard or Typer CLI) that talks to the EX1 backend for the same domain. Students should be able to exercise the core flows in under a minute from launch.
-- **Sessions to revisit:** [Session 05 – Persistence Refresh](sessions/session-05.md), [Session 06 – Interface Options](sessions/session-06.md).
+- **Sessions to revisit:** [Session 05 – PostgreSQL Foundations for the Movie Service](sessions/session-05.md), [Session 06 – Interface Options](sessions/session-06.md).
 - **Required Features:**
   - Reuse the EX1 API as-is; do not add authentication or security prompts.
   - Allow users to list existing entries and add a new entry in under a minute from launch.

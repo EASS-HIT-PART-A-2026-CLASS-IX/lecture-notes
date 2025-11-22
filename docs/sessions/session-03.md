@@ -25,10 +25,10 @@ A working FastAPI backend that:
 
 - This session **is the EX1 deliverable**: students leave class with a FastAPI backend, pytest suite, Docker packaging, and REST client scripts that satisfy the HTTP API portion of the exercise—even if data only lives in memory for now. Think of it as microservice #1 in the eventual EX3 stack.
 - In-memory storage is intentional at this checkpoint; it keeps the focus on HTTP verbs, validation, dependency injection, and smoke testing. Everyone can demo the service (curl, REST Client, Docker) without juggling SQL yet.
-- Preview the roadmap: **Session 04 adds SQLModel + SQLite**, **Session 05 upgrades to PostgreSQL**, **Session 06 layers on Streamlit/Typer UIs**, and **Session 07 introduces Vite/React plus reliability tooling**. By EX3 every team will juggle at least three cooperating services (FastAPI backend, persistence, and a UI/automation surface), so today’s clean architecture pays compounding dividends.
-- Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app, just service hardening that prepares the multi-service system you expect by the final exercise.
-- **Architecture decision**: We use `MovieBase` + `Movie` + `MovieCreate` pattern from day one. Session 04 will add `table=True` to `Movie` and optionally introduce `MovieRead` for cleaner response serialization, but the HTTP contract and model fields remain identical.
-- **Interfaces stay stable on purpose:** The `repository` interface and dependency wiring you build now are what make Session 04/05 a drop-in swap from dict storage → SQLite → Postgres without route changes. Keep the boundaries clean and small.
+- Keep the architecture clean so future persistence or UI layers can drop in without changing HTTP routes.
+- Encourage students to push this code to their EX1 repo immediately; later DB hardening layers on top of the same contract rather than creating a new app.
+- **Architecture decision**: Use `MovieBase` + `Movie` + `MovieCreate` from day one; when you introduce SQLModel, add `table=True` and optionally `MovieRead` for response serialization while keeping the HTTP contract identical.
+- **Interfaces stay stable on purpose:** The `repository` interface and dependency wiring you build now make storage swaps (dict → SQLite → Postgres) a drop-in change. Keep the boundaries clean and small.
 
 ## Live Build Strategy (No Pre-Solved Example)
 
@@ -170,7 +170,7 @@ Before class, complete these setup steps:
 | Break | 10 min | — | Hydrate, swap drivers. |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Pytest fixtures, TestClient, regression hunts, red→green loops.** |
 | Docker deployment demo | 10 min | Live demo | Containerize the same app, compare local vs Docker runs. |
-| Wrap-up & checklist | 10 min | Discussion + Q&A | Review deliverables, preview Session 04 (SQLite + SQLModel). |
+| Wrap-up & checklist | 10 min | Discussion + Q&A | Review deliverables and open Q&A. |
 
 ## Part A – Theory & Live Demos (45 minutes)
 
@@ -260,7 +260,7 @@ Why use DI:
 **Facilitation tips:**
 - Keep VS Code and the terminal side by side; pause after each file so students catch up before moving on.
 - Continuously connect each file to the earlier request-flow diagram so the mental model stays intact.
-- Remind the cohort that Session 04 swaps the repository for SQLModel, so investing in clean boundaries now pays off later.
+- Reinforce that clean boundaries make storage swaps straightforward without route changes.
 
 Follow these steps to build a working FastAPI application from scratch.
 
@@ -361,10 +361,10 @@ from pydantic import BaseModel, Field, model_validator
 
 class MovieBase(BaseModel):
     """Shared fields for create/read models.
-    
-    This base class will carry forward unchanged to Session 04 when we add
-    SQLModel. The split between MovieBase/Movie/MovieCreate establishes the
-    pattern we'll reuse throughout the course.
+
+    Designed to stay unchanged when swapping persistence layers (for example,
+    when moving to SQLModel). The split between MovieBase/Movie/MovieCreate
+    establishes the pattern reused throughout the course.
     """
     title: str
     year: int = Field(ge=1900, le=2100)
@@ -373,18 +373,18 @@ class MovieBase(BaseModel):
 
 class Movie(MovieBase):
     """Response model that includes the server-generated ID.
-    
-    Session 04 will add `table=True` to this class to make it a SQLModel
-    table while keeping the HTTP contract identical.
+
+    When migrating to SQLModel, add `table=True` while keeping the HTTP
+    contract identical.
     """
     id: int
 
 
 class MovieCreate(MovieBase):
     """Incoming payload with validation + normalization.
-    
-    This validator carries forward unchanged to Session 04's SQLModel version,
-    demonstrating how validation rules survive persistence layer swaps.
+
+    This validator carries forward unchanged when the persistence layer swaps,
+    demonstrating how validation rules survive storage changes.
     """
 
     @model_validator(mode="after")
@@ -397,7 +397,7 @@ class MovieCreate(MovieBase):
 **Why split models from controllers:**
 - Controllers (FastAPI routes) only care about IO contracts.
 - Repositories reuse the same schemas without importing FastAPI.
-- Future persistence swaps (Session 04) can reuse the same models.
+- Persistence swaps can reuse the same models without route changes.
 
 ### Step 4: Build the Repository (10 min)
 
@@ -414,10 +414,9 @@ from .models import Movie, MovieCreate
 
 class MovieRepository:
     """In-memory storage for movies.
-    
-    Session 04 will replace this implementation with SQLModel + SQLite,
-    but the interface (list/create/get/delete) stays identical so routes
-    don't need to change.
+
+    You can swap in SQLModel + SQLite later without changing the
+    interface (list/create/get/delete), so routes stay the same.
     """
 
     def __init__(self) -> None:
@@ -427,17 +426,16 @@ class MovieRepository:
     def list(self) -> list[Movie]:
         """Get all movies.
         
-        Returns list[Movie] throughout all sessions for consistency.
-        Session 04's SQLModel queries return sequences, but we convert
-        with list() to maintain this interface.
+        Always returns list[Movie] for consistency. SQLModel queries
+        return sequences, but convert with list() to maintain this interface.
         """
         return list(self._items.values())
 
     def create(self, payload: MovieCreate) -> Movie:
         """Add a new movie and return it with assigned ID.
         
-        Session 04: This becomes `session.add()` + `session.commit()`,
-        but the function signature stays the same.
+        In a SQLModel-backed version this maps to `session.add()` +
+        `session.commit()` while keeping the same signature.
         """
         movie = Movie(id=self._next_id, **payload.model_dump())
         self._items[movie.id] = movie
@@ -447,22 +445,23 @@ class MovieRepository:
     def get(self, movie_id: int) -> Movie | None:
         """Get a movie by ID, or None if not found.
         
-        Session 04: Changes to `session.get(Movie, movie_id)`.
+        A SQLModel-backed repository would use `session.get(Movie, movie_id)`.
         """
         return self._items.get(movie_id)
 
     def delete(self, movie_id: int) -> None:
         """Remove a movie by ID.
         
-        Session 04: Changes to `session.delete()` + `session.commit()`.
+        A SQLModel-backed repository would call `session.delete()` +
+        `session.commit()`.
         """
         self._items.pop(movie_id, None)
 
     def clear(self) -> None:
         """Remove all movies (useful for tests).
         
-        Session 04: Test fixtures will use separate test databases
-        instead of clearing a shared repository.
+        SQL-backed fixtures should use separate test databases instead of
+        clearing a shared repository.
         """
         self._items.clear()
         self._next_id = 1
@@ -1123,7 +1122,7 @@ Before moving forward, ensure:
 - [ ] Can create, list, get, and delete movies
 - [ ] Validation errors return 422 with details
 - [ ] OpenAPI schema exports successfully
-- [ ] Code is committed and tagged `session-03-complete` so Session 04 can build on a clean baseline
+- [ ] Code is committed and tagged `session-03-complete` for easy rollback
 
 ### Next Steps
 
@@ -1134,41 +1133,7 @@ Before moving forward, ensure:
 4. More comprehensive error handling
 5. Update README with setup instructions
 
-**Session 04 Preview – What Changes:**
-
-⚠️ **Before starting Session 04**, understand what will change:
-
-| Component | Session 03 (Current) | Session 04 (Next) | Breaking? |
-|-----------|---------------------|-------------------|----------|
-| `models.py` | MovieBase + Movie + MovieCreate | Adds `table=True` to Movie, adds MovieRead | ✅ Safe |
-| `repository.py` | In-memory dict | → `repository_db.py` with SQLModel | ✅ Interface stays same |
-| `database.py` | Doesn't exist | NEW: engine + get_session | ✅ New file |
-| `dependencies.py` | Returns singleton | Returns session-scoped repo | ✅ Routes unchanged |
-| `main.py` routes | Uses Movie for response | Uses MovieRead for response | ⚠️ Import change |
-| Tests | Uses clear() between tests | Uses temp SQLite per test | ✅ Better isolation |
-
-**Key insight:** The repository interface (`list/create/get/delete`) stays identical by design. Only the *implementation* changes from dict to SQL. This is the architectural payoff for the abstraction work you did today.
-
-**Action items before Session 04:**
-1. Commit your Session 03 code
-2. Tag it as `session-03-complete` for easy rollback
-3. Run full test suite and verify all 13+ tests pass
-4. Review the Session 04 prerequisites (install `sqlmodel` + `alembic`)
-5. Push commits + tags to GitHub so EX1 repos stay in sync
-
-**Session 04 will upgrade this exact service with:**
-- SQLModel + SQLite persistence (data survives restarts)
-- Database-aware pytest fixtures (isolated test databases)
-- Alembic migrations (version-controlled schema changes)
-- Seed scripts (reproducible starter data)
-- **Zero changes to HTTP routes** (only repository internals swap)
-
-**Why the repository pattern matters:** Every `repo.create()` call you wrote today will work with SQLite tomorrow because we kept storage behind a clean interface. This is the architectural payoff for modular design.
-
-**Session 05 preview (Postgres on the horizon):**
-- Same models/routes, new Postgres URL and engine settings
-- Docker Compose for the database, Alembic pointed at Postgres
-- Tests swap to Postgres fixtures but keep the override pattern you used here
+**Why the repository pattern matters:** The `list/create/get/delete` interface stays identical by design. Only the *implementation* changes when you swap storage engines, which keeps HTTP routes stable as the stack matures.
 
 ## Troubleshooting
 

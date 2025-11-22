@@ -4,7 +4,7 @@
 - **Theme:** Lock down the EX3 release by polishing every externally facing surface—pagination, ETags, docs, automation—and show how the same contracts plug into FastMCP so tools can call your API hands-free.
 
 ## Session Story
-You enter Session 12 with a production-shaped stack: FastAPI + Postgres + Redis + background workers + Streamlit/React surfaces and security controls. The only things left are *finish-line polish*—making responses deterministic, documenting them rigorously, and proving automation + tooling are airtight so EX3 demos impress external reviewers. This meeting plays the role of a “release engineering sprint”: align the REST contract with CSV + pagination, add caching clues, run every lint/test/doc tool, and mirror the contract via FastMCP so assistants and future copilots can call the service without custom glue.
+You enter Session 12 with a production-shaped stack: FastAPI + Postgres + Redis + background workers + Streamlit/React surfaces and security controls. Now it is about finish-line polish—make responses deterministic, document them rigorously, and prove automation + tooling are airtight so EX3 demos impress external reviewers. This meeting is a release-engineering sprint: align the REST contract with CSV + pagination, add caching clues, run every lint/test/doc tool, and mirror the contract via FastMCP so assistants can call the service without custom glue.
 
 ## Learning Objectives
 - Publish deterministic REST responses with pagination, CSV export, and OpenAPI examples that mirror your clients.

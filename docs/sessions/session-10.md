@@ -273,7 +273,7 @@ Update `docs/service-contract.md` with:
 
 ## Wrap-up & Next Steps
 - ✅ Compose stack, Redis cache + rate limiting, background worker, contract testing, CI pipeline outline.
-- Prep for Session 11 (Security Foundations): audit secrets, rotate tokens, create `.env.example` entries for Redis auth if enabled.
+- Audit secrets, rotate tokens, and create `.env.example` entries for Redis auth if enabled.
 - Point teams to the EX3 brief in [docs/exercises.md](../exercises.md#ex3--capstone-polish-kiss) so they align infrastructure deliverables with the milestone.
 
 ## Troubleshooting
@@ -294,7 +294,7 @@ By the end of Session 10, every student should be able to:
 - [ ] Enforce rate limits and cache hits backed by Redis inside the stack.
 - [ ] Execute contract tests (Schemathesis) and CI-ready pipelines covering the multi-service environment.
 
-**If any item lags, assign a small-group infra session before Security Foundations (Session 11).**
+**If any item lags, assign a small-group infra session to close the gap.**
 
 ## AI Prompt Seeds
 - “Draft a docker-compose.yml with FastAPI, Redis, and an Arq worker including healthchecks.”

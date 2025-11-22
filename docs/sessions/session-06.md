@@ -1,7 +1,7 @@
-# Session 06 – Streamlit Dashboards + Typer UX (JS Preview)
+# Session 06 – Streamlit Dashboards + Typer UX
 
 - **Date:** Monday, Dec 8, 2025
-- **Theme:** Ship a Streamlit dashboard and Typer CLI on top of the Postgres-backed FastAPI API, then preview the JavaScript/TypeScript basics needed for Session 07’s Vite/React lab.
+- **Theme:** Ship a Streamlit dashboard and Typer CLI on top of the Postgres-backed FastAPI API, plus a short JavaScript/TypeScript warm-up to prep for frontend work.
 
 ## Session Story
 With Postgres live from Session 05, the backend is stable enough for real UIs. Today you’ll build a Streamlit dashboard that lists, filters, and creates movies through the existing API, and you’ll add Typer/Rich helpers for operators. We end with a short JavaScript/TypeScript warm-up so next week’s React sprint feels familiar.
@@ -11,7 +11,7 @@ With Postgres live from Session 05, the backend is stable enough for real UIs. T
 - Build Streamlit dashboards that cache GETs, bust cache on writes, and render quick insights.
 - Automate seed/reset/export flows with a Typer CLI layered on the repository.
 - Keep tests green against Postgres while UI layers evolve.
-- Refresh core JS/TS concepts (modules, async/await, fetch) for Session 07.
+- Refresh core JS/TS concepts (modules, async/await, fetch) to stay ready for frontend work.
 
 ## Deliverables (What You’ll Build)
 - `frontend/client.py` – typed HTTP client with trace headers for `/movies`.
@@ -45,7 +45,7 @@ With Postgres live from Session 05, the backend is stable enough for real UIs. T
 | Break | 10 min | — | Cache/CORS Q&A. |
 | **Part C – Lab 2** | **45 min** | **Guided build** | **Forms, Typer CLI, runbook updates.** |
 | JS/TS preview | 15 min | Talk + mini-demo | Async/await, fetch, pnpm basics. |
-| Wrap-up | 10 min | Q&A | Checklist + Session 07 prep. |
+| Wrap-up | 10 min | Q&A | Checklist and open questions. |
 
 ## Lab 1 – Typed client + dashboard (45 min)
 Goal: render Postgres-backed movies in Streamlit with cached GETs and ready-to-wire write paths.
@@ -226,28 +226,19 @@ Run: `uv run python scripts/ui.py reset --sample 5`.
   const movies = await res.json();
   console.log(movies.map((m) => m.title));
   ```
-- Remind students that Session 07 will scaffold Vite/React using the same API + trace headers.
+- Emphasize that any future frontend work will reuse the same API and trace headers.
 
 ## Wrap-Up & Success Criteria
 - [ ] FastAPI + Postgres healthy; `/healthz` returns OK with trace header.
 - [ ] Streamlit dashboard lists movies, filters, and creates/deletes entries (cache clears on writes).
 - [ ] Typer CLI can reset/seed/export without touching production data.
 - [ ] README/runbook notes mention how to run FastAPI and Streamlit side-by-side.
-- [ ] JS/TS preview commands verified for Session 07.
+- [ ] JS/TS preview commands verified for the mini-demo.
 
-## Session 07 Preview – React/Vite + Reliability
-| Component | Session 06 (Streamlit/Typer) | Session 07 (React) | Change? |
-| --- | --- | --- | --- |
-| Backend | FastAPI + Postgres + CORS | Reused | None |
-| Streamlit | Dashboard + forms | Optional alt UI | None |
-| React/Vite | — | New `frontend-react/` with React Query | Add |
-| Tooling | Typer + Streamlit | Add ESLint/Vitest/React Query | Extend |
-| Tests | Postgres fixtures | Reuse + expand | Extend |
-
-Action items before Session 07:
-1. Keep Postgres + `/healthz` handy.
-2. Install Node 20 + pnpm.
-3. Note the existing API contract (`/movies` list/create/get/delete). React will reuse it.
+## Next steps
+- Keep Postgres + `/healthz` handy.
+- Install Node 20 + pnpm if you plan to build a React/Vite variant.
+- Note the existing API contract (`/movies` list/create/get/delete) for any frontend you add next.
 
 ## Troubleshooting
 - **Streamlit cannot fetch** → verify FastAPI is running and CORS allows `http://localhost:8501`.

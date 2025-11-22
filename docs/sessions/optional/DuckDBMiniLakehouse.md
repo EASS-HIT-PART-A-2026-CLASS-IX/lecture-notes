@@ -1,6 +1,6 @@
 # Optional DuckDB Mini-Lakehouse Lab
 
-This optional lab bolts onto **Session 05 – Persistence** (after students have seen SQLite) or can run as a standalone 2×45-minute workshop. The goal is to help the cohort feel how DuckDB behaves as “SQLite for analytics” with a mini medallion layout and a word-count style map/reduce query—using nothing beyond their laptop. Pair this with the CodeCut deep dive (<https://codecut.ai/deep-dive-into-duckdb-data-scientists/>) so students understand why DuckDB’s columnar, vectorized core excels at analytical workloads.
+This optional lab bolts onto **Session 05 – PostgreSQL Foundations** (after students have seen SQLite in Session 04) or can run as a standalone 2×45-minute workshop. The goal is to help the cohort feel how DuckDB behaves as “SQLite for analytics” with a mini medallion layout and a word-count style map/reduce query—using nothing beyond their laptop. Pair this with the CodeCut deep dive (<https://codecut.ai/deep-dive-into-duckdb-data-scientists/>) so students understand why DuckDB’s columnar, vectorized core excels at analytical workloads.
 
 Learners finish with:
 1. A reproducible directory structure for Bronze → Silver → Gold Parquet data.
