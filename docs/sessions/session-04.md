@@ -8,18 +8,12 @@ Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps th
 
 ## Instructor Notes
 - `uv run pytest movie_service/tests -v` (baseline still green)
-- Create the SQLite file once:
-  ```bash
-  uv run python - <<'PY'
-  from movie_service.app.database import init_db
-  init_db()
-  print('Created data/movies.db')
-  PY
-  ```
-- `uv run alembic upgrade head` and confirm `data/movies.db` timestamps change
+- Ensure `.gitignore` ignores `data/` but keeps Alembic revisions tracked (do not ignore `migrations/versions/`; keep `migrations/env.py` and `migrations/script.py.mako` in version control)
+- Generate the initial Alembic revision before running `init_db()`; if `data/movies.db` already exists, delete it so `alembic revision --autogenerate` emits the `create_table`
+- `uv run alembic upgrade head` and confirm `data/movies.db` timestamps change (this creates the SQLite file)
 - `uv run python -m movie_service.scripts.seed_db` twice to verify idempotent seeding
 - Smoke `uv run uvicorn movie_service.app.main:app --reload` then `curl http://localhost:8000/health` and `curl http://localhost:8000/movies`
-- Ensure `.gitignore` contains `data/` and the folder is writable on classroom machines
+- Ensure the `data/` folder is writable on classroom machines
 
 ## Learning Objectives
 - Model movie data with SQLModel tables while keeping request/response schemas intact.
@@ -48,16 +42,16 @@ Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps th
 1. Baseline: from the Session 03 code, run `uv run pytest movie_service/tests -v` and fix any failures. Commit/tag as `session-03-complete` so you can roll back easily.
 2. Install the new dependencies inside `hello-uv`:
    ```bash
-   uv add sqlmodel alembic sqlalchemy-utils
+   uv add sqlmodel alembic
    ```
 3. Create a writable data directory and ignore it:
    ```bash
    mkdir -p data
    grep -qx 'data/' .gitignore || printf "\n# SQLite data\ndata/\n" >> .gitignore
    ```
-4. Extend `.env.example` and `.env`:
+4. Extend `.env.example` and `.env` (relative path is fine for local dev):
    ```ini
-   MOVIE_DATABASE_URL="sqlite:///data/movies.db"
+   MOVIE_DATABASE_URL="sqlite:///./data/movies.db"
    ```
 5. Smoke-test imports:
    ```bash
@@ -109,7 +103,6 @@ from typing import Generator
 from sqlmodel import SQLModel, Session, create_engine
 
 from .config import Settings
-from . import models  # ensures SQLModel metadata includes Movie before create_all
 
 settings = Settings()
 engine = create_engine(
@@ -120,6 +113,8 @@ engine = create_engine(
 
 
 def init_db() -> None:
+    # Import models before create_all so SQLModel metadata includes Movie table
+    from . import models  # noqa: F401
     SQLModel.metadata.create_all(engine)
 
 
@@ -127,7 +122,8 @@ def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
 ````
-Run the helper once so the database file exists (run from the project root):
+
+Run the helper once so the database file exists (run from the project root). If you call this before creating the initial Alembic revision, delete `data/movies.db` before `alembic revision --autogenerate` so the migration emits the table:
 ```bash
 uv run python - <<'PY'
 from movie_service.app.database import init_db
@@ -312,6 +308,7 @@ from movie_service.app.repository_db import MovieRepository
 
 @pytest.fixture()
 def engine(tmp_path):
+    """Create a temporary SQLite database for testing."""
     test_db = tmp_path / "test.db"
     engine = create_engine(
         f"sqlite:///{test_db}",
@@ -324,14 +321,17 @@ def engine(tmp_path):
 
 @pytest.fixture()
 def session(engine):
+    """Provide a SQLModel session connected to the test database."""
     with Session(engine) as session:
         yield session
 
 
 @pytest.fixture(autouse=True)
 def override_repository(session):
+    """Override the repository dependency and clean up after each test."""
     app.dependency_overrides[get_repository] = lambda: MovieRepository(session)
     yield
+    # Clean up: remove override and delete all test data
     app.dependency_overrides.pop(get_repository, None)
     session.exec(delete(Movie))
     session.commit()
@@ -339,6 +339,7 @@ def override_repository(session):
 
 @pytest.fixture()
 def client(override_repository):
+    """Provide a test client with overridden dependencies."""
     return TestClient(app)
 ````
 
@@ -349,12 +350,15 @@ uv run pytest movie_service/tests -v
 ```
 
 ### Step 3: Alembic workflow
+> Run this step before using `init_db()` or any command that creates `data/movies.db`. If you already created the file, delete it so `alembic revision --autogenerate` emits the `create_table`.
+
 1. Scaffold Alembic:
    ```bash
    uv run alembic init migrations
    ```
-2. Update `alembic.ini` to remove the hard-coded `sqlalchemy.url` (env.py will set it). Leave `script_location = migrations`.
-3. Edit `migrations/env.py`:
+2. Keep revision files tracked (do **not** ignore `migrations/versions/`; commit generated files so others can run upgrades).
+3. Update `alembic.ini` to remove the hard-coded `sqlalchemy.url` (env.py will set it). Leave `script_location = migrations`.
+4. Edit `migrations/env.py`:
    ````python
    from logging.config import fileConfig
 
@@ -405,7 +409,7 @@ uv run pytest movie_service/tests -v
    else:
        run_migrations_online()
    ````
-4. Generate and apply the initial revision:
+5. Generate and apply the initial revision:
    ```bash
    uv run alembic revision --autogenerate -m "create movies"
    uv run alembic upgrade head
@@ -436,9 +440,10 @@ Run via `uv run python -m movie_service.scripts.seed_db`.
 ### Step 5: Verification checklist
 - `uv run pytest movie_service/tests -v`
 - `uv run alembic upgrade head`
-- `uv run python -m movie_service.scripts.seed_db`
-- Data persists in `data/movies.db` across uvicorn restarts.
-- README/docs updated with the new commands and `.gitignore` contains `data/`.
+- `uv run python -m movie_service.scripts.seed_db` (run twice to verify idempotency)
+- Data persists in `data/movies.db` across uvicorn restarts
+- README/docs updated with the new commands
+- `.gitignore` contains `data/` and migration revision files are tracked (do not ignore `migrations/versions/`)
 
 ## Next steps
 - Install Docker Desktop and verify `docker compose version` if you plan to run Postgres locally.
