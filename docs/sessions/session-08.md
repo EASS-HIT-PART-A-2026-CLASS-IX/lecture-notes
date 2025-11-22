@@ -1,15 +1,15 @@
-# Session 08 – Working with AI Coding Assistants (Local or Cloud)
+# Session 08 – AI Microservice & Coding Assistants (Local or Cloud)
 
 - **Date:** Monday, Dec 22, 2025
-- **Theme:** Pair program with AI safely—prompt with intent, validate outputs, and wire a typed agent (Pydantic AI) to the FastAPI backend. Optional DSPy mini-lab shows declarative prompting.
+- **Theme:** Pair program with AI safely—prompt with intent, validate outputs, and wrap an external LLM (LM Studio/vLLM/Google AI Studio) behind a typed FastAPI microservice using Pydantic AI. Optional DSPy mini-lab shows declarative prompting.
 
 ## Session Story
-You now have FastAPI + Postgres with both Streamlit and React clients. Session 08 layers AI assistance on top: students practice spec/tests-first prompting, wrap the existing API behind a typed Pydantic AI tool, and call either a local model (LM Studio/vLLM) or Google AI Studio. The emphasis is on safety, telemetry, and keeping humans in charge.
+You now have FastAPI + Postgres with both Streamlit and React clients. Session 08 adds an AI microservice layer: students practice spec/tests-first prompting, wrap the existing API behind a typed Pydantic AI tool, and front an external LLM (LM Studio/vLLM/Google AI Studio) with a FastAPI route the main backend can call for reasoning tasks. The emphasis is on safety, telemetry, and keeping humans in charge.
 
 ## Learning Objectives
 - Apply spec-first and tests-first prompting patterns; review AI outputs critically.
-- Expose FastAPI functionality as a typed Pydantic AI tool with trace/log hooks.
-- Call local or hosted LLM endpoints (LM Studio/vLLM/Google AI Studio) via the same interface.
+- Expose FastAPI functionality as a typed Pydantic AI tool with trace/log hooks and publish it as an HTTP endpoint the rest of the backend can consume.
+- Call local or hosted LLM endpoints (LM Studio/vLLM/Google AI Studio) via the same interface while enforcing Pydantic contracts.
 - Evaluate agent responses with pytest; keep secrets and telemetry under control.
 - (Optional) Explore DSPy `Signature` + `Predict` to see declarative prompting.
 

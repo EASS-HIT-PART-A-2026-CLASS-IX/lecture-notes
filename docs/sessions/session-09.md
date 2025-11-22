@@ -44,7 +44,7 @@
 | **Part B – Lab 1** | **45 min** | **Guided coding** | **Async recommendation job with bounded concurrency + retries.** |
 | Break | 10 min | — | Launch the shared [10-minute timer](https://e.ggtimer.com/10minutes). |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Async tests, idempotency guarantees, instrumentation.** |
-| Wrap-up | 10 min | Discussion | Next steps for Exercise 3 (EX3) milestone, logging TODOs, Redis preview.
+| Wrap-up | 10 min | Discussion | Next steps for Exercise 3 (EX3) milestone, logging notes, Redis preview.
 
 ## Part A – Theory Highlights
 1. **Event loop refresher:** tasks share a thread, await input/output (I/O), avoid CPU-heavy work. Show `asyncio.create_task` (schedule work without blocking), `asyncio.gather` (wait for many coroutines at once), and `asyncio.Semaphore` (cap concurrency) so every student knows the building blocks.
