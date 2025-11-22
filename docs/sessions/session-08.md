@@ -4,19 +4,19 @@
 - **Theme:** Pair program with AI safely—prompt with intent, validate outputs, and wrap an external LLM (LM Studio/vLLM/Google AI Studio) behind a typed FastAPI microservice using Pydantic AI. Optional DSPy mini-lab shows declarative prompting.
 
 ## Session Story
-You now have FastAPI + Postgres with both Streamlit and React clients. Session 08 adds an AI microservice layer: students practice spec/tests-first prompting, wrap the existing API behind a typed Pydantic AI tool, and front an external LLM (LM Studio/vLLM/Google AI Studio) with a FastAPI route the main backend can call for reasoning tasks. The emphasis is on safety, telemetry, and keeping humans in charge.
+You now have FastAPI + Postgres with both Streamlit and React clients. Session 08 adds an AI microservice layer: students practice spec/tests-first prompting, wrap the existing API behind a typed Pydantic AI tool, and front an external LLM (LM Studio/vLLM/Google AI Studio) with a FastAPI “AI gateway” that the existing backend can call to add reasoning/LLM features without coupling to vendor SDKs. The emphasis is on safety, telemetry, and keeping humans in charge.
 
 ## Learning Objectives
 - Apply spec-first and tests-first prompting patterns; review AI outputs critically.
-- Expose FastAPI functionality as a typed Pydantic AI tool with trace/log hooks and publish it as an HTTP endpoint the rest of the backend can consume.
+- Expose FastAPI functionality as a typed Pydantic AI tool with trace/log hooks and publish it as an HTTP endpoint (AI gateway microservice) the existing backend can consume.
 - Call local or hosted LLM endpoints (LM Studio/vLLM/Google AI Studio) via the same interface while enforcing Pydantic contracts.
 - Evaluate agent responses with pytest; keep secrets and telemetry under control.
 - (Optional) Explore DSPy `Signature` + `Predict` to see declarative prompting.
 
 ## Deliverables (What You’ll Build)
 - Prompt templates/checklists for spec-first and tests-first requests.
-- A Pydantic AI tool that calls the `/movies` API with validated inputs/outputs.
-- A small FastAPI route (e.g., `/ai/pitch`) that invokes the agent and returns a typed response.
+- A Pydantic AI tool that calls the `/movies` API with validated inputs/outputs and lives inside an AI gateway microservice.
+- A small FastAPI route (e.g., `/ai/pitch`) that invokes the agent and returns a typed response for other services to consume.
 - pytest cases that call the agent with a mocked LLM client.
 - Optional DSPy scratch file showing `Signature` + `Predict` wired to the same tool.
 
