@@ -6,6 +6,21 @@
 ## Session Story
 Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps the same HTTP contract but persists to SQLite through SQLModel, proving the repository abstraction, adding Alembic migrations, and hardening pytest fixtures so every test runs in a throwaway database. Students leave with durable data, migrations, and a repeatable seed script they can trust in later sessions.
 
+## Instructor Readiness (48 hours out)
+- `uv run pytest movie_service/tests -v` (baseline still green)
+- Create the SQLite file once:
+  ```bash
+  uv run python - <<'PY'
+  from movie_service.app.database import init_db
+  init_db()
+  print('Created data/movies.db')
+  PY
+  ```
+- `uv run alembic upgrade head` and confirm `data/movies.db` timestamps change
+- `uv run python -m movie_service.scripts.seed_db` twice to verify idempotent seeding
+- Smoke `uv run uvicorn movie_service.app.main:app --reload` then `curl http://localhost:8000/health` and `curl http://localhost:8000/movies`
+- Ensure `.gitignore` contains `data/` and the folder is writable on classroom machines
+
 ## Learning Objectives
 - Model movie data with SQLModel tables while keeping request/response schemas intact.
 - Configure a SQLite engine and FastAPI dependency that hands out scoped SQLModel sessions.

@@ -28,6 +28,7 @@ A working FastAPI backend that:
 - Preview the roadmap: **Session 04 adds SQLModel + SQLite**, **Session 05 upgrades to PostgreSQL**, **Session 06 layers on Streamlit/Typer UIs**, and **Session 07 introduces Vite/React plus reliability tooling**. By EX3 every team will juggle at least three cooperating services (FastAPI backend, persistence, and a UI/automation surface), so today’s clean architecture pays compounding dividends.
 - Encourage students to push this code to their EX1 repo immediately. Session 04’s DB changes layer on top of the same HTTP contract—they are not a different app, just service hardening that prepares the multi-service system you expect by the final exercise.
 - **Architecture decision**: We use `MovieBase` + `Movie` + `MovieCreate` pattern from day one. Session 04 will add `table=True` to `Movie` and optionally introduce `MovieRead` for cleaner response serialization, but the HTTP contract and model fields remain identical.
+- **Interfaces stay stable on purpose:** The `repository` interface and dependency wiring you build now are what make Session 04/05 a drop-in swap from dict storage → SQLite → Postgres without route changes. Keep the boundaries clean and small.
 
 ## Live Build Strategy (No Pre-Solved Example)
 
@@ -1122,6 +1123,7 @@ Before moving forward, ensure:
 - [ ] Can create, list, get, and delete movies
 - [ ] Validation errors return 422 with details
 - [ ] OpenAPI schema exports successfully
+- [ ] Code is committed and tagged `session-03-complete` so Session 04 can build on a clean baseline
 
 ### Next Steps
 
@@ -1162,6 +1164,11 @@ Before moving forward, ensure:
 - **Zero changes to HTTP routes** (only repository internals swap)
 
 **Why the repository pattern matters:** Every `repo.create()` call you wrote today will work with SQLite tomorrow because we kept storage behind a clean interface. This is the architectural payoff for modular design.
+
+**Session 05 preview (Postgres on the horizon):**
+- Same models/routes, new Postgres URL and engine settings
+- Docker Compose for the database, Alembic pointed at Postgres
+- Tests swap to Postgres fixtures but keep the override pattern you used here
 
 ## Troubleshooting
 
