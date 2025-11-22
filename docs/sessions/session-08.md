@@ -4,12 +4,12 @@
 - **Theme:** Stand up a simple FastAPI calculator backend (add/subtract + tiny charts), pair it with a Streamlit UI, and bolt on an AI sidecar (Pydantic AI + local vLLM or remote AI Studio) that generates and validates Python snippets for advanced calculations on demand—under guardrails—and a free-language-to-SQL agent that runs against a DuckDB microservice loaded from uploaded CSVs.
 
 ## Session Story
-We pivot to a contained “calculator + AI” slice: start with a FastAPI calculator backend (basic math endpoints plus a tiny plotting endpoint), add a Streamlit UI that uploads CSVs and calls the calculator, then attach an AI sidecar (FastAPI + Pydantic AI) that can generate/validate Python code for advanced calculations via vLLM or Google AI Studio. We also load the uploaded CSV into a tiny DuckDB microservice so an SQL agent can translate free language into SQL over that table. The main backend stays simple and defers complex ops to the sidecar via HTTP, with validator agents to reduce hallucinations, enforce best practices, and iteratively improve generated Python before execution.
+We pivot to a contained “calculator + AI” slice: start with a FastAPI calculator backend (basic math endpoints plus a tiny plotting endpoint), add a Streamlit UI that uploads CSVs and calls the calculator, then attach an AI sidecar (FastAPI + Pydantic AI) that can generate/validate Python code for advanced calculations via vLLM or Google AI Studio. We also load the uploaded CSV into a tiny DuckDB microservice so an SQL agent can translate free language into SQL over that table. The same sidecar hosts both TEXT→PY and TEXT→SQL flows. The stack stays Postgres-free for this session—just FastAPI, Streamlit, the sidecar, and DuckDB in-memory—so all AI hops stay simple.
 
 ## Architecture Snapshot
 - **Frontend:** Streamlit (CSV upload, charts, free-text prompts for Python and SQL paths). **Talks only to the calculator backend.**
 - **Calculator backend (FastAPI):** basic math + chart endpoints; advanced endpoints call the AI sidecar and DuckDB service; adds execution/telemetry envelopes. Acts as the sole gateway for the UI.
-- **AI sidecar (FastAPI + Pydantic AI):** Python codegen + validator + refine loop; SQL codegen + validator + refine loop; exposes `/ai/codegen`, `/ai/sql`, `/ai/execute` (sandboxed run).
+- **AI sidecar (FastAPI + Pydantic AI):** Python codegen + validator + refine loop; SQL codegen + validator + refine loop; exposes `/ai/codegen`, `/ai/sql`, `/ai/execute` (sandboxed run). Same service covers TEXT→PY and TEXT→SQL.
 - **DuckDB microservice:** holds the uploaded CSV as `uploaded` table; exposes `/upload_csv` and `/query` (SELECT-only).
 - **LLM providers:** local vLLM/LM Studio (optional container in compose) or remote Google AI Studio behind the sidecar via the same typed client.
 
@@ -62,7 +62,7 @@ We pivot to a contained “calculator + AI” slice: start with a FastAPI calcul
 - **Logfire/structured logging** – telemetry with `X-Trace-Id` across backend + sidecar + DuckDB microservice.
 
 ## Before Class (JiTT)
-1. FastAPI + Postgres running; `/healthz` should echo `X-Trace-Id`.
+1. FastAPI calculator + DuckDB microservice running; `/healthz` should echo `X-Trace-Id`. No Postgres needed in this session.
 2. Install deps:
    ```bash
    uv add fastapi uvicorn pydantic-ai httpx duckdb pandas numpy streamlit plotly
