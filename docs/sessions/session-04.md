@@ -6,7 +6,7 @@
 ## Session Story
 Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps the same HTTP contract but persists to SQLite through SQLModel, proving the repository abstraction, adding Alembic migrations, and hardening pytest fixtures so every test runs in a throwaway database. Students leave with durable data, migrations, and a repeatable seed script they can trust in later sessions.
 
-## Instructor Readiness (48 hours out)
+## Instructor Notes
 - `uv run pytest movie_service/tests -v` (baseline still green)
 - Create the SQLite file once:
   ```bash
