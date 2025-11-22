@@ -1,32 +1,33 @@
-# Session 08 – AI Microservice & Coding Assistants (Local or Cloud)
+# Session 08 – AI Sidecar for Dynamic Compute (Calculator + Codegen)
 
 - **Date:** Monday, Dec 22, 2025
-- **Theme:** Pair program with AI safely—prompt with intent, validate outputs, and wrap an external LLM (LM Studio/vLLM/Google AI Studio) behind a typed FastAPI microservice using Pydantic AI. Optional DSPy mini-lab shows declarative prompting.
+- **Theme:** Stand up a simple FastAPI calculator backend (add/subtract + tiny charts), pair it with a Streamlit UI, and bolt on an AI sidecar (Pydantic AI + local vLLM or remote AI Studio) that generates and validates Python snippets for advanced calculations on demand—under guardrails.
 
 ## Session Story
-You now have FastAPI + Postgres with both Streamlit and React clients. Session 08 adds a sidecar AI microservice: students practice spec/tests-first prompting, wrap the existing API behind a typed Pydantic AI tool, and front an external LLM (LM Studio/vLLM/Google AI Studio) with a FastAPI “AI gateway” that the existing backend can call without changing its routes. The main backend stays as-is; it simply forwards AI work to the sidecar for reasoning/LLM features. The emphasis is on safety, telemetry, and keeping humans in charge.
+We pivot to a contained “calculator + AI” slice: start with a FastAPI calculator backend (basic math endpoints plus a tiny plotting endpoint), add a Streamlit UI that uploads CSVs and calls the calculator, then attach an AI sidecar (FastAPI + Pydantic AI) that can generate/validate Python code for advanced calculations via vLLM or Google AI Studio. The main backend stays simple and defers complex ops to the sidecar via HTTP, with a validator agent to reduce hallucinations and enforce best practices.
 
 ## Learning Objectives
-- Apply spec-first and tests-first prompting patterns; review AI outputs critically.
-- Expose FastAPI functionality as a typed Pydantic AI tool with trace/log hooks and publish it as an HTTP endpoint (AI gateway sidecar) the existing backend can consume without route changes.
-- Call local or hosted LLM endpoints (LM Studio/vLLM/Google AI Studio) via the same interface while enforcing Pydantic contracts.
-- Evaluate agent responses with pytest; keep secrets and telemetry under control.
-- (Optional) Explore DSPy `Signature` + `Predict` to see declarative prompting.
+- Build a minimal FastAPI calculator service (add/subtract and a small chart endpoint) and keep routes stable.
+- Stand up an AI sidecar (FastAPI + Pydantic AI) that generates Python snippets for advanced calculations and exposes them over HTTP to the calculator backend.
+- Use a validator agent to lint/approve generated Python (reduce hallucinations, enforce safe imports/patterns) before execution.
+- Wire Streamlit to upload CSVs, call calculator endpoints, and request sidecar codegen for custom analysis.
+- Run both local (vLLM) and remote (Google AI Studio) LLMs through the same typed interface; cover with pytest/mocked transports and telemetry.
 
 ## Deliverables (What You’ll Build)
 - Prompt templates/checklists for spec-first and tests-first requests.
-- A Pydantic AI tool that calls the `/movies` API with validated inputs/outputs and lives inside an AI gateway microservice.
-- A small FastAPI route (e.g., `/ai/pitch`) that invokes the agent and returns a typed response for other services to consume.
-- pytest cases that call the agent with a mocked LLM client.
-- Optional DSPy scratch file showing `Signature` + `Predict` wired to the same tool.
+- A FastAPI calculator service (basic math + tiny chart endpoint) with tests.
+- An AI sidecar FastAPI service exposing Pydantic AI tools for code generation + validation.
+- Streamlit UI that uploads CSVs, hits calculator endpoints, and calls the sidecar for custom analysis.
+- pytest cases that mock LLM responses and verify validator gating; optional DSPy scratch file.
 
 ## Toolkit Snapshot
-- **Pydantic AI** – typed agent + tool-calling framework.
-- **httpx** – used by tools to call FastAPI.
-- **LM Studio / vLLM / Google AI Studio** – interchangeable LLM endpoints (OpenAI-compatible or Gemini).
-- **Logfire (or structured logging)** – telemetry with `X-Trace-Id`.
-- **pytest** – evaluates agent outputs safely.
-- **DSPy (optional)** – declarative prompting layer.
+- **FastAPI** – calculator backend (core) + AI sidecar (codegen/validation gateway).
+- **Pydantic AI** – typed tools/agents for code generation and validation.
+- **vLLM / Google AI Studio** – interchangeable LLM endpoints behind the sidecar.
+- **httpx** – shared HTTP client between services.
+- **Streamlit** – CSV upload + calculator UI + AI-assisted analysis.
+- **pytest** – mocks LLM transports and tests validator gating.
+- **Logfire/structured logging** – telemetry with `X-Trace-Id` across backend + sidecar.
 
 ## Before Class (JiTT)
 1. FastAPI + Postgres running; `/healthz` should echo `X-Trace-Id`.
@@ -37,32 +38,29 @@ You now have FastAPI + Postgres with both Streamlit and React clients. Session 0
    uv add dspy-ai
    ```
 3. Pick one LLM track:
-   - **LM Studio**: start a local model, note base URL (e.g., `http://localhost:1234/v1`), set `AI_API_KEY=dummy`.
-   - **vLLM**: run the provided Docker image and expose `:8000/v1`.
-   - **Google AI Studio (Gemini)**: create an API key, export:
-     ```bash
-     export GOOGLE_API_KEY="..."; export GOOGLE_GEMINI_MODEL="gemini-2.0-flash"
-     uv add "pydantic-ai[google]" google-genai
-     ```
-4. Add AI env entries to `.env.example` / `.env`:
+   - **Local vLLM**: run model, expose `/v1`, set `AI_BASE_URL=http://localhost:8000/v1`, `AI_API_KEY=dummy`.
+   - **Google AI Studio (Gemini)**: set `GOOGLE_API_KEY`, `GOOGLE_GEMINI_MODEL`, install `uv add "pydantic-ai[google]" google-genai`.
+4. Add AI env entries to `.env.example` / `.env` for the sidecar:
    ```ini
-   AI_BASE_URL="http://localhost:1234/v1"  # or Google endpoint via pydantic-ai models
+   AI_BASE_URL="http://localhost:8000/v1"
    AI_MODEL="local-model-or-gemini"
    AI_API_KEY="your-key-or-dummy"
    ```
-5. Review Session 04–07 tests; be ready to add agent tests next to them.
+5. Stand up skeleton services before class:
+   - Calculator FastAPI service with `/add`, `/subtract`, `/chart` (matplotlib/plotly light) and tests.
+   - AI sidecar FastAPI service with `/ai/codegen` and `/ai/validate` hitting Pydantic AI tools (mock transport OK).
+   - Streamlit page loads and can call calculator endpoints locally.
 
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| EX2 gallery walk | 15 min | Student demos | Trace IDs visible in UIs/logs. |
-| Policy + prompting | 15 min | Talk | Spec/tests-first, safety, attribution. |
-| Micro demo: prompt → test | 5 min | Live demo | Write tests first, then code with AI. |
-| Pydantic AI tool-calling | 20 min | Live coding | Typed tool + FastAPI route + telemetry. |
-| **Part B – Lab 1** | **45 min** | **Guided pairing** | **Build the agent tool + pytest around it.** |
-| Break | 10 min | — | Launch a 10-minute timer. |
-| **Part C – Lab 2** | **45 min** | **Guided pairing** | **Plug into LM Studio/vLLM or Google AI Studio; optional DSPy.** |
-| Wrap-up | 10 min | Discussion | What worked, what to harden next. |
+| Intent & safety | 10 min | Discussion | Why AI is sidecarred; guardrails, attribution. |
+| Calculator core | 20 min | Live coding | FastAPI add/subtract + tiny chart endpoint + tests. |
+| Streamlit upload | 20 min | Live demo | CSV upload, call calculator API, show chart. |
+| **Part B – Lab 1** | **45 min** | **Guided build** | **AI sidecar: Pydantic AI tool + code validator + `/ai/codegen` route.** |
+| Break | 10 min | — | Timer + Q&A. |
+| **Part C – Lab 2** | **45 min** | **Guided build** | **Wire Streamlit to sidecar; run local vLLM vs Google AI Studio; pytest with mocked LLM.** |
+| Wrap-up | 10 min | Discussion | Telemetry, next steps, homework. |
 
 ## Guardrails & Prompt Patterns
 1. **Policy reminder:** No secrets or private data; document AI assistance in changelog/PR. Every change must be understood and tested by a human.
@@ -71,104 +69,82 @@ You now have FastAPI + Postgres with both Streamlit and React clients. Session 0
 4. **Refactor prompt:** “Keep behavior, improve structure,” paired with current code + tests.
 5. **Telemetry toggle:** Keep `LOGFIRE_API_KEY` optional; default to local structured logs with `X-Trace-Id`.
 
-## Lab 1 – Build a Pydantic AI tool (45 min)
-Goal: expose a safe tool that reuses the `/movies` API and returns validated data; cover it with pytest.
+## Lab 1 – Build the AI sidecar (45 min)
+Goal: expose a safe codegen + validator sidecar that the calculator backend can call; cover it with pytest.
 
-### Step 1 – Define settings + models (description only)
-- Add AI fields to your existing settings module: `ai_base_url`, `ai_model`, `ai_api_key`.
-- Create a Pydantic response model for the AI output (e.g., `MoviePitch` with `title`, `hook`).
+### Step 1 – Define settings + models (description)
+- AI settings: `ai_base_url`, `ai_model`, `ai_api_key`, `ai_trace_id`.
+- Calculator models: `OperationRequest` (`op`, `a`, `b`), `ChartRequest` (list of numbers), `ChartResponse` (image/data URL).
+- Sidecar models: `CodegenRequest` (operation description or CSV columns), `CodegenResponse` (python_code, summary); `ValidationResult` (is_valid, issues).
 
-### Step 2 – Tool implementation (place in an `agents/` module)
+### Step 2 – Tool implementation (sidecar `agents/` module)
 ```python
-from typing import Annotated
-
-import httpx
 from pydantic import BaseModel
 from pydantic_ai import Agent, Tool
 
-from movie_service.app.config import Settings
+
+class CodegenRequest(BaseModel):
+    prompt: str
 
 
-class PitchRequest(BaseModel):
-    title: str
-    mood: str = "optimistic"
+class CodegenResponse(BaseModel):
+    python_code: str
+    summary: str
 
 
-class PitchResponse(BaseModel):
-    title: str
-    hook: str
-
-
-def build_client(settings: Settings) -> httpx.Client:
-    return httpx.Client(
-        base_url=settings.ai_base_url,
-        headers={"Authorization": f"Bearer {settings.ai_api_key}"},
-        timeout=10.0,
-    )
-
-
-def movie_tools(settings: Settings) -> Tool:
+def codegen_tools(settings):
     client = build_client(settings)
 
     @Tool
-    def write_pitch(payload: PitchRequest) -> PitchResponse:
-        """Ask the LLM for a one-sentence pitch about a movie title."""
+    def generate_code(payload: CodegenRequest) -> CodegenResponse:
+        """Return safe Python to run inside the calculator (numpy/pandas only)."""
         response = client.post(
             "/chat/completions",
             json={
                 "model": settings.ai_model,
                 "messages": [
-                    {"role": "system", "content": "Return JSON with title + hook."},
-                    {"role": "user", "content": f"Title: {payload.title}. Mood: {payload.mood}."},
+                    {"role": "system", "content": "Return JSON with python_code and summary. Use numpy/pandas only."},
+                    {"role": "user", "content": payload.prompt},
                 ],
                 "response_format": {"type": "json_object"},
             },
         )
         response.raise_for_status()
-        data = response.json()["choices"][0]["message"]["content"]
-        return PitchResponse.model_validate_json(data)
+        return CodegenResponse.model_validate_json(response.json()["choices"][0]["message"]["content"])
 
-    return write_pitch
+    return generate_code
 
 
-def build_agent(settings: Settings) -> Agent[PitchRequest, PitchResponse]:
-    agent = Agent(
-        model="openai:gpt-4o-mini",  # or GoogleModel / local alias
-        system_prompt="You are a concise movie pitch assistant.",
-        tools=[movie_tools(settings)],
-        output_type=PitchResponse,
+def build_codegen_agent(settings):
+    return Agent(
+        model="openai:gpt-4o-mini",  # or GoogleModel / local vLLM alias
+        system_prompt="You are a careful code generator. Never use unsafe imports.",
+        tools=[codegen_tools(settings)],
+        output_type=CodegenResponse,
     )
-    return agent
+
+# Validator agent (lint unsafe patterns)
+class ValidationResult(BaseModel):
+    is_valid: bool
+    issues: list[str]
+
+def build_validator_agent(settings):
+    return Agent(
+        model="openai:gpt-4o-mini",
+        system_prompt="Review the provided python_code. Flag unsafe imports, file/network access.",
+        output_type=ValidationResult,
+    )
 ```
 
-### Step 3 – FastAPI route (description)
-- Add a route like `POST /ai/pitch` that accepts `PitchRequest`, calls `build_agent(settings).run_sync(...)`, and returns `PitchResponse`.
-- Include `X-Trace-Id` propagation and log the tool name + outcome.
+### Step 3 – Sidecar FastAPI routes (description)
+- `POST /ai/codegen` → runs codegen agent, returns `CodegenResponse`.
+- `POST /ai/validate` → runs validator agent on `python_code`, returns `ValidationResult`; calculator backend calls this before executing.
+- Propagate `X-Trace-Id`, log tool name + outcome.
 
 ### Step 4 – Tests (run locally)
-Use pytest to mock the LLM call:
-```python
-from movie_service.app.agents.movies import build_agent, PitchRequest
-from pydantic_ai.models.openai import OpenAIModel
-
-
-def test_pitch_agent_uses_mocked_llm(monkeypatch):
-    from movie_service.app.config import Settings
-
-    settings = Settings(ai_base_url="https://example.test", ai_model="fake", ai_api_key="key")
-    agent = build_agent(settings)
-    agent.model = OpenAIModel(  # type: ignore[assignment]
-        model="fake",
-        api_key="key",
-        client_kwargs={"base_url": "https://example.test"},
-        transport=httpx.MockTransport(lambda req: httpx.Response(200, json={
-            "choices": [{"message": {"content": '{"title": "Mock", "hook": "Hook"}'}}]
-        })),
-    )
-
-    result = agent.run_sync(PitchRequest(title="Test"))
-    assert result.data.hook == "Hook"
-```
+- Mock LLM via `httpx.MockTransport` to return deterministic `python_code`.
+- Assert validator rejects unsafe imports (`os`, `subprocess`) and passes numpy/pandas.
+- Anyio test for calculator backend calling sidecar `/ai/validate` before execution.
 
 ## Lab 2 – Connect real endpoints (45 min)
 Goal: swap the mocked LLM for a real one (LM Studio/vLLM or Google AI Studio) and observe telemetry.
