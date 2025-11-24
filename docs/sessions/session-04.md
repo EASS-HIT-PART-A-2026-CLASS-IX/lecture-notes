@@ -77,7 +77,7 @@ Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps th
 | 10 min | Recap & intent | Why the repo abstraction makes the DB swap easy. |
 | 20 min | Data modeling primer | SQLModel basics, table vs response models, migrations. |
 | 45 min | **Lab 1** | **Database wiring + CRUD rewrite.** |
-| 10 min | Break | Encourage quick sqlite browser checks. |
+| 10 min | Break | Encourage quick SQLite browser checks (e.g., DBeaver/DB Browser). |
 | 45 min | **Lab 2** | **Tests, Alembic, seed scripts.** |
 | 10 min | Wrap-up | Checklist + Q&A. |
 
