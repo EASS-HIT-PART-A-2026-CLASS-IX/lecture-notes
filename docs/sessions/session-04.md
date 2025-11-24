@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     app_name: str = "Movie Service"
     default_page_size: int = 20
     feature_preview: bool = False
-    database_url: str = "sqlite:///data/movies.db"
+    database_url: str = "sqlite:///./data/movies.db"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -98,29 +98,45 @@ class Settings(BaseSettings):
 ### Step 2: Create the database module
 `movie_service/app/database.py`
 ````python
-from typing import Generator
+from collections.abc import Generator
+from typing import Annotated
 
-from sqlmodel import SQLModel, Session, create_engine
+from fastapi import Depends
+from sqlmodel import Session, SQLModel, create_engine
 
 from .config import Settings
 
-settings = Settings()
+
+def get_settings() -> Settings:
+    """Dependency for accessing application settings."""
+    return Settings()
+
+
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+# Create engine using settings
+settings = get_settings()
 engine = create_engine(
     settings.database_url,
     echo=False,
-    connect_args={"check_same_thread": False},  # SQLite + threads
+    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
 )
 
 
 def init_db() -> None:
-    # Import models before create_all so SQLModel metadata includes Movie table
+    """Initialize database tables. Import models before calling this."""
     from . import models  # noqa: F401
+    
     SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:
+    """Provide a database session for dependency injection."""
     with Session(engine) as session:
         yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
 ````
 
 Run the helper once so the database file exists (run from the project root). If you call this before creating the initial Alembic revision, delete `data/movies.db` before `alembic revision --autogenerate` so the migration emits the table:
@@ -137,74 +153,116 @@ PY
 ````python
 from typing import Optional
 
-from pydantic import model_validator
+from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 
 class MovieBase(SQLModel):
-    title: str
-    year: int = Field(ge=1900, le=2100)
-    genre: str
+    """Base model with shared movie fields."""
+    
+    title: str = Field(min_length=1, max_length=200)
+    year: int = Field(ge=1888, le=2100)  # 1888 = first film ever made
+    genre: str = Field(min_length=1, max_length=50)
 
 
 class Movie(MovieBase, table=True):
+    """Database model for movies."""
+    
+    __tablename__ = "movies"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
 
 
 class MovieCreate(MovieBase):
-
-    @model_validator(mode="after")
-    def normalize_genre(self) -> "MovieCreate":
-        self.genre = self.genre.title()
-        return self
+    """Schema for creating a new movie."""
+    
+    @field_validator("genre")
+    @classmethod
+    def normalize_genre(cls, v: str) -> str:
+        """Normalize genre to title case."""
+        return v.strip().title()
+    
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: str) -> str:
+        """Strip whitespace from title."""
+        return v.strip()
 
 
 class MovieRead(MovieBase):
+    """Schema for reading a movie."""
+    
     id: int
 
 
 class MovieUpdate(SQLModel):
-    title: Optional[str] = None
-    year: Optional[int] = Field(default=None, ge=1900, le=2100)
-    genre: Optional[str] = None
+    """Schema for updating a movie (all fields optional)."""
+    
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    year: Optional[int] = Field(default=None, ge=1888, le=2100)
+    genre: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    
+    @field_validator("genre")
+    @classmethod
+    def normalize_genre(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize genre to title case if provided."""
+        return v.strip().title() if v else None
+    
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: Optional[str]) -> Optional[str]:
+        """Strip whitespace from title if provided."""
+        return v.strip() if v else None
 ````
+
 `MovieUpdate` is ready for a future `PUT/PATCH` route; the contract today stays list/create/get/delete.
 
 ### Step 4: Database-backed repository
 `movie_service/app/repository_db.py`
 ````python
+from typing import Optional
+
 from sqlmodel import Session, select
 
 from .models import Movie, MovieCreate
 
 
 class MovieRepository:
-    """SQLite-backed storage for movies."""
+    """SQLite-backed storage for movies with proper session handling."""
 
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def list(self) -> list[Movie]:
-        return list(self.session.exec(select(Movie)))
+    def list(self, *, skip: int = 0, limit: int = 100) -> list[Movie]:
+        """List all movies with pagination support."""
+        statement = select(Movie).offset(skip).limit(limit)
+        return list(self.session.exec(statement).all())
 
     def create(self, payload: MovieCreate) -> Movie:
+        """Create a new movie and persist to database."""
         record = Movie.model_validate(payload)
         self.session.add(record)
         self.session.commit()
         self.session.refresh(record)
         return record
 
-    def get(self, movie_id: int) -> Movie | None:
+    def get(self, movie_id: int) -> Optional[Movie]:
+        """Retrieve a movie by ID."""
         return self.session.get(Movie, movie_id)
 
-    def delete(self, movie_id: int) -> None:
+    def delete(self, movie_id: int) -> bool:
+        """Delete a movie by ID. Returns True if deleted, False if not found."""
         record = self.get(movie_id)
-        if record:
-            self.session.delete(record)
-            self.session.commit()
+        if record is None:
+            return False
+        self.session.delete(record)
+        self.session.commit()
+        return True
 
     def delete_all(self) -> int:
-        records = self.session.exec(select(Movie)).all()
+        """Delete all movies and return count. Use with caution."""
+        statement = select(Movie)
+        records = self.session.exec(statement).all()
         count = len(records)
         for record in records:
             self.session.delete(record)
@@ -218,22 +276,16 @@ class MovieRepository:
 from typing import Annotated
 
 from fastapi import Depends
-from sqlmodel import Session
 
-from .config import Settings
-from .database import get_session
+from .database import SessionDep
 from .repository_db import MovieRepository
 
 
-def get_settings() -> Settings:
-    return Settings()
-
-
-def get_repository(session: Session = Depends(get_session)) -> MovieRepository:
+def get_repository(session: SessionDep) -> MovieRepository:
+    """Dependency for accessing the movie repository."""
     return MovieRepository(session)
 
 
-SettingsDep = Annotated[Settings, Depends(get_settings)]
 RepositoryDep = Annotated[MovieRepository, Depends(get_repository)]
 ````
 
@@ -241,41 +293,65 @@ RepositoryDep = Annotated[MovieRepository, Depends(get_repository)]
 ````python
 from fastapi import FastAPI, HTTPException, status
 
-from .dependencies import RepositoryDep, SettingsDep
+from .database import SettingsDep
+from .dependencies import RepositoryDep
 from .models import MovieCreate, MovieRead
 
-app = FastAPI(title="Movie Service", version="0.2.0")
+app = FastAPI(
+    title="Movie Service",
+    version="0.2.0",
+    description="A service for managing movie data with SQLite persistence",
+)
 
 
 @app.get("/health", tags=["diagnostics"])
 def health(settings: SettingsDep) -> dict[str, str]:
+    """Health check endpoint."""
     return {"status": "ok", "app": settings.app_name}
 
 
 @app.get("/movies", response_model=list[MovieRead], tags=["movies"])
-def list_movies(repository: RepositoryDep) -> list[MovieRead]:
-    return list(repository.list())
+def list_movies(
+    repository: RepositoryDep,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[MovieRead]:
+    """List all movies with optional pagination."""
+    return repository.list(skip=skip, limit=limit)
 
 
-@app.post("/movies", response_model=MovieRead, status_code=status.HTTP_201_CREATED, tags=["movies"])
+@app.post(
+    "/movies",
+    response_model=MovieRead,
+    status_code=status.HTTP_201_CREATED,
+    tags=["movies"],
+)
 def create_movie(payload: MovieCreate, repository: RepositoryDep) -> MovieRead:
+    """Create a new movie."""
     return repository.create(payload)
 
 
 @app.get("/movies/{movie_id}", response_model=MovieRead, tags=["movies"])
 def read_movie(movie_id: int, repository: RepositoryDep) -> MovieRead:
+    """Retrieve a specific movie by ID."""
     movie = repository.get(movie_id)
     if movie is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Movie with id {movie_id} not found",
+        )
     return movie
 
 
 @app.delete("/movies/{movie_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["movies"])
 def delete_movie(movie_id: int, repository: RepositoryDep) -> None:
-    movie = repository.get(movie_id)
-    if movie is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
-    repository.delete(movie_id)
+    """Delete a specific movie by ID."""
+    deleted = repository.delete(movie_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Movie with id {movie_id} not found",
+        )
 ````
 
 ### Step 6: Manual smoke test
@@ -296,51 +372,56 @@ Goal: prove the database-backed service is safe to refactor by adding hermetic p
 ### Step 1: Database-aware pytest fixtures
 `movie_service/tests/conftest.py`
 ````python
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel, Session, create_engine, delete
+from sqlmodel import Session, SQLModel, create_engine
 
-from movie_service.app.dependencies import get_repository
+from movie_service.app import models  # noqa: F401
+from movie_service.app.database import get_session
 from movie_service.app.main import app
-from movie_service.app.models import Movie
-from movie_service.app.repository_db import MovieRepository
 
 
-@pytest.fixture()
-def engine(tmp_path):
+@pytest.fixture(name="engine")
+def engine_fixture(tmp_path):
     """Create a temporary SQLite database for testing."""
     test_db = tmp_path / "test.db"
-    engine = create_engine(
+    test_engine = create_engine(
         f"sqlite:///{test_db}",
         connect_args={"check_same_thread": False},
+        echo=False,
     )
-    SQLModel.metadata.create_all(engine)
-    yield engine
-    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(test_engine)
+    yield test_engine
+    # Cleanup: drop all tables and dispose engine
+    SQLModel.metadata.drop_all(test_engine)
+    test_engine.dispose()
 
 
-@pytest.fixture()
-def session(engine):
+@pytest.fixture(name="session")
+def session_fixture(engine) -> Generator[Session, None, None]:
     """Provide a SQLModel session connected to the test database."""
     with Session(engine) as session:
         yield session
+        # Rollback any uncommitted changes
+        session.rollback()
 
 
-@pytest.fixture(autouse=True)
-def override_repository(session):
-    """Override the repository dependency and clean up after each test."""
-    app.dependency_overrides[get_repository] = lambda: MovieRepository(session)
-    yield
-    # Clean up: remove override and delete all test data
-    app.dependency_overrides.pop(get_repository, None)
-    session.exec(delete(Movie))
-    session.commit()
-
-
-@pytest.fixture()
-def client(override_repository):
+@pytest.fixture(name="client")
+def client_fixture(session: Session) -> Generator[TestClient, None, None]:
     """Provide a test client with overridden dependencies."""
-    return TestClient(app)
+    
+    def get_session_override() -> Generator[Session, None, None]:
+        yield session
+    
+    app.dependency_overrides[get_session] = get_session_override
+    
+    with TestClient(app) as test_client:
+        yield test_client
+    
+    # Cleanup: remove override
+    app.dependency_overrides.clear()
 ````
 
 ### Step 2: Reuse Session 03 tests
@@ -360,19 +441,25 @@ uv run pytest movie_service/tests -v
 3. Update `alembic.ini` to remove the hard-coded `sqlalchemy.url` (env.py will set it). Leave `script_location = migrations`.
 4. Edit `migrations/env.py`:
    ````python
+   # filepath: migrations/env.py
    from logging.config import fileConfig
 
    from alembic import context
    from sqlalchemy import engine_from_config, pool
    from sqlmodel import SQLModel
 
-   from movie_service.app import models  # noqa
+   # Import all models to ensure they're registered with SQLModel metadata
+   from movie_service.app import models  # noqa: F401
    from movie_service.app.config import Settings
 
    config = context.config
-   settings = Settings()
-   config.set_main_option("sqlalchemy.url", settings.database_url)
 
+   # Get database URL from settings
+   settings = Settings()
+   if not config.get_main_option("sqlalchemy.url"):
+       config.set_main_option("sqlalchemy.url", settings.database_url)
+
+   # Interpret the config file for Python logging
    if config.config_file_name is not None:
        fileConfig(config.config_file_name)
 
@@ -380,26 +467,35 @@ uv run pytest movie_service/tests -v
 
 
    def run_migrations_offline() -> None:
+       """Run migrations in 'offline' mode."""
        url = config.get_main_option("sqlalchemy.url")
        context.configure(
            url=url,
            target_metadata=target_metadata,
            literal_binds=True,
            dialect_opts={"paramstyle": "named"},
-           render_as_batch=True,  # needed for SQLite ALTER TABLE
+           render_as_batch=True,  # Required for SQLite ALTER TABLE
        )
+
        with context.begin_transaction():
            context.run_migrations()
 
 
    def run_migrations_online() -> None:
+       """Run migrations in 'online' mode."""
        connectable = engine_from_config(
            config.get_section(config.config_ini_section, {}),
            prefix="sqlalchemy.",
            poolclass=pool.NullPool,
        )
+
        with connectable.connect() as connection:
-           context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
+           context.configure(
+               connection=connection,
+               target_metadata=target_metadata,
+               render_as_batch=True,  # Required for SQLite ALTER TABLE
+           )
+
            with context.begin_transaction():
                context.run_migrations()
 
@@ -409,6 +505,7 @@ uv run pytest movie_service/tests -v
    else:
        run_migrations_online()
    ````
+
 5. Generate and apply the initial revision:
    ```bash
    uv run alembic revision --autogenerate -m "create movies"
@@ -419,23 +516,46 @@ uv run pytest movie_service/tests -v
 ### Step 4: Seed script
 `movie_service/scripts/seed_db.py`
 ````python
-from sqlmodel import Session
+"""Seed the database with initial movie data."""
+
+from sqlmodel import Session, select
 
 from movie_service.app.database import engine, init_db
-from movie_service.app.models import MovieCreate
+from movie_service.app.models import Movie, MovieCreate
 from movie_service.app.repository_db import MovieRepository
 
-init_db()
-with Session(engine) as session:
-    repo = MovieRepository(session)
-    if repo.list():
-        print("Database already seeded")
-    else:
-        repo.create(MovieCreate(title="Arrival", year=2016, genre="sci-fi"))
-        repo.create(MovieCreate(title="The Martian", year=2015, genre="sci-fi"))
-        print("Seeded two movies")
+
+def seed_movies() -> None:
+    """Seed the database with sample movies if empty."""
+    # Ensure tables exist
+    init_db()
+    
+    with Session(engine) as session:
+        # Check if database already has data
+        statement = select(Movie)
+        existing_movies = session.exec(statement).first()
+        
+        if existing_movies:
+            print("Database already contains movies. Skipping seed.")
+            return
+        
+        # Seed initial movies
+        repo = MovieRepository(session)
+        movies = [
+            MovieCreate(title="Arrival", year=2016, genre="sci-fi"),
+            MovieCreate(title="The Martian", year=2015, genre="sci-fi"),
+            MovieCreate(title="Interstellar", year=2014, genre="sci-fi"),
+        ]
+        
+        for movie_data in movies:
+            repo.create(movie_data)
+        
+        print(f"Successfully seeded {len(movies)} movies.")
+
+
+if __name__ == "__main__":
+    seed_movies()
 ````
-Run via `uv run python -m movie_service.scripts.seed_db`.
 
 ### Step 5: Verification checklist
 - `uv run pytest movie_service/tests -v`
