@@ -61,6 +61,16 @@ Session 03 shipped the Movie Service with in-memory storage. Session 04 keeps th
    PY
    ```
 
+## Migration Quickstart (from Session 03)
+- Start clean: `uv run pytest movie_service/tests -v` and tag/branch `session-03-complete`.
+- Add deps + data dir + env: `uv add sqlmodel alembic`; ensure `data/` exists/ignored and `.env(.example)` has `MOVIE_DATABASE_URL="sqlite:///./data/movies.db"`.
+- Swap storage: follow Lab 1 to add `database.py`, update `config.py`, define SQLModel models, drop in `repository_db.py`, and wire `dependencies.py` + `main.py` (keep the HTTP contract identical).
+- Tests: use the DB-aware fixtures in Lab 2 Step 1 and rerun the existing `movie_service/tests/test_movies.py`.
+- Migrations: `uv run alembic init migrations`, edit `alembic.ini` + `migrations/env.py`, delete any pre-created `data/movies.db`, then `uv run alembic revision --autogenerate -m "create movies"` and `uv run alembic upgrade head`.
+- Seeds: run `uv run python -m movie_service.scripts.seed_db` twice to confirm idempotency.
+- Smoke: `uv run uvicorn movie_service.app.main:app --reload`, then `curl /health` and `/movies`.
+- Commit/tag when green to mark the Session 04 baseline.
+
 ## Session Agenda
 | Time | Activity | Focus |
 | --- | --- | --- |
