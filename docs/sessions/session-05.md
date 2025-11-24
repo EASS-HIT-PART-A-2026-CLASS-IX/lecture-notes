@@ -1,94 +1,92 @@
-# Session 05 – PostgreSQL Foundations for the Movie Service
+# Session 05 – Multi-DB Modes + Postgres Hardening
 
 - **Date:** Monday, Dec 1, 2025
-- **Theme:** Graduate from local SQLite to production-colored PostgreSQL with Docker Compose, Alembic migrations, health checks, and Postgres-aware tests.
+- **Theme:** Keep the FastAPI contract stable while making the repository facade run in three modes: in-memory, SQLite, and Postgres. Add health/CORS/trace protections and keep migrations/tests working regardless of backend.
 
 ## Session Story
-Session 04 proved the repository abstraction by persisting to SQLite. Session 05 keeps the exact HTTP contract but swaps SQLite for Postgres, adds connection protection, and wires health/CORS/trace IDs so future UIs (Streamlit, React) can plug in. By the end, every student can run, migrate, seed, and test against Postgres with disposable databases.
+Session 03 shipped the in-memory backend; Session 04 swapped in SQLite + Alembic without touching routes. Session 05 makes that abstraction explicit: you choose the datastore via config, keep the same models/routes, and prove the same migrations/tests run against SQLite (offline) and Postgres (compose). Memory stays available for ultra-fast unit tests. The outcome is a single codebase that can run everywhere—from ephemeral tests to classroom laptops to production-colored Postgres.
 
 ## Learning Objectives
-- Provision Postgres with Docker Compose and manage credentials via `pydantic-settings`.
-- Configure SQLModel + Alembic to target Postgres URLs (no SQLite leftovers).
-- Add health checks, CORS, and trace IDs that survive container restarts.
-- Seed/reset Postgres with Typer scripts and cache-safe pytest fixtures.
-- Verify CRUD works end-to-end with the same FastAPI routes as Session 04.
+- Expose a `db_mode` switch (memory | sqlite | postgres) with sensible defaults so environments pick their own backend without code edits.
+- Drive SQLModel/Alembic from environment URLs and keep the migration history identical across SQLite and Postgres.
+- Maintain the repository facade so FastAPI routes never import storage-specific classes.
+- Add health, CORS, and trace ID middleware that works in every mode.
+- Seed and test against all backends with repeatable commands.
 
 ## Deliverables (What You’ll Build)
-- `docker-compose.yml` running Postgres with a persisted volume.
-- `.env(.example)` entries for Postgres URLs and pool settings.
-- `movie_service/app/database.py` tuned for psycopg + pooling.
-- Alembic pointed at Postgres with an initial migration applied.
-- Typer seed/reset script (`scripts/db.py`) plus pytest fixtures that create/drop throwaway Postgres databases.
-- Updated health endpoint + CORS/trace middleware in `movie_service/app/main.py`.
+- Env-driven settings (`MOVIE_DB_MODE`, `MOVIE_DATABASE_URL_SQLITE`, `MOVIE_DATABASE_URL_POSTGRES`, `MOVIE_DATABASE_URL_TEST`, pool flags) captured in `.env.example`, plus a computed `database_url` property.
+- `docker-compose.yml` for Postgres (optional in class; required for postgres mode) with a persisted volume.
+- `movie_service/app/database.py` that resolves the correct engine per mode (memory → no engine, sqlite → file path + `check_same_thread`, postgres → psycopg + pooling).
+- `movie_service/app/dependencies.py` with a repository factory/protocol that returns the in-memory repository or the SQLModel-backed repository without changing route signatures.
+- Alembic configured to read URLs from settings; the same migration set applies to SQLite and Postgres.
+- Typer/Rich CLI for seeding/resetting the chosen backend.
+- Pytest fixtures that default to memory, can target SQLite files, and optionally spin up throwaway Postgres DBs.
 
 ## Toolkit Snapshot
-- **PostgreSQL 16** – durable relational database.
-- **psycopg 3** – sync driver for SQLModel/SQLAlchemy.
-- **Docker Compose** – reproducible local Postgres.
-- **Alembic** – migrations pointed at Postgres URLs.
-- **pytest** – Postgres-aware fixtures for isolated tests.
-- **Typer/Rich** – CLI helpers for seeds + ops automation.
+- **FastAPI** + **SQLModel** – shared models for API + persistence.
+- **Alembic** – migration history that points at the active `MOVIE_DATABASE_URL`.
+- **psycopg 3** – Postgres driver; only used when `db_mode=postgres`.
+- **Docker Compose** – reproducible Postgres for local/dev demos.
+- **pytest** – fixtures per mode; dependency overrides for repositories.
+- **Typer/Rich** – CLI UX for seeds/resets regardless of backend.
 
 ## Before Class (JiTT)
-0. **Workflow reminder:** copy `docs/workflows/ai-assisted/templates/feature-brief.md` per slice (Compose, env/settings, database module, Alembic, health/CORS, seeds/tests). Keep changes under the 150‑LOC limit from `docs/workflows/ai-assisted/README.md`.
-1. Finish Session 04 and confirm SQLite tests pass: `uv run pytest movie_service/tests -v`.
-2. Install Postgres + tooling:
+0. Workflow reminder: keep briefs per slice under the 150‑LOC limit in `docs/workflows/ai-assisted/README.md`.
+1. Finish Session 04 and confirm SQLite path is green: `uv run pytest movie_service/tests -v`.
+2. Add Postgres + tooling (needed only for postgres mode):
    ```bash
    docker compose version
-   uv add "psycopg[binary]" sqlalchemy-utils
+   uv add "psycopg[binary]" sqlalchemy-utils rich typer
    ```
-3. Create `docker-compose.yml` for Postgres:
-   ```yaml
-   services:
-     db:
-       image: postgres:16
-       environment:
-         POSTGRES_USER: movie
-         POSTGRES_PASSWORD: movie
-         POSTGRES_DB: movies
-       ports: ["5432:5432"]
-       volumes: [pgdata:/var/lib/postgresql/data]
-   volumes:
-     pgdata:
-   ```
-4. Extend `.env.example` / `.env`:
+3. Extend env templates:
    ```ini
-   MOVIE_DATABASE_URL="postgresql+psycopg://movie:movie@localhost:5432/movies"
-   MOVIE_DATABASE_URL_TEST="postgresql+psycopg://movie:movie@localhost:5432/postgres"
+   MOVIE_DB_MODE="sqlite"  # options: memory | sqlite | postgres
+   MOVIE_DATABASE_URL_SQLITE="sqlite:///./data/movies.db"
+   MOVIE_DATABASE_URL_POSTGRES="postgresql+psycopg://movie:movie@localhost:5432/movies"
+   MOVIE_DATABASE_URL_TEST="sqlite:///./data/movies-test.db"  # override per test run
    MOVIE_DATABASE_ECHO=false
    MOVIE_POOL_SIZE=5
    MOVIE_POOL_TIMEOUT=30
    ```
-5. Start Postgres and verify connectivity:
+   Keep `MOVIE_DATABASE_URL` as a computed property in code (see Lab 1).
+4. Create/confirm writable `data/` directory and ignore it in git.
+5. (Optional) Start Postgres for the postgres path:
    ```bash
    docker compose up -d db
    pg_isready -h localhost -p 5432 -d movies -U movie
    ```
-6. Point Alembic at Postgres (details in Lab 1) and run `uv run alembic upgrade head` once to ensure the DB matches Session 04 models.
+6. Smoke imports:
+   ```bash
+   uv run python - <<'PY'
+   import sqlmodel, psycopg, typer  # noqa: F401
+   print("SQLModel + psycopg + Typer ready")
+   PY
+   ```
+7. Baseline: `uv run pytest movie_service/tests -v` should still pass in default memory/sqlite mode before class.
 
 ## Session Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Recap & intent | 10 min | Discussion | Why SQLite dies under concurrency; Postgres expectations. |
-| Postgres primer | 20 min | Talk + board | URLs, pools, Alembic env vars, Compose. |
-| **Part B – Lab 1** | **45 min** | **Guided coding** | **Swap SQLite → Postgres, health/CORS/trace.** |
-| Break | 10 min | — | Logs + pgcli checks. |
-| **Part C – Lab 2** | **45 min** | **Guided testing** | **Seeds, pytest fixtures, migrations.** |
-| Wrap-up | 10 min | Q&A | Checklist and open questions. |
+| Recap & intent | 10 min | Discussion | Why we keep three storage modes; how the facade prevents churn. |
+| Mode switch design | 20 min | Board + talk | Settings + dependency diagram for memory/sqlite/postgres. |
+| **Part B – Lab 1** | **45 min** | **Guided build** | **Wire config + dependencies for multi-DB, add health/CORS/trace.** |
+| Break | 10 min | — | Confirm URLs + logs per mode. |
+| **Part C – Lab 2** | **45 min** | **Guided testing** | **Migrations, seeds, pytest matrix (memory/sqlite/postgres).** |
+| Wrap-up | 10 min | Q&A | Checklist + next experiments. |
 
-## Lab 1 – Move FastAPI to Postgres (45 min)
-Goal: configure Postgres URLs, wire engine/pooling, align Alembic, and prove the app still serves the same CRUD contract.
+## Lab 1 – Wire Multi-DB Modes (45 min)
+Goal: make the repository + dependency layer choose memory, SQLite, or Postgres based on settings while keeping the HTTP contract unchanged.
 
-> Stay slice-by-slice: env/settings → database module → Alembic → FastAPI wiring → smoke test.
+> Keep the interfaces identical: `RepositoryProtocol.list/create/get/delete` is the only shape routes see.
 
-### Step 0 – Boot Postgres
+### Step 0 – (Optional) Boot Postgres
 ```bash
 docker compose up -d db
 pg_isready -h localhost -p 5432 -d movies -U movie
 docker compose logs db | tail
 ```
 
-### Step 1 – Settings for Postgres
+### Step 1 – Settings with a mode switch
 `movie_service/app/config.py`
 ````python
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -96,105 +94,113 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "Movie Service"
-    database_url: str = "postgresql+psycopg://movie:movie@localhost:5432/movies"
+    db_mode: str = "sqlite"  # memory | sqlite | postgres
+    database_url_sqlite: str = "sqlite:///./data/movies.db"
+    database_url_postgres: str = "postgresql+psycopg://movie:movie@localhost:5432/movies"
     database_url_test: str | None = None
     database_echo: bool = False
     pool_size: int = 5
     pool_timeout: int = 30
 
+    @property
+    def database_url(self) -> str:
+        if self.db_mode == "postgres":
+            return self.database_url_postgres
+        return self.database_url_sqlite
+
     model_config = SettingsConfigDict(env_prefix="MOVIE_", env_file=".env", extra="ignore")
 ````
 
-### Step 2 – Database module (psycopg + pooling)
+### Step 2 – Engine + session factory per mode
 `movie_service/app/database.py`
 ````python
-from typing import Generator
+from collections.abc import Generator
+from contextlib import nullcontext
+from typing import Annotated, Optional
 
-from sqlmodel import SQLModel, Session, create_engine
+from fastapi import Depends
+from sqlmodel import Session, SQLModel, create_engine
 
-from . import models  # ensure metadata is loaded
 from .config import Settings
 
-settings = Settings()
-engine = create_engine(
-    settings.database_url,
-    echo=settings.database_echo,
-    pool_size=settings.pool_size,
-    pool_timeout=settings.pool_timeout,
-    pool_pre_ping=True,
-)
+
+def get_settings() -> Settings:
+    return Settings()
+
+
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def _build_engine(settings: Settings):
+    if settings.db_mode == "memory":
+        return None
+    url = settings.database_url_test or settings.database_url
+    kwargs: dict = {"echo": settings.database_echo}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    if url.startswith("postgresql"):
+        kwargs.update(
+            pool_size=settings.pool_size,
+            pool_timeout=settings.pool_timeout,
+            pool_pre_ping=True,
+        )
+    return create_engine(url, **kwargs)
+
+
+engine = _build_engine(Settings())
 
 
 def init_db() -> None:
-    SQLModel.metadata.create_all(engine)
+    from . import models  # noqa: F401
+
+    if engine:
+        SQLModel.metadata.create_all(engine)
 
 
-def get_session() -> Generator[Session, None, None]:
+def get_session() -> Generator[Optional[Session], None, None]:
+    if engine is None:
+        with nullcontext():
+            yield None  # repository factory ignores session in memory mode
+        return
     with Session(engine) as session:
         yield session
+
+
+SessionDep = Annotated[Optional[Session], Depends(get_session)]
 ````
 
-### Step 3 – Alembic on Postgres
-1. If new: `uv run alembic init migrations`.
-2. In `alembic.ini`, remove any hard-coded `sqlalchemy.url`; keep `script_location = migrations`.
-3. `migrations/env.py` excerpt (replace SQLite logic):
-   ````python
-   from logging.config import fileConfig
+### Step 3 – Repository facade (memory + SQLModel)
+`movie_service/app/dependencies.py`
+````python
+from typing import Annotated, Protocol
 
-   from alembic import context
-   from sqlalchemy import engine_from_config, pool
-   from sqlmodel import SQLModel
+from fastapi import Depends
 
-   from movie_service.app import models  # noqa: F401
-   from movie_service.app.config import Settings
-
-   config = context.config
-   settings = Settings()
-   config.set_main_option("sqlalchemy.url", settings.database_url)
-
-   if config.config_file_name is not None:
-       fileConfig(config.config_file_name)
-
-   target_metadata = SQLModel.metadata
+from .config import SettingsDep
+from .database import SessionDep
+from .repository import MovieRepository as InMemoryRepository
+from .repository_db import MovieRepository as SqlRepository
 
 
-   def run_migrations_offline() -> None:
-       url = config.get_main_option("sqlalchemy.url")
-       context.configure(
-           url=url,
-           target_metadata=target_metadata,
-           literal_binds=True,
-           dialect_opts={"paramstyle": "named"},
-       )
-       with context.begin_transaction():
-           context.run_migrations()
+class MovieRepositoryProtocol(Protocol):
+    def list(self, *, skip: int = 0, limit: int = 100): ...
+    def create(self, payload): ...
+    def get(self, movie_id: int): ...
+    def delete(self, movie_id: int): ...
 
 
-   def run_migrations_online() -> None:
-       connectable = engine_from_config(
-           config.get_section(config.config_ini_section, {}),
-           prefix="sqlalchemy.",
-           poolclass=pool.NullPool,
-       )
-       with connectable.connect() as connection:
-           context.configure(connection=connection, target_metadata=target_metadata)
-           with context.begin_transaction():
-               context.run_migrations()
+def get_repository(settings: SettingsDep, session: SessionDep) -> MovieRepositoryProtocol:
+    if settings.db_mode == "memory":
+        return InMemoryRepository()
+    if session is None:
+        raise RuntimeError("Database session required for non-memory modes")
+    return SqlRepository(session)
 
 
-   if context.is_offline_mode():
-       run_migrations_offline()
-   else:
-       run_migrations_online()
-   ````
-4. Commands:
-   ```bash
-   uv run alembic revision --autogenerate -m "switch to postgres"
-   uv run alembic upgrade head
-   uv run alembic current
-   ```
+RepositoryDep = Annotated[MovieRepositoryProtocol, Depends(get_repository)]
+````
 
-### Step 4 – FastAPI wiring (CORS + trace IDs + health)
+### Step 4 – Health/CORS/trace that works in every mode
 `movie_service/app/main.py` excerpt:
 ````python
 import uuid
@@ -207,7 +213,7 @@ from .database import engine
 from .dependencies import RepositoryDep, SettingsDep
 from .models import MovieCreate, MovieRead
 
-app = FastAPI(title="Movie Service", version="0.4.0")
+app = FastAPI(title="Movie Service", version="0.5.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8501", "http://localhost:5173"],
@@ -227,63 +233,103 @@ async def add_trace_id(request: Request, call_next):
 
 
 @app.get("/healthz", tags=["health"])
-def healthcheck() -> dict[str, str]:
-    with engine.connect() as connection:
-        connection.execute(text("SELECT 1"))
-    return {"status": "ok", "database": "postgres"}
-````
-Reuse the Session 04 CRUD routes; only the engine/middleware changed.
+def healthcheck(settings: SettingsDep) -> dict[str, str]:
+    if engine:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    backend = settings.db_mode if engine else "memory"
+    return {"status": "ok", "database": backend}
+````  
+Reuse the Session 03/04 CRUD routes unchanged; only the engine/middleware changed.
 
-### Step 5 – Smoke test
+### Step 5 – Smoke test each mode
 ```bash
-uv run uvicorn movie_service.app.main:app --reload
+# Memory (fastest for demos/tests)
+MOVIE_DB_MODE=memory uv run uvicorn movie_service.app.main:app --reload
+
+# SQLite (offline durable)
+MOVIE_DB_MODE=sqlite uv run uvicorn movie_service.app.main:app --reload
+
+# Postgres (production-colored)
+MOVIE_DB_MODE=postgres uv run uvicorn movie_service.app.main:app --reload
 curl -i -H "X-Trace-Id: smoke-1" http://localhost:8000/healthz
 curl http://localhost:8000/movies
 ```
-Expect `{"status": "ok", "database": "postgres"}` and empty movie list on a clean DB.
 
-## Lab 2 – Seeds, Fixtures, Regression (45 min)
-Goal: seed Postgres safely and keep tests hermetic with throwaway databases.
+## Lab 2 – Migrations, Seeds, Tests per Mode (45 min)
+Goal: run the same migration/seed/test story regardless of backend.
 
-### Step 1 – Typer seed/reset script
-`scripts/db.py` (describe; create during lab):
+> One migration history, multiple URLs. Never fork schemas per mode.
+
+### Step 1 – Alembic points at settings
+1. Ensure `alembic.ini` leaves `sqlalchemy.url` empty; `migrations/env.py` should read:
+   ````python
+   from sqlmodel import SQLModel
+
+   from movie_service.app.config import Settings
+
+   settings = Settings()
+   config.set_main_option("sqlalchemy.url", settings.database_url)
+   target_metadata = SQLModel.metadata
+   ````
+2. Commands per backend:
+   ```bash
+   MOVIE_DB_MODE=sqlite uv run alembic upgrade head
+   MOVIE_DB_MODE=postgres uv run alembic upgrade head
+   ```
+
+### Step 2 – Typer seed/reset that respects the mode
+`scripts/db.py` excerpt:
 ````python
 import typer
 from sqlmodel import Session
 
+from movie_service.app.config import Settings
 from movie_service.app.database import engine, init_db
 from movie_service.app.models import MovieCreate
-from movie_service.app.repository_db import MovieRepository
+from movie_service.app.repository import MovieRepository as MemoryRepo
+from movie_service.app.repository_db import MovieRepository as DbRepo
 
 app = typer.Typer(help="Database utilities")
 
 
 @app.command()
 def bootstrap(sample: int = 5) -> None:
+    settings = Settings()
+    if settings.db_mode == "memory":
+        repo = MemoryRepo()
+        for idx in range(sample):
+            repo.create(MovieCreate(title=f"Sample {idx+1}", year=2010 + idx, genre="sci-fi"))
+        typer.echo("Seeded in-memory repo (non-persistent).")
+        return
+
     init_db()
     with Session(engine) as session:
-        repo = MovieRepository(session)
+        repo = DbRepo(session)
         if repo.list():
             typer.echo("Database already seeded; skipping.")
             return
         for idx in range(sample):
             repo.create(MovieCreate(title=f"Sample {idx+1}", year=2010 + idx, genre="sci-fi"))
-    typer.echo(f"Seeded {sample} movies.")
-
-
-if __name__ == "__main__":
-    app()
+    typer.echo(f"Seeded {sample} movies in {settings.db_mode}.")
 ````
-Run: `uv run python scripts/db.py bootstrap --sample 3`.
+Run: `MOVIE_DB_MODE=sqlite uv run python scripts/db.py bootstrap --sample 3` (or swap to postgres).
 
-### Step 2 – Postgres pytest fixtures (throwaway DBs)
-`movie_service/tests/conftest.py` excerpt:
+### Step 3 – pytest matrix
+- **Memory (default):**
+  ```bash
+  MOVIE_DB_MODE=memory uv run pytest movie_service/tests -v
+  ```
+- **SQLite (temp file per test module):** reuse Session 04 fixtures; ensure `database_url_test` points to a temp path and drop the file in teardown.
+- **Postgres (optional):** reuse the throwaway DB fixture from below; ensure the `movie` role has `CREATEDB`.
+
+`movie_service/tests/conftest.py` excerpt for Postgres:
 ````python
 import uuid
 
 import psycopg
 import pytest
-from sqlmodel import SQLModel, Session, create_engine, delete
+from sqlmodel import SQLModel, Session, create_engine
 
 from movie_service.app.dependencies import get_repository
 from movie_service.app.main import app
@@ -292,74 +338,33 @@ from movie_service.app.repository_db import MovieRepository
 
 ADMIN_URL = "postgresql://movie:movie@localhost:5432/postgres"
 DB_TEMPLATE = "postgresql+psycopg://movie:movie@localhost:5432/{db_name}"
-
-
-def _create_test_db() -> str:
-    name = f"movies_test_{uuid.uuid4().hex[:8]}"
-    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute(f'CREATE DATABASE "{name}"')
-    return DB_TEMPLATE.format(db_name=name)
-
-
-def _drop_test_db(url: str) -> None:
-    name = url.rsplit("/", 1)[-1]
-    with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=%s", (name,))
-        conn.execute(f'DROP DATABASE IF EXISTS "{name}"')
-
-
-@pytest.fixture()
-def engine_url():
-    url = _create_test_db()
-    try:
-        yield url
-    finally:
-        _drop_test_db(url)
-
-
-@pytest.fixture()
-def session(engine_url):
-    engine = create_engine(engine_url)
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-    SQLModel.metadata.drop_all(engine)
-
-
-@pytest.fixture(autouse=True)
-def override_repo(session):
-    app.dependency_overrides[get_repository] = lambda: MovieRepository(session)
-    yield
-    app.dependency_overrides.pop(get_repository, None)
-    session.exec(delete(Movie))
-    session.commit()
 ````  
-Each test module gets its own database; teardown drops the DB even if tests fail.
+(Use the same create/drop helpers from Session 04; swap URL based on `MOVIE_DB_MODE`.)
 
-### Step 3 – Regression commands
+### Step 4 – Regression commands
 ```bash
-uv run alembic upgrade head
-uv run python scripts/db.py bootstrap --sample 3
-uv run pytest movie_service/tests -v
+MOVIE_DB_MODE=sqlite uv run alembic upgrade head
+MOVIE_DB_MODE=sqlite uv run python scripts/db.py bootstrap --sample 3
+MOVIE_DB_MODE=memory uv run pytest movie_service/tests -v
+MOVIE_DB_MODE=postgres uv run pytest movie_service/tests -v  # optional if Postgres running
 ```
 
 ## Wrap-Up & Success Criteria
-- [ ] Postgres container healthy (`docker compose ps`, `pg_isready`).
-- [ ] `/healthz` returns Postgres status + echoes `X-Trace-Id`.
-- [ ] Alembic `upgrade head` succeeds against Postgres URL.
-- [ ] Seed script adds movies; reruns are idempotent.
-- [ ] Pytest uses throwaway Postgres DBs (no writes to dev DB).
-- [ ] README/docs updated with Compose/Alembic/seed/test commands.
+- [ ] `MOVIE_DB_MODE` toggles between memory/sqlite/postgres without code changes.
+- [ ] `/healthz` reports the active backend and echoes `X-Trace-Id`.
+- [ ] Alembic `upgrade head` succeeds for SQLite and Postgres URLs.
+- [ ] Seed script is idempotent per backend.
+- [ ] Pytest passes in memory mode; optional runs green for SQLite/Postgres fixtures.
+- [ ] README/docs updated with Compose/Alembic/seed/test commands per mode.
 
 ## Next steps
-- Ensure `docker compose ps` shows `db` healthy.
-- `curl http://localhost:8000/healthz` returns status and trace header.
-- Install UI deps if you plan to build dashboards/CLI layers: `uv add streamlit rich typer httpx pandas`.
-- Keep seed + pytest commands handy for demos.
+- Keep `docker compose ps` handy to ensure Postgres is healthy when using that mode.
+- Add CI matrix jobs for memory + SQLite; gate Postgres behind an opt-in service job.
+- Wire Streamlit/React clients to the CORS/trace-aware API once health checks pass.
 
 ## Troubleshooting
 - **`psycopg.OperationalError: connection refused`** → ensure Docker Desktop/Colima is running and port 5432 is free; restart with `docker compose down && docker compose up -d`.
 - **`permission denied to create database`** → grant `CREATEDB` to the `movie` role: `docker compose exec db psql -c "ALTER ROLE movie CREATEDB;"`.
-- **Alembic still targets SQLite** → delete hard-coded URLs in `alembic.ini` and verify `Settings().database_url` points to Postgres.
+- **Alembic still targets SQLite** → delete hard-coded URLs in `alembic.ini` and verify `Settings().database_url` points to the chosen backend.
 - **Tests hang on drop** → terminate active connections before `DROP DATABASE` (see `_drop_test_db`).
 - **CORS blocked** → ensure `allow_origins` includes `http://localhost:8501` and `http://localhost:5173`.
