@@ -2,6 +2,8 @@
 
 Every assignment is intentionally small, runs on a single laptop (Linux, WSL, macOS, or other Unix-like environments), and focuses on getting something working without detours into security hardening or cloud deployment. Students may explore the deeper labs in the session notes, but the required deliverables stay simple and local.
 
+**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sun Jan 25, 2026** (last Sunday of January). Flag blockers early in `#helpdesk`.
+
 ```mermaid
 gantt
     title Exercise Timeline 2025–2026
