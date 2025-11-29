@@ -24,7 +24,7 @@ Ask students to complete this 5-minute checklist the night before:
 | --- | --- | --- | --- |
 | **PART A – Theory & Motivation** | **45 min** | **Talk + Discussion** | **Course overview, tools landscape, mindset** |
 | Warm welcome | 5 min | Discussion | Zoom breakouts: one-sentence intros + goals |
-| Course overview | 15 min | Talk | Syllabus, grading (3 exercises), single monorepo (recommended) + Exercise 3 (EX3) local capstone scope, expectations for collaboration and AI usage |
+| Course overview | 15 min | Talk | Syllabus, grading (3 exercises), single monorepo (recommended) + Exercise 3 (EX3) local final project scope, expectations for collaboration and AI usage |
 | Tool belt briefing | 25 min | Talk + quick demos | Why uv, how Git will be used, Visual Studio Code (VS Code) essentials, FastAPI for backends, Docker for deployment, large language models (LLMs) as coding assistants and in projects |
 | **Break** | **10 min** | **—** | **Encourage movement – launch [10-minute timer](https://e.ggtimer.com/10minutes)** |
 | **PART B – Hands-on Lab 1** | **45 min** | **Guided coding** | **Scaffold the starter project, run first test** |
@@ -188,9 +188,9 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
    - KISS focus: every deliverable runs locally on Linux/WSL/macOS—no cloud hoops or security audits.
 
 2. **Grading breakdown:**
-   - EX1 (FastAPI foundations): 30%
+   - EX1 (FastAPI foundations, backend): 30%
    - EX2 (Friendly interface): 30%
-   - EX3 (Capstone polish): 40%
+   - EX3 (Full-Stack Microservices Final Project): 40%
    - All components must be completed to pass the course.
 
 3. **Collaboration & support:**

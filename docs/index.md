@@ -63,7 +63,7 @@ gantt
     section Assessments
     EX1\ Window                              :active, 2025-11-10, 2025-12-02
     EX2\ Window                              :active, 2025-12-01, 2025-12-23
-    EX3\ KISS\ Capstone                      :active, 2026-01-05, 2026-02-10
+    EX3\ Full-Stack\ Microservices\ Final\ Project :active, 2026-01-05, 2026-02-10
 ```
 
 ## Course Schedule
@@ -85,9 +85,9 @@ gantt
 - [DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md) for students who want a local analytics sandbox that complements Session 05.
 
 ## Exercises at a Glance
-- **EX1 – FastAPI Foundations**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build the FastAPI CRUD API + tests from Session 03; add Session 04’s SQLite persistence as soon as you’re ready so the service is EX3-ready.
-- **EX2 – Friendly Interface**: assigned Mon Dec 1 · due Tue Dec 23, 2025. Add a Streamlit dashboard or Typer CLI that calls the EX1 API.
-- **EX3 – Capstone Polish (KISS)**: assigned Mon Jan 5 · class check-in Tue Jan 20 · final Tue Feb 10, 2026. Integrate the API, dedicated persistence layer, interface, and async/Redis worker into a multi-service stack, add one small improvement, and document the runbook + Compose workflow. Everything stays local—`uv run` + `docker compose up`, no cloud hosting required.
+- **EX1 – FastAPI Foundations (Backend)**: assigned Mon Nov 10 · due Tue Dec 2, 2025. Build the FastAPI CRUD API + tests from Session 03; add Session 04’s SQLite persistence as soon as you’re ready so the service is EX3-ready.
+- **EX2 – Friendly Interface (Frontend connected to Backend)**: assigned Mon Dec 1 · due Tue Dec 23, 2025. Add a Streamlit dashboard or Typer CLI that calls the EX1 API.
+- **EX3 – Full-Stack Microservices Final Project (KISS)**: assigned Mon Jan 5 · due Tue Feb 10, 2026. Integrate the API, dedicated persistence layer, interface, and async/Redis worker into a multi-service stack, add one small improvement, and document the runbook + Compose workflow. Everything stays local—`uv run` + `docker compose up`, no cloud hosting required.
 - **Choose your own theme:** the sessions demonstrate a movie service, but students pick any narrow domain on Day 1 and carry it through all three exercises.
 - Sessions 9–12 continue the main storyline by hardening async flows, multi-service orchestration, security, and tool-friendly polish—each reinforces EX3 readiness while keeping the graded scope local and manageable.
 

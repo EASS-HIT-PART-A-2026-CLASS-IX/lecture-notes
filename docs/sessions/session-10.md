@@ -274,7 +274,7 @@ Update `docs/service-contract.md` with:
 ## Wrap-up & Next Steps
 - ✅ Compose stack, Redis cache + rate limiting, background worker, contract testing, CI pipeline outline.
 - Audit secrets, rotate tokens, and create `.env.example` entries for Redis auth if enabled.
-- Point teams to the EX3 brief in [docs/exercises.md](../exercises.md#ex3--capstone-polish-kiss) so they align infrastructure deliverables with the milestone.
+- Point teams to the EX3 brief in [docs/exercises.md](../exercises.md#ex3--full-stack-microservices-final-project-kiss) so they align infrastructure deliverables with the milestone.
 
 ## Troubleshooting
 - **Redis connection refused** → confirm Compose network is up or local Redis running; check `redis_url` env.

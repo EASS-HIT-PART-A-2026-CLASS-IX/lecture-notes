@@ -2,7 +2,7 @@
 
 Every assignment is intentionally small, runs on a single laptop (Linux, WSL, macOS, or other Unix-like environments), and focuses on getting something working without detours into security hardening or cloud deployment. Students may explore the deeper labs in the session notes, but the required deliverables stay simple and local.
 
-**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sun Jan 25, 2026** (last Sunday of January). Flag blockers early in `#helpdesk`.
+**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January). Flag blockers early in `#helpdesk`.
 
 ```mermaid
 gantt
@@ -11,10 +11,9 @@ gantt
     axisFormat  %b %d
 
     section Exercises
-    EX1 – FastAPI Foundations     :active, 2025-11-10, 2025-12-02
-    EX2 – Friendly Interface      :2025-12-01, 2025-12-23
-    EX3 – Capstone Polish         :2026-01-05, 2026-02-10
-    EX3 Milestone Demo            :milestone, 2026-01-20, 0d
+    EX1 – FastAPI Foundations (Backend)             :active, 2025-11-10, 2025-12-02
+    EX2 – Friendly Interface (Frontend + Backend)   :2025-12-01, 2025-12-23
+    EX3 – Full-Stack Microservices Final Project    :2026-01-05, 2026-02-10
 ```
 
 ## Pick Your Domain Once, Reuse It Everywhere
@@ -22,7 +21,7 @@ gantt
 - Keep the same theme through EX1–EX3 so each exercise feels like an incremental release of one product.
 - All instructions below reference "movies" as the live-coded classroom demo—replace it with your chosen theme while keeping the architectural scope identical.
 
-## EX1 – Backend Foundations
+## EX1 – FastAPI Foundations (Backend)
 - **Assigned:** Monday, Nov 10, 2025  
 - **Due:** Tuesday, Dec 2, 2025 at 23:59 (Israel time)
 - **Goal:** Ship the core backend microservice for your chosen domain using **FastAPI**, **Pydantic**, and pytest. This is the service you’ll reuse in every later exercise. Persistence starts in-memory and graduates to SQLite when you integrate Session 04’s guidance (mandatory before EX3, optional for the EX1 grading window).
@@ -35,7 +34,7 @@ gantt
 > **Session guidance:** Session 03 is the canonical EX1 implementation (HTTP API, validators, pytest, Docker). Session 04 demonstrates how to layer SQLModel/SQLite under the same repository interface—treat it as a stretch for EX1 and required prep for EX3’s multi-service architecture.
 - **Rubric (100 pts):** correctness 40, simplicity/readability 20, tests 20, documentation 20. Bonus (+5) for providing a tiny seed script or `.http` playground tailored to your domain.
 
-## EX2 – Friendly Interface
+## EX2 – Friendly Interface (Frontend connected to Backend)
 - **Assigned:** Monday, Dec 1, 2025  
 - **Due:** Tuesday, Dec 23, 2025 at 23:59 (Israel time)
 - **Heads-up:** This timeline intentionally overlaps with EX1’s submission window; you can finish EX1 and kick off EX2 planning on the same day.
@@ -48,10 +47,9 @@ gantt
   - Document how to run the API and the interface side-by-side on a local machine.
 - **Rubric (100 pts):** working flows 40, user guidance (clear copy, prompts, or help text) 25, code clarity 20, documentation 15. Bonus (+5) if tests automate one interface workflow (e.g., calling the Typer command with `CliRunner` or snapshot testing a Streamlit script).
 
-## EX3 – Capstone Polish (KISS)
+## EX3 – Full-Stack Microservices Final Project (KISS)
 - **Assigned:** Monday, Jan 5, 2026  
-- **Milestone Check-in:** Tuesday, Jan 20, 2026 (rapid demo in class)  
-- **Final Due:** Tuesday, Feb 10, 2026 at 23:59 (Israel time)
+- **Due:** Tuesday, Feb 10, 2026 at 23:59 (Israel time)
 - **Goal:** Finish a tidy local product by joining the EX1 backend, the dedicated persistence layer from Session 04, and the EX2 interface, then adding integrations with at least one additional microservice (LLM tool, reporting worker, notification service, etc.) plus documentation you wish every teammate handed you. Everything must run locally via `uv run`/`python -m` for scripts and `docker compose up` for the API + Redis + worker stack—no cloud hosting required, but Compose, telemetry, and security guardrails from Sessions 09–12 are now graded expectations.
 - **Sessions to revisit:** [Session 07 – Testing and Diagnostics](sessions/session-07.md), [Session 08 – AI Pairing Tips](sessions/session-08.md), [Session 09 – Async Recommendation Refresh](sessions/session-09.md), [Session 10 – Docker Compose, Redis, and Service Contracts](sessions/session-10.md), [Session 11 – Security Foundations](sessions/session-11.md), [Session 12 – Tool-Friendly APIs and Final Prep](sessions/session-12.md). These later sessions deepen reliability, orchestration, security, and release polish—lean on the ones that strengthen your EX3 storyline.
 - **Required Pieces:**

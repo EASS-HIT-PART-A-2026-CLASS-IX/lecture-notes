@@ -153,16 +153,16 @@ curl https://httpbin.org/get?ping=preflight | python -m json.tool
 
 Share the pretty-printed JSON screenshot in your lab thread so everyone confirms the tooling.
 
-**AWS Academy:** Complete the **Cloud Foundations – Compute, Storage, and Databases** modules by **Sun Jan 25, 2026** (last Sunday of January); flag blockers early.
+**AWS Academy:** Complete the **Cloud Foundations – Compute, Storage, and Databases** modules by **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January); flag blockers early.
 
 **Sanity check:** Re-run `uv run pytest -q` inside `~/eass-25/playground` so the testing muscle stays warm.
 
 ## Admin & Homework Checkpoints
 - **Roster sync:** Post your GitHub username **and** best contact email in the Discord `#roster-sync` channel before Session 02 ends so we can add you to the GitHub org, Classroom repos, and mailing list without delays.
-- **AWS Academy – Cloud Foundations (Compute, Storage, Databases):** due **Sun Jan 25, 2026** (last Sunday of January); log blockers in `#helpdesk` immediately.
-- **EX1 – FastAPI Foundations:** due **Tue Dec 2**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations) while you build the Typer probes in this session.
-- **EX2 – Friendly Interface:** opens **Mon Dec 1**, due **Tue Dec 23**. Skim the [brief](../exercises.md#ex2--friendly-interface) now so today's HTTP probes feed directly into your UI/CLI plan.
-- **EX3 – Capstone Polish (KISS):** kicks off **Mon Jan 5**, demo/upload window closes **Tue Feb 10**. Keep a running log in your repo for the [capstone checklist](../exercises.md#ex3--capstone-polish-kiss).
+- **AWS Academy – Cloud Foundations (Compute, Storage, Databases):** due **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January); log blockers in `#helpdesk` immediately.
+- **EX1 – FastAPI Foundations (Backend):** due **Tue Dec 2**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations-backend) while you build the Typer probes in this session.
+- **EX2 – Friendly Interface (Frontend connected to Backend):** opens **Mon Dec 1**, due **Tue Dec 23**. Skim the [brief](../exercises.md#ex2--friendly-interface-frontend-connected-to-backend) now so today's HTTP probes feed directly into your UI/CLI plan.
+- **EX3 – Full-Stack Microservices Final Project (KISS):** kicks off **Mon Jan 5**, upload window closes **Tue Feb 10, 2026**. Keep a running log in your repo for the [final project checklist](../exercises.md#ex3--full-stack-microservices-final-project-kiss).
 
 ## Agenda
 | Segment | Duration | Format | Focus |
@@ -815,7 +815,7 @@ If the `code` CLI isn't on your PATH, open VS Code → Extensions and confirm **
 
 ## EX1 Briefing & Backlog (10 Minutes)
 
-Link to full brief: [docs/exercises.md](../exercises.md#ex1--fastapi-foundations)
+Link to full brief: [docs/exercises.md](../exercises.md#ex1--fastapi-foundations-backend)
 
 **Core deliverables (due Tue Dec 2):**
 - FastAPI server with CRUD for `/movies` and health endpoint
