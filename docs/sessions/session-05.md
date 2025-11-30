@@ -15,7 +15,7 @@ Session 03 shipped the in-memory backend; Session 04 swapped in SQLite + Alembic
 
 ## Deliverables (What You’ll Build)
 - Env-driven settings (`MOVIE_DB_MODE`, `MOVIE_DATABASE_URL_SQLITE`, `MOVIE_DATABASE_URL_POSTGRES`, `MOVIE_DATABASE_URL_TEST`, pool flags) captured in `.env.example`, plus a computed `database_url` property.
-- `docker-compose.yml` for Postgres (optional in class; required for postgres mode) with a persisted volume.
+- `docker-compose.yml` (provided in repo root) for Postgres with a persisted volume.
 - `movie_service/app/database.py` that resolves the correct engine per mode (memory → no engine, sqlite → file path + `check_same_thread`, postgres → psycopg + pooling).
 - `movie_service/app/dependencies.py` with a repository factory/protocol that returns the in-memory repository or the SQLModel-backed repository without changing route signatures.
 - Alembic configured to read URLs from settings; the same migration set applies to SQLite and Postgres.
@@ -36,8 +36,9 @@ Session 03 shipped the in-memory backend; Session 04 swapped in SQLite + Alembic
 2. Add Postgres + tooling (needed only for postgres mode):
    ```bash
    docker compose version
-   uv add "psycopg[binary]" sqlalchemy-utils rich typer
+   uv add "psycopg[binary]" rich typer
    ```
+   Add `sqlalchemy-utils` only if you rely on its Postgres helpers for throwaway DB creation.
 3. Extend env templates:
    ```ini
    MOVIE_DB_MODE="sqlite"  # options: memory | sqlite | postgres
@@ -49,8 +50,10 @@ Session 03 shipped the in-memory backend; Session 04 swapped in SQLite + Alembic
    MOVIE_POOL_TIMEOUT=30
    ```
    Keep `MOVIE_DATABASE_URL` as a computed property in code (see Lab 1).
+   `.env.example` includes these keys; copy it to `.env` and adjust paths before class.
 4. Create/confirm writable `data/` directory and ignore it in git.
 5. (Optional) Start Postgres for the postgres path:
+   Compose file lives at repo root (`docker-compose.yml`).
    ```bash
    docker compose up -d db
    pg_isready -h localhost -p 5432 -d movies -U movie
@@ -68,7 +71,7 @@ Session 03 shipped the in-memory backend; Session 04 swapped in SQLite + Alembic
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
 | Recap & intent | 10 min | Discussion | Why we keep three storage modes; how the facade prevents churn. |
-| Mode switch design | 20 min | Board + talk | Settings + dependency diagram for memory/sqlite/postgres. |
+| **Part A – Mode switch design** | 20 min | Board + talk | Settings + dependency diagram for memory/sqlite/postgres. |
 | **Part B – Lab 1** | **45 min** | **Guided build** | **Wire config + dependencies for multi-DB, add health/CORS/trace.** |
 | Break | 10 min | — | Confirm URLs + logs per mode. |
 | **Part C – Lab 2** | **45 min** | **Guided testing** | **Migrations, seeds, pytest matrix (memory/sqlite/postgres).** |
@@ -85,6 +88,7 @@ docker compose up -d db
 pg_isready -h localhost -p 5432 -d movies -U movie
 docker compose logs db | tail
 ```
+`docker-compose.yml` ships with `postgres:15-alpine`, user/password `movie`, DB `movies`, and a persisted `pgdata` volume.
 
 ### Step 1 – Settings with a mode switch
 `movie_service/app/config.py`
@@ -176,8 +180,7 @@ from typing import Annotated, Protocol
 
 from fastapi import Depends
 
-from .config import SettingsDep
-from .database import SessionDep
+from .database import SessionDep, SettingsDep
 from .repository import MovieRepository as InMemoryRepository
 from .repository_db import MovieRepository as SqlRepository
 
@@ -209,8 +212,8 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from .database import engine
-from .dependencies import RepositoryDep, SettingsDep
+from .database import engine, SettingsDep
+from .dependencies import RepositoryDep
 from .models import MovieCreate, MovieRead
 
 app = FastAPI(title="Movie Service", version="0.5.0")
@@ -279,7 +282,7 @@ Goal: run the same migration/seed/test story regardless of backend.
    ```
 
 ### Step 2 – Typer seed/reset that respects the mode
-`scripts/db.py` excerpt:
+`scripts/db.py` excerpt (new Typer CLI; replaces the Session 04 `seed_db` helper):
 ````python
 import typer
 from sqlmodel import Session
@@ -311,9 +314,15 @@ def bootstrap(sample: int = 5) -> None:
             return
         for idx in range(sample):
             repo.create(MovieCreate(title=f"Sample {idx+1}", year=2010 + idx, genre="sci-fi"))
+        session.commit()
     typer.echo(f"Seeded {sample} movies in {settings.db_mode}.")
+
+
+if __name__ == "__main__":
+    app()
 ````
-Run: `MOVIE_DB_MODE=sqlite uv run python scripts/db.py bootstrap --sample 3` (or swap to postgres).
+Place this file at `scripts/db.py` in your project root (or under `movie_service/scripts/db.py` if you keep scripts inside the package); adjust imports to match your layout.
+Run: `MOVIE_DB_MODE=sqlite uv run python scripts/db.py bootstrap --sample 3` (swap to postgres as needed).
 
 ### Step 3 – pytest matrix
 - **Memory (default):**
