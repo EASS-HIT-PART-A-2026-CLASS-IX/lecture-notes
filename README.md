@@ -64,3 +64,6 @@ The repo is organized around the cycle described in Anindya Chakraborty’s *AI 
 If you spot an issue or want to suggest an improvement, open a GitHub issue or pull request with the session number in the title (e.g., `Session 05 – clarify rating fixture`).
 
 Have a great semester!
+
+## Additional Resources (400+ Question Vault)
+- [EASS HIT 100 Questions](https://eass-hit-100-questions.netlify.app/) – Drill site with 400+ prompts to refresh memory and reinforce fundamentals.
