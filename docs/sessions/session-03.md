@@ -1,6 +1,6 @@
 # Session 03 – FastAPI Fundamentals (Movie Service v0)
 
-- **Date:** Monday, November 17, 2025
+- **Date:** Monday, 16/03/2026
 - **Theme:** Build a complete FastAPI movie service with dependency injection, validation, and automated tests.
 
 ## Learning Objectives

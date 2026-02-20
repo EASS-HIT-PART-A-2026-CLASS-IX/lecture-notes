@@ -1,6 +1,6 @@
 # Session 08 – AI Sidecar for Dynamic Compute (Calculator + Codegen + SQL)
 
-- **Date:** Monday, Dec 22, 2025
+- **Date:** Monday, 04/05/2026
 - **Theme:** Stand up a simple FastAPI calculator backend (add/subtract + tiny charts), pair it with a Streamlit UI, and bolt on an AI sidecar (Pydantic AI + local vLLM or remote AI Studio) that generates and validates Python snippets for advanced calculations on demand—under guardrails—and a free-language-to-SQL agent that runs against a DuckDB microservice loaded from uploaded CSVs.
 
 ## Session Story

@@ -1,6 +1,6 @@
 # Session 10 – Docker Compose, Redis, and Service Contracts (EX3 Runbook Core)
 
-- **Date:** Monday, Jan 12, 2026
+- **Date:** Monday, 18/05/2026
 - **Theme:** Run the movie API with Redis and worker services via Docker Compose, enforce service contracts, and introduce rate limiting/background jobs so the EX3 stack has a single `docker compose up` story plus CI gates.
 
 ## Learning Objectives

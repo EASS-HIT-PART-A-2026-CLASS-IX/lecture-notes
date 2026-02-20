@@ -1,6 +1,6 @@
 ---
 title: "EASS 8 Episode — Instructor Playbook"
-version: "2025.11"
+version: "2026.02"
 summary: "Live teaching script + AI/copilot spec for all 12 sessions."
 audience: "Instructors, Cursor/Copilot agents"
 ---
@@ -25,23 +25,23 @@ This document is the complete, self-contained guide for running the elevated App
 ## 1. Calendar & Logistics
 
 - **Meeting cadence:** 12 Mondays, 3 × 45-minute segments each meeting. Suggested dates (adjust as needed, keep order):
-  1. Nov 3
-  2. Nov 10
-  3. Nov 17
-  4. Nov 24
-  5. Dec 1
-  6. Dec 8
-  7. Dec 15
-  8. Dec 22
-  9. Dec 29
-  10. Jan 5
-  11. Jan 12
-  12. Jan 19 (administrative final day Tue Jan 20)
+  1. 02/03/2026
+  2. 09/03/2026
+  3. 16/03/2026
+  4. 23/03/2026
+  5. 30/03/2026
+  6. 13/04/2026
+  7. 27/04/2026
+  8. 04/05/2026
+  9. 11/05/2026
+  10. 18/05/2026
+  11. 25/05/2026
+  12. 01/06/2026
 
-- **Exercise schedule (all Tuesday deadlines):**
-  - **EX1 — FastAPI Foundations:** assigned Meeting 2 (Nov 10), due Tue Dec 2.
-  - **EX2 — Interface & Interaction (Streamlit or Typer):** assigned Meeting 5 (Dec 1), due Tue Dec 23.
-  - **EX3 — Capstone Integration:** assigned Meeting 9 (Dec 29), in-class milestone Tue Jan 20, final due Tue Feb 10.
+- **Exercise schedule (weekday deadlines that avoid Shabbat):**
+  - **EX1 — FastAPI Foundations:** assigned Meeting 3 (16/03/2026), due Monday 30/03/2026.
+  - **EX2 — Interface & Interaction (Streamlit or Typer):** assigned Meeting 7 (27/04/2026), due Monday 18/05/2026.
+  - **EX3 — Capstone Integration:** assigned Meeting 11 (25/05/2026), submission window opens Monday 29/06/2026, final due Wednesday 01/07/2026.
 
 - **Assessment rubric (shared with students):**
   - *Craft (30%)* — readability, separation of concerns, docstrings, typing.
@@ -50,7 +50,7 @@ This document is the complete, self-contained guide for running the elevated App
   - *Resilience (20%)* — tests cover key failure modes, modular design enables change.
 
 - **Foundational tooling checklist (complete before Meeting 1):**
-  - Verify `python3.11`, `uv`, Git, Docker Desktop (for macOS) or docker-cli (Linux/WSL).
+  - Verify `python3.12`, `uv`, Git, Docker Desktop (for macOS) or docker-cli (Linux/WSL).
   - Prepare course repo skeleton: `fastapi-sqlmodel-starter` with `src/app`, `tests`, `pyproject.toml`.
   - Create GitHub Classroom or private Git templates for EX1, EX2, EX3.
   - Confirm VS Code is installed with Python, Pylance, Dev Containers, REST Client extensions.
@@ -124,7 +124,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 1 — Systems Fluency & Environment Mastery (Mon Nov 3)
+## Meeting 1 — Systems Fluency & Environment Mastery (Monday, 02/03/2026)
 
 **Outcome:** Students can set up `uv`, run tests, understand the local-first philosophy, and navigate the shell confidently.
 
@@ -201,9 +201,9 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 2 — Network Interfaces & HTTP Clients (Mon Nov 10)
+## Meeting 2 — Network Interfaces & HTTP Clients (Monday, 09/03/2026)
 
-**Outcome:** Students internalize HTTP layers and craft robust clients with httpx. EX1 assigned.
+**Outcome:** Students internalize HTTP layers and craft robust clients with httpx, then start EX1 planning.
 
 ### PART A: HTTP Anatomy & Resilient Client Patterns
 - Draw request/response lifecycle with headers, body, status codes.
@@ -306,7 +306,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 3 — FastAPI Surface & Routing Mastery (Mon Nov 17)
+## Meeting 3 — FastAPI Surface & Routing Mastery (Monday, 16/03/2026)
 
 **Outcome:** Build a structured FastAPI app with routers, dependency injection, and type-safe responses.
 
@@ -470,7 +470,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 4 — Persistence & Testing Depth (Mon Nov 24)
+## Meeting 4 — Persistence & Testing Depth (Monday, 23/03/2026)
 
 **Outcome:** Students master SQLModel relationships, fixtures, and transaction-safe tests.
 
@@ -598,9 +598,9 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 5 — Service Architecture & EX2 Launch (Mon Dec 1)
+## Meeting 5 — Service Architecture & EX2 Preparation (Monday, 30/03/2026)
 
-**Outcome:** Students design service layers, enforce business rules, and ship Typer CLI automation. EX2 assigned.
+**Outcome:** Students design service layers, enforce business rules, and ship Typer CLI automation.
 
 ### PART A: Layered Architecture Motivation
 - Draw onion: API → service layer → domain → persistence.
@@ -729,7 +729,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 6 — Async Work & Background Tasks (Mon Dec 8)
+## Meeting 6 — Async Work & Background Tasks (Monday, 13/04/2026)
 
 **Outcome:** Students leverage async endpoints, background tasks, and concurrency primitives.
 
@@ -857,7 +857,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 7 — Interfaces: Streamlit + Typer Synthesis (Mon Dec 15)
+## Meeting 7 — Interfaces: Streamlit + Typer Synthesis (Monday, 27/04/2026)
 
 **Outcome:** Students craft interactive front-ends leveraging the API.
 
@@ -957,7 +957,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 8 — Observability & Instrumentation (Mon Dec 22)
+## Meeting 8 — Observability & Instrumentation (Monday, 04/05/2026)
 
 **Outcome:** Logging, metrics, tracing fundamentals with local tooling.
 
@@ -1084,9 +1084,9 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 9 — Automation & Continuous Quality (Mon Dec 29)
+## Meeting 9 — Automation & Continuous Quality (Monday, 11/05/2026)
 
-**Outcome:** Set up pipelines, enforce quality gates, launch EX3.
+**Outcome:** Set up pipelines, enforce quality gates, and prepare EX3 implementation.
 
 ### PART A: Quality Systems
 - Discuss CI philosophy, pre-commit hooks, static analysis synergy.
@@ -1106,7 +1106,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
    ```
 2. Add `pre-commit` configuration (optional) and install hooks.
 
-### PART C: EX3 Kickoff
+### PART C: EX3 Readiness
 - Describe capstone: integrate everything into cohesive service with Compose option.
 - Requirements:
   - REST API with items & categories.
@@ -1114,11 +1114,11 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
   - Typer/Streamlit interface.
   - Observability endpoints.
   - Compose file wiring app + PostgreSQL (optional but recommended).
-- Provide milestone expectations for Tue Jan 20 demo.
+- Provide milestone expectations for Monday, 29/06/2026 dry-run checkpoint.
 
 ---
 
-## Meeting 10 — Containerization & Compose (Mon Jan 5)
+## Meeting 10 — Containerization & Compose (Monday, 18/05/2026)
 
 **Outcome:** Students containerize app, orchestrate with Compose, manage env vars.
 
@@ -1129,13 +1129,13 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 ### PART B: Dockerize FastAPI app
 1. **Dockerfile**
    ```dockerfile
-   FROM ghcr.io/astral-sh/uv:python3.11-slim AS builder
+   FROM ghcr.io/astral-sh/uv:python3.12-slim AS builder
    WORKDIR /app
    COPY pyproject.toml uv.lock ./
    RUN uv sync --frozen --no-dev
    COPY src ./src
 
-   FROM python:3.11-slim
+   FROM python:3.12-slim
    WORKDIR /app
    ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
    COPY --from=builder /app/.venv /app/.venv
@@ -1179,7 +1179,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 11 — Resilience, Security, Hardening (Mon Jan 12)
+## Meeting 11 — Resilience, Security, Hardening (Monday, 25/05/2026)
 
 **Outcome:** Students add auth layer, rate limiting, and graceful degradation.
 
@@ -1321,7 +1321,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 
 ---
 
-## Meeting 12 — Capstone Polish & Showcase (Mon Jan 19)
+## Meeting 12 — Capstone Polish & Showcase (Monday, 01/06/2026)
 
 **Outcome:** Final integration rehearsal, performance tuning, reflection.
 
@@ -1337,7 +1337,7 @@ Every code snippet is runnable on Linux/WSL/macOS. Use `uv` for environment/task
 ### PART C: Demo Dry Run
 - Teams present 5-minute demos: CLI + API + UI.
 - Peer feedback using sticky metrics (clarity, resilience, delight).
-- Remind final deadline Tue Feb 10. Provide submission instructions (push repo, tag `v1.0`, include CI badge).
+- Remind final deadline Wednesday, 01/07/2026. Provide submission instructions (push repo, tag `v1.0`, include CI badge).
 
 ---
 

@@ -1,6 +1,6 @@
 # Session 05 – Multi-DB Modes + Postgres Hardening
 
-- **Date:** Monday, Dec 1, 2025
+- **Date:** Monday, 30/03/2026
 - **Theme:** Keep the FastAPI contract stable while making the repository facade run in three modes: in-memory, SQLite, and Postgres. Add health/CORS/trace protections and keep migrations/tests working regardless of backend.
 
 ## Session Story

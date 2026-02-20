@@ -1,6 +1,6 @@
 # Session 07 – React/Vite Foundations + Reliability Upgrades
 
-- **Date:** Monday, Dec 15, 2025
+- **Date:** Monday, 27/04/2026
 - **Theme:** Build a Vite/React (TypeScript) client that reuses the FastAPI/Postgres API, then tighten reliability with frontend checks and stronger backend tests/observability.
 
 ## Session Story

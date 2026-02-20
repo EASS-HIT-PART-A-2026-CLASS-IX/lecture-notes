@@ -1,6 +1,6 @@
 # Session 02 – Introduction to Hypertext Transfer Protocol (HTTP) and Representational State Transfer (REST)
 
-- **Date:** Monday, Nov 10, 2025
+- **Date:** Monday, 09/03/2026
 - **Theme:** Demystify HTTP request/response flows and capture reusable probes that will shape Exercise 1 (EX1).
 
 ## Core Concepts (Own These by End of Session)
@@ -153,16 +153,16 @@ curl https://httpbin.org/get?ping=preflight | python -m json.tool
 
 Share the pretty-printed JSON screenshot in your lab thread so everyone confirms the tooling.
 
-**AWS Academy:** Complete the **Cloud Foundations – Compute, Storage, and Databases** modules by **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January); flag blockers early.
+**AWS Academy:** Complete the **Cloud Foundations – Compute, Storage, and Databases** modules by **Sunday, 29/03/2026 at 23:59 (Israel time)**; flag blockers early.
 
 **Sanity check:** Re-run `uv run pytest -q` inside `~/eass-25/playground` so the testing muscle stays warm.
 
 ## Admin & Homework Checkpoints
 - **Roster sync:** Post your GitHub username **and** best contact email in the Discord `#roster-sync` channel before Session 02 ends so we can add you to the GitHub org, Classroom repos, and mailing list without delays.
-- **AWS Academy – Cloud Foundations (Compute, Storage, Databases):** due **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January); log blockers in `#helpdesk` immediately.
-- **EX1 – FastAPI Foundations (Backend):** due **Tue Dec 2**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations-backend) while you build the Typer probes in this session.
-- **EX2 – Friendly Interface (Frontend connected to Backend):** opens **Mon Dec 1**, due **Tue Dec 23**. Skim the [brief](../exercises.md#ex2--friendly-interface-frontend-connected-to-backend) now so today's HTTP probes feed directly into your UI/CLI plan.
-- **EX3 – Full-Stack Microservices Final Project (KISS):** kicks off **Mon Jan 5**, upload window closes **Tue Feb 10, 2026**. Keep a running log in your repo for the [final project checklist](../exercises.md#ex3--full-stack-microservices-final-project-kiss).
+- **AWS Academy – Cloud Foundations (Compute, Storage, Databases):** due **Sunday, 29/03/2026 at 23:59 (Israel time)**; log blockers in `#helpdesk` immediately.
+- **EX1 – FastAPI Foundations (Backend):** due **Monday, 30/03/2026**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations-backend) while you build the Typer probes in this session.
+- **EX2 – Friendly Interface (Frontend connected to Backend):** opens **Monday, 27/04/2026**, due **Monday, 18/05/2026**. Skim the [brief](../exercises.md#ex2--friendly-interface-frontend-connected-to-backend) now so today's HTTP probes feed directly into your UI/CLI plan.
+- **EX3 – Full-Stack Microservices Final Project (KISS):** kicks off **Monday, 25/05/2026**; final submission window opens **Monday, 29/06/2026** and closes **Wednesday, 01/07/2026**. Keep a running log in your repo for the [final project checklist](../exercises.md#ex3--full-stack-microservices-final-project-kiss).
 
 ## Agenda
 | Segment | Duration | Format | Focus |
@@ -662,7 +662,7 @@ Content-Type: application/x-www-form-urlencoded
 X-Trace-Id: demo-5678
 
 name=EASS
-cohort=2025
+cohort=2026
 
 ### HEAD for metadata only (client asks for headers, no body)
 HEAD https://httpbin.org/get
@@ -817,7 +817,7 @@ If the `code` CLI isn't on your PATH, open VS Code → Extensions and confirm **
 
 Link to full brief: [docs/exercises.md](../exercises.md#ex1--fastapi-foundations-backend)
 
-**Core deliverables (due Tue Dec 2):**
+**Core deliverables (due Monday, 30/03/2026):**
 - FastAPI server with CRUD for `/movies` and health endpoint
 - SQLite/SQLModel persistence + seed/migration helpers (stretch for EX1; required before EX3)
 - Error responses match `docs/contracts/http-errors.md`

@@ -3,7 +3,7 @@
 > Copy this into your PR or `docs/notes/` folder before prompting the assistant. Keep each brief scoped to a reviewable slice (≤150 LOC touched per file set).
 
 - **Brief ID:** `brief-###`
-- **Date / Session:** e.g., `2025-11-24 · Session 04`
+- **Date / Session:** e.g., `2026-03-23 · Session 04`
 - **Owner(s):** name(s) or pair
 - **Intent (2 sentences max):** What outcome will this slice deliver?
 - **Trigger:** link to exercise requirement, bug ticket, or session step.

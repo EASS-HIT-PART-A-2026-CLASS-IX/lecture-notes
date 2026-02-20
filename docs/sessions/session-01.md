@@ -1,6 +1,6 @@
 # Session 01 – Kickoff and Environment Setup
 
-- **Date:** Monday, Nov 3, 2025
+- **Date:** Monday, 02/03/2026
 - **Theme:** Welcome everyone, set expectations, and make sure every student can create and run a Python project using uv, Git, and Visual Studio Code (VS Code).
 
 ## Learning Objectives
@@ -158,7 +158,7 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 ## Talking Script – Course Overview (First 45 Minutes)
 1. **Introduce yourself and the course tone.** "This class is about learning by doing. You will see me live-code and you will copy/paste freely. Questions are always welcome. Trust the process—even if things feel unfamiliar at first, by the end you'll be building real web applications with modern tools."
 2. **Set expectations for participation.** "We use Discord for day-to-day help. Post what you tried before asking. Pair up during labs so nobody gets stuck. Join using the Learning Management System (LMS) link (backup: https://go.eass.dev/discord) and use the `#helpdesk` channel for all technical questions."
-3. **Explain grading.** “We have three large exercises. Each one is assigned on a Monday and due on a Tuesday three weeks later. There are no surprise quizzes. Show up, code along, and you will earn the grade.”
+3. **Explain grading.** “We have three large exercises. Each one is assigned on a Monday, and each deadline is set on a weekday that avoids Shabbat and official holiday closures. There are no surprise quizzes. Show up, code along, and you will earn the grade.”
 4. **Call out the monorepo + KISS pledge.** "You’re welcome to keep all three exercises in one Git repo so EX2 naturally builds on EX1 and EX3 pulls everything together—but it’s not mandatory. What *is* required: keep every deliverable simple, local, and easy to demo on your laptop. No cloud accounts, no security audits, just clean FastAPI fundamentals that later grow into SQLModel persistence."
 5. **Clarify AI policy.** "You may use AI tools like ChatGPT, Claude, Gemini, Cursor, Copilot, LM Studio, or Ollama. You must understand every line you submit, keep a lightweight spec (spec.md or a tessl.io export) in your repo, and when you ask for help share Problem → Action → Result → Desired."
 6. **Outline the tool belt.** "Today we confirm Python 3.12+, uv for environments, Git for version control, VS Code for editing, and Docker Desktop for later sessions. Soon we'll add FastAPI for building web APIs and learn to use LLMs both as coding assistants (to help you write code faster) and as components inside your applications (like calling a local LLM endpoint)."
@@ -184,7 +184,7 @@ Use these numbered steps when you call out B# (Part B) or C# (Part C). Unless ot
 
 1. **Course structure:**
    - 12 meetings (Mondays), each with theory + two hands-on labs.
-   - Three major exercises (EX1, EX2, EX3) with Tuesday deadlines.
+   - Three major exercises (EX1, EX2, EX3) with weekday deadlines that avoid Shabbat.
    - KISS focus: every deliverable runs locally on Linux/WSL/macOS—no cloud hoops or security audits.
 
 2. **Grading breakdown:**
@@ -624,7 +624,7 @@ Share a printed or PDF **terminal cheat sheet** (Mac shortcuts on the left, Wind
    
    ## Author
    
-   Your Name - EASS Course, Fall 2025
+   Your Name - EASS Course, Semester B 2026
    ```
 
 3. **Save the file** (Cmd+S / Ctrl+S).

@@ -1,6 +1,6 @@
 # Session 04 – Persisting the Movie Service (SQLite + SQLModel)
 
-- **Date:** Monday, November 24, 2025
+- **Date:** Monday, 23/03/2026
 - **Theme:** Replace the in-memory repository with SQLite + SQLModel, wire FastAPI to real sessions, and back everything with migrations + tests.
 
 ## Session Story

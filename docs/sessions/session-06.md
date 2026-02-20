@@ -1,6 +1,6 @@
 # Session 06 – Streamlit Dashboards + Typer UX
 
-- **Date:** Monday, Dec 8, 2025
+- **Date:** Monday, 13/04/2026
 - **Theme:** Ship a Streamlit dashboard and Typer CLI on top of the Postgres-backed FastAPI API, plus a short JavaScript/TypeScript warm-up to prep for frontend work.
 
 ## Session Story

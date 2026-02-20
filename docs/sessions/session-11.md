@@ -1,6 +1,6 @@
 # Session 11 – Security Foundations (EX3 Baseline Controls)
 
-- **Date:** Monday, Jan 19, 2026
+- **Date:** Monday, 25/05/2026
 - **Theme:** Secure the movie service with proper authentication (auth), secrets hygiene, and threat modeling so EX3 submissions include hashed credentials, JWT-protected routes, and documented secret rotation.
 
 ## Learning Objectives

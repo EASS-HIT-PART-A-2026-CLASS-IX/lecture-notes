@@ -1,6 +1,6 @@
 # Session 12 – Tool-Friendly APIs & FastMCP Finish Line
 
-- **Date:** Monday, Jan 26, 2026
+- **Date:** Monday, 01/06/2026
 - **Theme:** Lock down the EX3 release by polishing every externally facing surface—pagination, ETags, docs, automation—and show how the same contracts plug into FastMCP so tools can call your API hands-free.
 
 ## Session Story
@@ -219,7 +219,7 @@ Run `pre-commit install` and `pre-commit run --all-files`.
 ### Step 3 – Release checklist + docs
 `docs/release-checklist.md` should include:
 - Owner + timestamp of dry run.
-- Evidence links (screenshots, `logs/release-2026-01-26.txt`).
+- Evidence links (screenshots, `logs/release-2026-06-01.txt`).
 - Commands run + exit codes.
 - FastMCP probe instructions + expected output snippet.
 

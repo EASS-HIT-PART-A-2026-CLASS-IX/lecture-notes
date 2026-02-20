@@ -1,6 +1,6 @@
 # Session 09 – Async Recommendation Refresh (EX3 Reliability Checkpoint)
 
-- **Date:** Monday, Jan 5, 2026
+- **Date:** Monday, 11/05/2026
 - **Theme:** Move the recommendation refresh pipeline to asynchronous execution, add retries/backoff, and guard against duplicate work with idempotency keys so every EX3 project ships a proven background job + telemetry loop.
 
 ## Learning Objectives

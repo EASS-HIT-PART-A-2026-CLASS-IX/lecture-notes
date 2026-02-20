@@ -2,18 +2,21 @@
 
 Every assignment is intentionally small, runs on a single laptop (Linux, WSL, macOS, or other Unix-like environments), and focuses on getting something working without detours into security hardening or cloud deployment. Students may explore the deeper labs in the session notes, but the required deliverables stay simple and local.
 
-**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sun Jan 25, 2026 at 23:59 (Israel time)** (last Sunday of January). Flag blockers early in `#helpdesk`.
+**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sunday, 29/03/2026 at 23:59 (Israel time)**. Flag blockers early in `#helpdesk`.
+
+**Deadline policy:** All graded submissions (EX1, EX2, EX3) are scheduled on weekdays and never on Shabbat.
 
 ```mermaid
 gantt
-    title Exercise Timeline 2025–2026
-    dateFormat  YYYY-MM-DD
-    axisFormat  %b %d
+    title Exercise Timeline 2026 (Semester B)
+    dateFormat  DD/MM/YYYY
+    axisFormat  %d/%m
 
     section Exercises
-    EX1 – FastAPI Foundations (Backend)             :active, 2025-11-10, 2025-12-02
-    EX2 – Friendly Interface (Frontend + Backend)   :2025-12-01, 2025-12-23
-    EX3 – Full-Stack Microservices Final Project    :2026-01-05, 2026-02-10
+    EX1 – FastAPI Foundations (Backend)             :active, 16/03/2026, 30/03/2026
+    EX2 – Friendly Interface (Frontend + Backend)   :27/04/2026, 18/05/2026
+    EX3 – Full-Stack Microservices Build Window     :25/05/2026, 01/07/2026
+    EX3 – Final Submission Window                   :29/06/2026, 01/07/2026
 ```
 
 ## Pick Your Domain Once, Reuse It Everywhere
@@ -22,8 +25,8 @@ gantt
 - All instructions below reference "movies" as the live-coded classroom demo—replace it with your chosen theme while keeping the architectural scope identical.
 
 ## EX1 – FastAPI Foundations (Backend)
-- **Assigned:** Monday, Nov 10, 2025  
-- **Due:** Tuesday, Dec 2, 2025 at 23:59 (Israel time)
+- **Assigned:** Monday, 16/03/2026
+- **Due:** Monday, 30/03/2026 at 23:59 (Israel time)
 - **Goal:** Ship the core backend microservice for your chosen domain using **FastAPI**, **Pydantic**, and pytest. This is the service you’ll reuse in every later exercise. Persistence starts in-memory and graduates to SQLite when you integrate Session 04’s guidance (mandatory before EX3, optional for the EX1 grading window).
 - **Sessions to revisit:** [Session 02 – Introduction to HTTP and REST](sessions/session-02.md), [Session 03 – FastAPI Fundamentals](sessions/session-03.md), [Session 04 – Persisting the Movie Service](sessions/session-04.md).
 - **Required Features:**
@@ -35,9 +38,9 @@ gantt
 - **Rubric (100 pts):** correctness 40, simplicity/readability 20, tests 20, documentation 20. Bonus (+5) for providing a tiny seed script or `.http` playground tailored to your domain.
 
 ## EX2 – Friendly Interface (Frontend connected to Backend)
-- **Assigned:** Monday, Dec 1, 2025  
-- **Due:** Tuesday, Dec 23, 2025 at 23:59 (Israel time)
-- **Heads-up:** This timeline intentionally overlaps with EX1’s submission window; you can finish EX1 and kick off EX2 planning on the same day.
+- **Assigned:** Monday, 27/04/2026
+- **Due:** Monday, 18/05/2026 at 23:59 (Israel time)
+- **Heads-up:** This timeline is positioned after the April memorial/holiday cluster so teams can progress without collision with closures.
 - **Goal:** Build a lightweight interface (Streamlit dashboard or Typer CLI) that talks to the EX1 backend for the same domain. Students should be able to exercise the core flows in under a minute from launch.
 - **Sessions to revisit:** [Session 05 – PostgreSQL Foundations for the Movie Service](sessions/session-05.md), [Session 06 – Interface Options](sessions/session-06.md).
 - **Required Features:**
@@ -48,8 +51,9 @@ gantt
 - **Rubric (100 pts):** working flows 40, user guidance (clear copy, prompts, or help text) 25, code clarity 20, documentation 15. Bonus (+5) if tests automate one interface workflow (e.g., calling the Typer command with `CliRunner` or snapshot testing a Streamlit script).
 
 ## EX3 – Full-Stack Microservices Final Project (KISS)
-- **Assigned:** Monday, Jan 5, 2026  
-- **Due:** Tuesday, Feb 10, 2026 at 23:59 (Israel time)
+- **Assigned:** Monday, 25/05/2026
+- **Final submission window opens:** Monday, 29/06/2026
+- **Final due:** Wednesday, 01/07/2026 at 23:59 (Israel time)
 - **Goal:** Finish a tidy local product by joining the EX1 backend, the dedicated persistence layer from Session 04, and the EX2 interface, then adding integrations with at least one additional microservice (LLM tool, reporting worker, notification service, etc.) plus documentation you wish every teammate handed you. Everything must run locally via `uv run`/`python -m` for scripts and `docker compose up` for the API + Redis + worker stack—no cloud hosting required, but Compose, telemetry, and security guardrails from Sessions 09–12 are now graded expectations.
 - **Sessions to revisit:** [Session 07 – Testing and Diagnostics](sessions/session-07.md), [Session 08 – AI Pairing Tips](sessions/session-08.md), [Session 09 – Async Recommendation Refresh](sessions/session-09.md), [Session 10 – Docker Compose, Redis, and Service Contracts](sessions/session-10.md), [Session 11 – Security Foundations](sessions/session-11.md), [Session 12 – Tool-Friendly APIs and Final Prep](sessions/session-12.md). These later sessions deepen reliability, orchestration, security, and release polish—lean on the ones that strengthen your EX3 storyline.
 - **Required Pieces:**
