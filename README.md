@@ -28,6 +28,7 @@ Key documents:
 - Sessions 05–08: movie service persistence, Streamlit & Typer interfaces, testing/logging, and AI-assisted coding habits.
 - Sessions 09–11: optional deep dives (async refreshers, Compose concepts, security vocabulary) for curious students—deliverables stay simple even if you browse these.
 - Session 12: polish, demos, and tool-friendly API patterns.
+- Cloud onboarding: students use **AWS Educate** at https://www.awseducate.com/ (self-paced, free, no credit card required) for Compute/Storage/Databases fundamentals.
 - Exercises pace with the storyline:
   - **EX1** (assigned Monday, 16/03/2026; due Monday, 30/03/2026 at 23:59 Israel time): ship the FastAPI CRUD service from Session 03 with tests/Docker; adopt Session 04’s SQLite upgrade as soon as you’re ready so persistence is solved before EX3.
   - **EX2** (assigned Monday, 27/04/2026; due Monday, 18/05/2026 at 23:59 Israel time): deliver a Streamlit dashboard **or** Typer CLI that talks to the EX1 API.

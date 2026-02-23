@@ -5,6 +5,7 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 - Classes meet on **Mondays** from **02/03/2026** through **01/06/2026** (Semester B 2026).
 - Each meeting has **45 min theory** + **45 min hands-on build** + **45 min practice/extension**.
 - Exercises are assigned in class with weekday deadlines that avoid Shabbat and official holiday closures.
+- Cloud prerequisite uses **AWS Educate** self-paced training at https://www.awseducate.com/ (free, no credit card required).
 
 > **Heads-up from Andrej Karpathy**  
 > - Sleep beats all-nighters; aim for ~7½ hours before big work.  
@@ -19,6 +20,7 @@ Welcome! This site hosts the 12-week plan for the EASS (Engineering of Advanced 
 ## Quick Links
 - [Course schedule by session](#course-schedule)
 - [Exercise lineup and deadlines](exercises.md)
+- [AWS Educate (self-paced, free)](https://www.awseducate.com/)
 - [Semester B 2026 calendar (Jewish calendar aligned)](#semester-b-2026-calendar-jewish-calendar-aligned)
 - [Optional MCP Workshop](sessions/optional/mcp.md)
 - [Optional DuckDB Mini-Lakehouse Lab](sessions/optional/DuckDBMiniLakehouse.md)

@@ -153,13 +153,13 @@ curl https://httpbin.org/get?ping=preflight | python -m json.tool
 
 Share the pretty-printed JSON screenshot in your lab thread so everyone confirms the tooling.
 
-**AWS Academy:** Complete the **Cloud Foundations – Compute, Storage, and Databases** modules by **Sunday, 29/03/2026 at 23:59 (Israel time)**; flag blockers early.
+**AWS Educate:** Complete a self-paced learning path at https://www.awseducate.com/ (free, no credit card required) covering **Compute, Storage, and Databases** fundamentals by **Sunday, 29/03/2026 at 23:59 (Israel time)**; flag blockers early.
 
 **Sanity check:** Re-run `uv run pytest -q` inside `~/eass-25/playground` so the testing muscle stays warm.
 
 ## Admin & Homework Checkpoints
 - **Roster sync:** Post your GitHub username **and** best contact email in the Discord `#roster-sync` channel before Session 02 ends so we can add you to the GitHub org, Classroom repos, and mailing list without delays.
-- **AWS Academy – Cloud Foundations (Compute, Storage, Databases):** due **Sunday, 29/03/2026 at 23:59 (Israel time)**; log blockers in `#helpdesk` immediately.
+- **AWS Educate (self-paced, free, no credit card):** complete the Compute/Storage/Databases fundamentals track at https://www.awseducate.com/ by **Sunday, 29/03/2026 at 23:59 (Israel time)**; log blockers in `#helpdesk` immediately.
 - **EX1 – FastAPI Foundations (Backend):** due **Monday, 30/03/2026**. Revisit the [rubric](../exercises.md#ex1--fastapi-foundations-backend) while you build the Typer probes in this session.
 - **EX2 – Friendly Interface (Frontend connected to Backend):** opens **Monday, 27/04/2026**, due **Monday, 18/05/2026**. Skim the [brief](../exercises.md#ex2--friendly-interface-frontend-connected-to-backend) now so today's HTTP probes feed directly into your UI/CLI plan.
 - **EX3 – Full-Stack Microservices Final Project (KISS):** kicks off **Monday, 25/05/2026**; final submission window opens **Monday, 29/06/2026** and closes **Wednesday, 01/07/2026**. Keep a running log in your repo for the [final project checklist](../exercises.md#ex3--full-stack-microservices-final-project-kiss).
@@ -167,7 +167,7 @@ Share the pretty-printed JSON screenshot in your lab thread so everyone confirms
 ## Agenda
 | Segment | Duration | Format | Focus |
 | --- | --- | --- | --- |
-| Part A – Recap & AWS checkpoint | 5 min | Guided discussion | Round-robin: automation/aliases from Session 01? AWS Compute module progress? |
+| Part A – Recap & AWS Educate checkpoint | 5 min | Guided discussion | Round-robin: automation/aliases from Session 01? AWS Educate Compute/Storage/Databases progress? |
 | Part A – Client-server & gateway concepts | 10 min | Talk + board | Architecture fundamentals: client, server, gateway roles. |
 | Part A – nginx+Docker gateway demo | 10 min | Live demo | Run nginx as reverse proxy, observe request/response flow. |
 | Part A – HTTP mechanics, status codes, and error design | 15 min | Talk + whiteboard | Methods, status codes, headers, trace IDs, resource naming, idempotency. |
@@ -179,8 +179,8 @@ Share the pretty-printed JSON screenshot in your lab thread so everyone confirms
 
 ## Part A – Theory & Live Demos (45 Minutes)
 
-### 1. Recap & AWS checkpoint (5 min)
-Round-robin: automation/aliases from Session 01? AWS Compute module progress?
+### 1. Recap & AWS Educate checkpoint (5 min)
+Round-robin: automation/aliases from Session 01? AWS Educate Compute/Storage/Databases progress?
 
 ### 2. Client-server architecture fundamentals (10 min)
 

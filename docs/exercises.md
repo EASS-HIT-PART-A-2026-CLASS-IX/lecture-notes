@@ -2,7 +2,7 @@
 
 Every assignment is intentionally small, runs on a single laptop (Linux, WSL, macOS, or other Unix-like environments), and focuses on getting something working without detours into security hardening or cloud deployment. Students may explore the deeper labs in the session notes, but the required deliverables stay simple and local.
 
-**AWS Academy prerequisite:** Complete the Cloud Foundations modules for **Compute, Storage, and Databases** by **Sunday, 29/03/2026 at 23:59 (Israel time)**. Flag blockers early in `#helpdesk`.
+**AWS Educate prerequisite:** Complete a self-paced **AWS Educate** learning path at https://www.awseducate.com/ (free, no credit card required) covering **Compute, Storage, and Databases** fundamentals by **Sunday, 29/03/2026 at 23:59 (Israel time)**. Flag blockers early in `#helpdesk`.
 
 **Deadline policy:** All graded submissions (EX1, EX2, EX3) are scheduled on weekdays and never on Shabbat.
 

@@ -82,7 +82,7 @@ STATEFULL systems REDIS, monogodb, mysql sqlalchemy, pydantic, ORM
 - Github account
 - HW on Github
 - Creating a Canvas account (https://canvas.instructure.com/)
-- Accepted invitation from AWS Academy and GitHub (I have sent links)
+- Registered for AWS Educate (self-paced, free, no credit card) and GitHub (links provided)
 - AWS on Cavnvas
 - LinkedIn
 - Commandline (WSL)
