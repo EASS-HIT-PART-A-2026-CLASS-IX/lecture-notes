@@ -1,13 +1,15 @@
-# EASS – Engineering of Advanced Software Solutions (Course Materials)
+# EASS – Engineering of Advanced Software Solutions (2026 Class IX Course Materials)
 
-This repository contains the fully scripted 12-session plan for the **EASS 8 – Engineering of Advanced Software Solutions** course. Each class blends 45 minutes of theory with two 45-minute hands-on blocks, and the entire arc follows a single project: building a movie catalogue with FastAPI, SQLModel, Typer, and Streamlit—no heavy infrastructure or security overhead required.
+This repository contains the fully scripted 12-session plan for the **Engineering of Advanced Software Solutions** course (2026 cohort, Class IX). Each class blends 45 minutes of theory with two 45-minute hands-on blocks, and the entire arc follows a single project: building a movie catalogue with FastAPI, SQLModel, Typer, and Streamlit—no heavy infrastructure or security overhead required.
 
 ## 🚀 Quick Start for Instructors
 
 ```bash
-git clone https://github.com/EASS-HIT-PART-A-2025-CLASS-VIII/lecture-notes.git
+git clone https://github.com/EASS-HIT-PART-A-2026-CLASS-IX/lecture-notes.git
 cd lecture-notes
 ```
+
+Primary organization for this cohort: `https://github.com/EASS-HIT-PART-A-2026-CLASS-IX/`.
 
 Open the `docs/` folder (or load the repo in VS Code) to follow any session directly—no static site build is required.
 
